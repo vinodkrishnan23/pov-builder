@@ -1,0 +1,13 @@
+{
+  "name": "mongodb-pov-support-seeder",
+  "version": "1.0.0",
+  "description": "Synthetic seed app for support ticket POV",
+  "main": "seed.js",
+  "type": "commonjs",
+  "scripts": {
+    "seed": "node seed.js"
+  },
+  "dependencies": {
+    "mongodb": "^6.8.0"
+  }
+}
