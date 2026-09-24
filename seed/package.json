@@ -1,0 +1,13 @@
+{
+  "name": "northwind-support-ticket-triage-seeder",
+  "version": "1.0.0",
+  "description": "MongoDB Atlas seed app for northwind_support_ticket_triage",
+  "main": "seed.js",
+  "type": "commonjs",
+  "scripts": {
+    "seed": "node seed.js"
+  },
+  "dependencies": {
+    "mongodb": "^6.8.0"
+  }
+}
