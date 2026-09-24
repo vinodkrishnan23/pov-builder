@@ -1,0 +1,544 @@
+{
+  "name": "northwind_support_pov_api_contract",
+  "version": "1.0.0",
+  "scope": "Internal-only POV API for support ticket triage guidance, similar historical ticket retrieval, and live dashboard metrics using imported historical ticket data only.",
+  "base_path": "/api/v1",
+  "content_type": "application/json",
+  "auth": {
+    "status": "unspecified_in_source",
+    "notes": "InitialPOVSpec explicitly says security, access-control, and audit requirements are unknown. Contract assumes internal-only deployment but does not define authentication or authorization flows."
+  },
+  "conventions": {
+    "date_format": "ISO-8601 date-time",
+    "id_format": "MongoDB ObjectId as 24-character hex string",
+    "error_response": {
+      "error": {
+        "code": "string",
+        "message": "string",
+        "details": "object|null"
+      }
+    }
+  },
+  "endpoints": [
+    {
+      "operation_id": "getTicketDetail",
+      "method": "GET",
+      "path": "/tickets/{ticketNumber}",
+      "purpose": "Return a ticket's core details together with any stored triage guidance and 3-4 similar resolved historical tickets including resolution information, for the agent ticket-open workflow.",
+      "backing": {
+        "type": "query_pattern",
+        "reference": "QP-1",
+        "mongodb_operation": "aggregate on tickets with lookups to support_teams and tickets"
+      },
+      "request": {
+        "path_params": {
+          "ticketNumber": "string"
+        },
+        "query_params": {},
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "ticket": {
+            "id": "string",
+            "ticket_number": "string",
+            "source_channel": "email|chat|phone",
+            "subject": "string",
+            "description": "string",
+            "account_tier": "string|null",
+            "product_line": "string",
+            "status": "open|in_progress|resolved|closed",
+            "created_at": "string",
+            "manual_priority": "string|null"
+          },
+          "triage_suggestion": {
+            "suggested_priority": "string|null",
+            "confidence": "number|null",
+            "generated_at": "string|null",
+            "model_version": "string|null",
+            "suggested_team": {
+              "id": "string",
+              "team_code": "string",
+              "name": "string",
+              "description": "string|null",
+              "active": "boolean",
+              "created_at": "string"
+            },
+            "or_null": true
+          },
+          "similar_tickets": [
+            {
+              "id": "string",
+              "ticket_number": "string",
+              "subject": "string",
+              "description": "string",
+              "product_line": "string",
+              "manual_priority": "string|null",
+              "resolution_category": "string|null",
+              "resolution_summary": "string|null"
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 404,
+          "code": "TICKET_NOT_FOUND",
+          "message": "No ticket found for the supplied ticket number."
+        },
+        {
+          "status": 400,
+          "code": "INVALID_TICKET_NUMBER",
+          "message": "The ticket number path parameter is missing or invalid."
+        }
+      ],
+      "notes": [
+        "Similar tickets are returned from stored similar_ticket_cache joined to resolved tickets, as defined by QP-1.",
+        "This endpoint does not generate triage guidance or similarity results on demand; it returns stored data only."
+      ]
+    },
+    {
+      "operation_id": "getTicketTriageSuggestion",
+      "method": "GET",
+      "path": "/tickets/{ticketNumber}/triage-suggestion",
+      "purpose": "Return only the stored triage suggestion for a ticket, including suggested priority and recommended team details.",
+      "backing": {
+        "type": "query_pattern",
+        "reference": "QP-3",
+        "mongodb_operation": "aggregate on tickets with lookup to support_teams"
+      },
+      "request": {
+        "path_params": {
+          "ticketNumber": "string"
+        },
+        "query_params": {},
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "ticket": {
+            "id": "string",
+            "ticket_number": "string",
+            "subject": "string",
+            "description": "string",
+            "manual_priority": "string|null"
+          },
+          "triage_suggestion": {
+            "suggested_priority": "string|null",
+            "confidence": "number|null",
+            "generated_at": "string|null",
+            "model_version": "string|null",
+            "suggested_team": {
+              "id": "string",
+              "team_code": "string",
+              "name": "string",
+              "description": "string|null",
+              "active": "boolean",
+              "created_at": "string"
+            },
+            "or_null": true
+          }
+        }
+      },
+      "errors": [
+        {
+          "status": 404,
+          "code": "TICKET_NOT_FOUND",
+          "message": "No ticket found for the supplied ticket number."
+        },
+        {
+          "status": 400,
+          "code": "INVALID_TICKET_NUMBER",
+          "message": "The ticket number path parameter is missing or invalid."
+        }
+      ],
+      "notes": [
+        "If a ticket exists but no triage_suggestion has been stored yet, the triage_suggestion object may contain null fields.",
+        "The contract intentionally models routing as a recommendation, consistent with POV assumptions."
+      ]
+    },
+    {
+      "operation_id": "findSimilarResolvedTickets",
+      "method": "POST",
+      "path": "/similar-tickets/search",
+      "purpose": "Return 3-4 semantically similar resolved historical tickets with resolution information for a supplied query embedding. Intended for backend-driven similarity retrieval where the embedding is already available.",
+      "backing": {
+        "type": "query_pattern",
+        "reference": "QP-2",
+        "mongodb_operation": "aggregate with $vectorSearch on tickets"
+      },
+      "request": {
+        "path_params": {},
+        "query_params": {},
+        "body": {
+          "query_embedding": [
+            "number"
+          ],
+          "limit": "number_optional_defaults_to_4_but_must_not_exceed_4"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "id": "string",
+              "ticket_number": "string",
+              "subject": "string",
+              "description": "string",
+              "product_line": "string",
+              "manual_priority": "string|null",
+              "resolution_category": "string|null",
+              "resolution_summary": "string|null",
+              "score": "number"
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_QUERY_EMBEDDING",
+          "message": "query_embedding must be a non-empty numeric vector."
+        },
+        {
+          "status": 400,
+          "code": "INVALID_LIMIT",
+          "message": "limit must be between 1 and 4."
+        }
+      ],
+      "notes": [
+        "QP-2 supports retrieval for a given ticket or ad hoc ticket text, but the authoritative query pattern requires a query embedding, not raw text. Therefore this API accepts an embedding rather than inventing a text-to-embedding generation endpoint.",
+        "Results are filtered to resolved tickets only, per QP-2."
+      ]
+    },
+    {
+      "operation_id": "getDashboardTicketVolume",
+      "method": "GET",
+      "path": "/dashboard/ticket-volume",
+      "purpose": "Return ticket volume trend data by product line and priority over time for dashboard charting.",
+      "backing": {
+        "type": "query_pattern",
+        "reference": "QP-4",
+        "mongodb_operation": "find on dashboard_metric_snapshots"
+      },
+      "request": {
+        "path_params": {},
+        "query_params": {
+          "granularity": "hour|day|week",
+          "start_date": "ISO-8601 datetime",
+          "end_date": "ISO-8601 datetime"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "metric_type": "ticket_volume",
+          "granularity": "hour|day|week",
+          "start_date": "string",
+          "end_date": "string",
+          "points": [
+            {
+              "bucket_start": "string",
+              "product_line": "string|null",
+              "priority": "string|null",
+              "value": "number",
+              "ticket_count": "number|null",
+              "refreshed_at": "string"
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_GRANULARITY",
+          "message": "granularity must be one of hour, day, or week."
+        },
+        {
+          "status": 400,
+          "code": "INVALID_DATE_RANGE",
+          "message": "start_date must be before end_date and both must be valid ISO-8601 datetimes."
+        }
+      ],
+      "notes": [
+        "No additional filtering is defined because the authoritative query pattern only supports granularity and date range."
+      ]
+    },
+    {
+      "operation_id": "getDashboardAverageResolutionTime",
+      "method": "GET",
+      "path": "/dashboard/avg-resolution-time",
+      "purpose": "Return average resolution time by team over time for dashboard charting.",
+      "backing": {
+        "type": "query_pattern",
+        "reference": "QP-5",
+        "mongodb_operation": "aggregate on dashboard_metric_snapshots with lookup to support_teams"
+      },
+      "request": {
+        "path_params": {},
+        "query_params": {
+          "granularity": "hour|day|week",
+          "start_date": "ISO-8601 datetime",
+          "end_date": "ISO-8601 datetime"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "metric_type": "avg_resolution_time",
+          "granularity": "hour|day|week",
+          "start_date": "string",
+          "end_date": "string",
+          "points": [
+            {
+              "bucket_start": "string",
+              "value": "number",
+              "ticket_count": "number|null",
+              "refreshed_at": "string",
+              "team": {
+                "id": "string",
+                "team_code": "string",
+                "name": "string",
+                "description": "string|null",
+                "active": "boolean",
+                "created_at": "string"
+              }
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_GRANULARITY",
+          "message": "granularity must be one of hour, day, or week."
+        },
+        {
+          "status": 400,
+          "code": "INVALID_DATE_RANGE",
+          "message": "start_date must be before end_date and both must be valid ISO-8601 datetimes."
+        }
+      ],
+      "notes": [
+        "No team filter is added because it is not present in the authoritative query pattern."
+      ]
+    },
+    {
+      "operation_id": "refreshDashboardTicketVolumeSnapshots",
+      "method": "POST",
+      "path": "/admin/dashboard-metrics/ticket-volume/refresh",
+      "purpose": "Recompute or refresh pre-aggregated ticket volume dashboard snapshots from imported ticket history for a requested date range and granularity.",
+      "backing": {
+        "type": "query_pattern",
+        "reference": "QP-6",
+        "mongodb_operation": "aggregate with $merge from tickets into dashboard_metric_snapshots"
+      },
+      "request": {
+        "path_params": {},
+        "query_params": {},
+        "body": {
+          "granularity": "hour|day|week",
+          "start_date": "ISO-8601 datetime",
+          "end_date": "ISO-8601 datetime"
+        }
+      },
+      "response": {
+        "status": 202,
+        "body": {
+          "job": "synchronous_or_background_execution_not_specified",
+          "metric_type": "ticket_volume",
+          "granularity": "hour|day|week",
+          "start_date": "string",
+          "end_date": "string",
+          "status": "accepted"
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_GRANULARITY",
+          "message": "granularity must be one of hour, day, or week."
+        },
+        {
+          "status": 400,
+          "code": "INVALID_DATE_RANGE",
+          "message": "start_date must be before end_date and both must be valid ISO-8601 datetimes."
+        }
+      ],
+      "notes": [
+        "This is an internal operational/admin endpoint for the POV, directly backed by QP-6.",
+        "The source material does not define whether refresh runs synchronously or asynchronously, so the contract returns 202 Accepted without inventing job-tracking APIs."
+      ]
+    },
+    {
+      "operation_id": "refreshDashboardAverageResolutionTimeSnapshots",
+      "method": "POST",
+      "path": "/admin/dashboard-metrics/avg-resolution-time/refresh",
+      "purpose": "Recompute or refresh pre-aggregated average resolution time by team dashboard snapshots from imported resolved ticket history for a requested date range and granularity.",
+      "backing": {
+        "type": "query_pattern",
+        "reference": "QP-7",
+        "mongodb_operation": "aggregate with $merge from tickets into dashboard_metric_snapshots"
+      },
+      "request": {
+        "path_params": {},
+        "query_params": {},
+        "body": {
+          "granularity": "hour|day|week",
+          "start_date": "ISO-8601 datetime",
+          "end_date": "ISO-8601 datetime"
+        }
+      },
+      "response": {
+        "status": 202,
+        "body": {
+          "job": "synchronous_or_background_execution_not_specified",
+          "metric_type": "avg_resolution_time",
+          "granularity": "hour|day|week",
+          "start_date": "string",
+          "end_date": "string",
+          "status": "accepted"
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_GRANULARITY",
+          "message": "granularity must be one of hour, day, or week."
+        },
+        {
+          "status": 400,
+          "code": "INVALID_DATE_RANGE",
+          "message": "start_date must be before end_date and both must be valid ISO-8601 datetimes."
+        }
+      ],
+      "notes": [
+        "This is an internal operational/admin endpoint for the POV, directly backed by QP-7.",
+        "The source material does not define whether refresh runs synchronously or asynchronously, so the contract returns 202 Accepted without inventing job-tracking APIs."
+      ]
+    },
+    {
+      "operation_id": "listSupportTeams",
+      "method": "GET",
+      "path": "/support-teams",
+      "purpose": "List support teams for internal validation or UI reference data needs.",
+      "backing": {
+        "type": "straightforward_crud",
+        "collection": "support_teams",
+        "mongodb_operation": "find on support_teams"
+      },
+      "request": {
+        "path_params": {},
+        "query_params": {
+          "active": "boolean_optional"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "teams": [
+            {
+              "id": "string",
+              "team_code": "string",
+              "name": "string",
+              "description": "string|null",
+              "active": "boolean",
+              "created_at": "string"
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_ACTIVE_FILTER",
+          "message": "active must be true or false when supplied."
+        }
+      ],
+      "notes": [
+        "This endpoint is justified by the support_teams reference collection and index ix_active_name, whose stated reason is listing active teams for internal UI/API filters or validation.",
+        "No create/update/delete team endpoints are defined because the POV scope and query patterns do not require team management workflows."
+      ]
+    },
+    {
+      "operation_id": "updateTicketStatus",
+      "method": "PATCH",
+      "path": "/tickets/{ticketNumber}/status",
+      "purpose": "Update a ticket's workflow status, such as marking a ticket resolved in the POV workflow.",
+      "backing": {
+        "type": "straightforward_crud",
+        "collection": "tickets",
+        "mongodb_operation": "updateOne on tickets matched by ticket_number"
+      },
+      "request": {
+        "path_params": {
+          "ticketNumber": "string"
+        },
+        "query_params": {},
+        "body": {
+          "status": "open|in_progress|resolved|closed",
+          "resolved_at": "ISO-8601 datetime_optional",
+          "resolution_time_minutes": "number_optional",
+          "assigned_team_id": "string_optional"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "ticket_number": "string",
+          "status": "open|in_progress|resolved|closed",
+          "resolved_at": "string|null",
+          "resolution_time_minutes": "number|null",
+          "assigned_team_id": "string|null",
+          "updated": "boolean"
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_TICKET_NUMBER",
+          "message": "The ticket number path parameter is missing or invalid."
+        },
+        {
+          "status": 400,
+          "code": "INVALID_STATUS",
+          "message": "status must be one of open, in_progress, resolved, or closed."
+        },
+        {
+          "status": 404,
+          "code": "TICKET_NOT_FOUND",
+          "message": "No ticket found for the supplied ticket number."
+        },
+        {
+          "status": 400,
+          "code": "INVALID_TEAM_ID",
+          "message": "assigned_team_id must be a valid support team id when supplied."
+        }
+      ],
+      "notes": [
+        "This straightforward CRUD endpoint is implied by the data model and user journey step 'Mark the ticket resolved'.",
+        "The contract does not add richer resolution-write semantics beyond fields already present in the data model."
+      ]
+    }
+  ],
+  "excluded_endpoints": [
+    {
+      "reason": "No endpoint to generate triage suggestions from raw ticket text is defined because the authoritative query patterns only provide retrieval of stored triage_suggestion (QP-3), not generation or persistence of new suggestions."
+    },
+    {
+      "reason": "No endpoint to create tickets from the production helpdesk tool is defined because production integration is explicitly out of scope for the POV first pass."
+    },
+    {
+      "reason": "No endpoint for dashboard filters by team, product line, or priority beyond the defined query parameters is added because these filters are listed as open questions and are not supported in the authoritative query patterns."
+    },
+    {
+      "reason": "No endpoint to search similar tickets from raw free text is defined because QP-2 requires a query embedding; adding text-to-embedding generation would invent behavior not defined in the authoritative artifacts."
+    }
+  ]
+}
