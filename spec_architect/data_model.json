@@ -1,0 +1,469 @@
+{
+  "collections": [
+    {
+      "name": "support_teams",
+      "description": "Reference collection for internal teams that tickets can be routed to and that are used in average resolution time reporting.",
+      "traceability": [
+        "Support Team",
+        "FR-2",
+        "FR-8",
+        "UC-1",
+        "UC-3"
+      ],
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "team_code",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "active",
+          "type": "bool",
+          "required": true
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "relationships": [
+        {
+          "type": "referenced_by",
+          "collection": "tickets",
+          "field": "assigned_team_id"
+        },
+        {
+          "type": "referenced_by",
+          "collection": "tickets",
+          "field": "triage_suggestion.suggested_team_id"
+        }
+      ],
+      "embedding_vs_references": {
+        "strategy": "reference",
+        "reason": "Support teams are a small shared dimension reused across many tickets and dashboard metrics. Referencing avoids repeated updates if team names change while keeping ticket records stable."
+      },
+      "indexes": [
+        {
+          "name": "ux_team_code",
+          "kind": "regular",
+          "fields": [
+            "team_code"
+          ],
+          "reason": "Lookup and validation of routing targets by stable team code for triage suggestions and dashboard joins."
+        },
+        {
+          "name": "ix_active_name",
+          "kind": "regular",
+          "fields": [
+            "active",
+            "name"
+          ],
+          "reason": "Support internal UI/API listing of active teams for filters or validation."
+        }
+      ]
+    },
+    {
+      "name": "tickets",
+      "description": "Core collection holding imported representative historical ticket data and POV ticket workflow state, including source text, actual outcomes, and optional system-generated triage guidance.",
+      "traceability": [
+        "Support Ticket",
+        "Historical Ticket",
+        "Product Line",
+        "Priority",
+        "Resolution Category",
+        "Resolution Summary",
+        "FR-1",
+        "FR-2",
+        "FR-4",
+        "FR-5",
+        "FR-6",
+        "FR-7",
+        "FR-8",
+        "FR-10",
+        "AI-1",
+        "AI-2",
+        "AI-3",
+        "UC-1",
+        "UC-2",
+        "UC-3",
+        "SC-2",
+        "SC-3"
+      ],
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "ticket_number",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "source_channel",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "email",
+            "chat",
+            "phone"
+          ]
+        },
+        {
+          "name": "subject",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "account_tier",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "product_line",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "open",
+            "in_progress",
+            "resolved",
+            "closed"
+          ]
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "resolved_at",
+          "type": "date",
+          "required": false
+        },
+        {
+          "name": "resolution_time_minutes",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "assigned_team_id",
+          "type": "objectId",
+          "required": false
+        },
+        {
+          "name": "manual_priority",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "resolution_category",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "resolution_summary",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "triage_suggestion",
+          "type": "document",
+          "required": false,
+          "fields": [
+            {
+              "name": "suggested_priority",
+              "type": "string",
+              "required": false
+            },
+            {
+              "name": "suggested_team_id",
+              "type": "objectId",
+              "required": false
+            },
+            {
+              "name": "confidence",
+              "type": "double",
+              "required": false
+            },
+            {
+              "name": "generated_at",
+              "type": "date",
+              "required": false
+            },
+            {
+              "name": "model_version",
+              "type": "string",
+              "required": false
+            }
+          ],
+          "reason": "Stores POV-generated guidance for agent review. Optional because imported historical records may predate suggestion generation and routing behavior is still clarification-sensitive."
+        },
+        {
+          "name": "similar_ticket_cache",
+          "type": "array<object>",
+          "required": false,
+          "fields": [
+            {
+              "name": "ticket_id",
+              "type": "objectId",
+              "required": true
+            },
+            {
+              "name": "score",
+              "type": "double",
+              "required": true
+            }
+          ],
+          "reason": "Optional inline cache of top 3-4 similar resolved tickets for the ticket-open workflow to support instant retrieval in the POV."
+        },
+        {
+          "name": "embedding",
+          "type": "array<float>",
+          "required": false,
+          "reason": "Vector representation of combined ticket text for semantic similar-ticket retrieval and possibly text-based triage pipelines."
+        },
+        {
+          "name": "ingested_at",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "relationships": [
+        {
+          "type": "references",
+          "collection": "support_teams",
+          "field": "assigned_team_id"
+        },
+        {
+          "type": "references",
+          "collection": "support_teams",
+          "field": "triage_suggestion.suggested_team_id"
+        },
+        {
+          "type": "self_reference",
+          "field": "similar_ticket_cache.ticket_id",
+          "reason": "Links a ticket to 3-4 semantically similar resolved historical tickets shown when an agent opens the ticket."
+        }
+      ],
+      "embedding_vs_references": {
+        "strategy": "mixed",
+        "reason": "Ticket-specific artifacts that are read together in the agent workflow (triage_suggestion and optional similar_ticket_cache) are embedded to avoid extra lookups. Shared team data is referenced because many tickets point to the same team and dashboard metrics group by team."
+      },
+      "indexes": [
+        {
+          "name": "ux_ticket_number",
+          "kind": "regular",
+          "fields": [
+            "ticket_number"
+          ],
+          "reason": "Stable lookup of an individual ticket for the agent ticket-open workflow."
+        },
+        {
+          "name": "ix_status_created_at",
+          "kind": "regular",
+          "fields": [
+            "status",
+            "created_at"
+          ],
+          "reason": "Support fetching recently opened or in-progress tickets for internal POV workflows and time-window dashboard queries."
+        },
+        {
+          "name": "ix_product_line_created_at",
+          "kind": "regular",
+          "fields": [
+            "product_line",
+            "created_at"
+          ],
+          "reason": "Supports dashboard aggregations of ticket volume by product line over time."
+        },
+        {
+          "name": "ix_manual_priority_created_at",
+          "kind": "regular",
+          "fields": [
+            "manual_priority",
+            "created_at"
+          ],
+          "reason": "Supports dashboard aggregations of ticket volume by priority over time using existing manually assigned priority data."
+        },
+        {
+          "name": "ix_assigned_team_resolved_at",
+          "kind": "regular",
+          "fields": [
+            "assigned_team_id",
+            "resolved_at"
+          ],
+          "reason": "Supports average resolution time by team over time by grouping resolved tickets by assigned team."
+        },
+        {
+          "name": "ix_resolution_category",
+          "kind": "regular",
+          "fields": [
+            "resolution_category"
+          ],
+          "reason": "Supports filtering or faceting similar resolved tickets and analysis by existing historical resolution category."
+        },
+        {
+          "name": "ix_resolved_filter",
+          "kind": "regular",
+          "fields": [
+            "status",
+            "resolved_at"
+          ],
+          "reason": "Efficiently isolates resolved historical tickets for similarity recommendations and dashboard calculations involving completed work."
+        },
+        {
+          "name": "ticket_text_search",
+          "kind": "search",
+          "fields": [
+            "subject",
+            "description",
+            "resolution_summary"
+          ],
+          "reason": "Supports keyword/text retrieval and hybrid search over ticket text and resolution text when exploring historical tickets or backing off from vector similarity."
+        },
+        {
+          "name": "ticket_embedding_vector",
+          "kind": "vector",
+          "fields": [
+            "embedding"
+          ],
+          "reason": "Supports low-latency semantic retrieval of 3-4 similar resolved historical tickets when an agent opens a ticket, matching the requirement for instant similar-case suggestions from unstructured text at growing scale."
+        }
+      ]
+    },
+    {
+      "name": "dashboard_metric_snapshots",
+      "description": "Pre-aggregated metric snapshots for near-real-time dashboard display of ticket volume and average resolution time without recomputing all historical aggregations on each request.",
+      "traceability": [
+        "FR-7",
+        "FR-8",
+        "UC-3",
+        "MAO-3",
+        "SC-4"
+      ],
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "metric_type",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "ticket_volume",
+            "avg_resolution_time"
+          ]
+        },
+        {
+          "name": "time_granularity",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "hour",
+            "day",
+            "week"
+          ]
+        },
+        {
+          "name": "bucket_start",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "product_line",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "priority",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "team_id",
+          "type": "objectId",
+          "required": false
+        },
+        {
+          "name": "value",
+          "type": "double",
+          "required": true
+        },
+        {
+          "name": "ticket_count",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "refreshed_at",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "relationships": [
+        {
+          "type": "references",
+          "collection": "support_teams",
+          "field": "team_id"
+        }
+      ],
+      "embedding_vs_references": {
+        "strategy": "reference for team_id, no embedding otherwise",
+        "reason": "Dashboard snapshots are aggregation outputs. They reference team when needed and otherwise store scalar dimensions directly for fast reads."
+      },
+      "indexes": [
+        {
+          "name": "ux_metric_bucket_dims",
+          "kind": "regular",
+          "fields": [
+            "metric_type",
+            "time_granularity",
+            "bucket_start",
+            "product_line",
+            "priority",
+            "team_id"
+          ],
+          "reason": "Supports idempotent upsert of metric snapshots and efficient dashboard reads by metric and time bucket."
+        },
+        {
+          "name": "ix_metric_type_bucket_start",
+          "kind": "regular",
+          "fields": [
+            "metric_type",
+            "bucket_start"
+          ],
+          "reason": "Supports time-series style retrieval for chart rendering over selected periods."
+        }
+      ]
+    }
+  ]
+}
