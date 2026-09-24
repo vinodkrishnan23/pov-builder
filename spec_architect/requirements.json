@@ -1,0 +1,582 @@
+{
+  "pov_name": "northwind_support_ticket_triage",
+  "traceability": [
+    {
+      "requirement_id": "FR-1",
+      "description": "Ingest a representative slice of historical support tickets.",
+      "artifact_mapping": {
+        "collections": [
+          "support_tickets"
+        ],
+        "query_patterns": [],
+        "api_endpoints": [],
+        "frontend_pages": [],
+        "notes": [
+          "Data model includes ingest_batch_id and metadata.is_historical_seed to support imported representative datasets.",
+          "API contract explicitly notes that no ingestion endpoint is included; import mechanics are out of scope in the authoritative API design."
+        ]
+      }
+    },
+    {
+      "requirement_id": "FR-2",
+      "description": "Suggest a priority for incoming tickets based on ticket text.",
+      "artifact_mapping": {
+        "collections": [
+          "support_tickets"
+        ],
+        "query_patterns": [
+          "QP-2"
+        ],
+        "api_endpoints": [
+          "GET /api/tickets/{ticketId}"
+        ],
+        "frontend_pages": [
+          "ticket_detail",
+          "ticket_queue"
+        ],
+        "notes": [
+          "support_tickets stores priority_suggestion.",
+          "Queue page shows lightweight suggestion fields; detail page shows full suggestion metadata."
+        ]
+      }
+    },
+    {
+      "requirement_id": "FR-3",
+      "description": "Suggest the appropriate team or routing destination for incoming tickets based on ticket text.",
+      "artifact_mapping": {
+        "collections": [
+          "support_tickets",
+          "support_teams"
+        ],
+        "query_patterns": [
+          "QP-2"
+        ],
+        "api_endpoints": [
+          "GET /api/tickets/{ticketId}"
+        ],
+        "frontend_pages": [
+          "ticket_detail",
+          "ticket_queue"
+        ],
+        "notes": [
+          "support_tickets stores routing_suggestion.team_id; support_teams provides team metadata.",
+          "Queue page only receives routing_suggestion.team_id, not team name.",
+          "Detail page resolves suggested_team via lookup."
+        ]
+      }
+    },
+    {
+      "requirement_id": "FR-4",
+      "description": "When an agent opens a ticket, show 3-4 similar previously resolved tickets.",
+      "artifact_mapping": {
+        "collections": [
+          "support_tickets",
+          "support_teams"
+        ],
+        "query_patterns": [
+          "QP-3"
+        ],
+        "api_endpoints": [
+          "GET /api/tickets/{ticketId}/similar-resolved"
+        ],
+        "frontend_pages": [
+          "ticket_detail"
+        ],
+        "notes": [
+          "QP-3 limits vector search to 4 results filtered to resolved tickets.",
+          "Frontend contract notes UI should render whatever array is returned, even though target behavior is 3-4."
+        ]
+      }
+    },
+    {
+      "requirement_id": "FR-5",
+      "description": "For each similar historical ticket shown, present how that ticket was resolved.",
+      "artifact_mapping": {
+        "collections": [
+          "support_tickets",
+          "support_teams"
+        ],
+        "query_patterns": [
+          "QP-3"
+        ],
+        "api_endpoints": [
+          "GET /api/tickets/{ticketId}/similar-resolved"
+        ],
+        "frontend_pages": [
+          "ticket_detail"
+        ],
+        "notes": [
+          "QP-3 returns resolution_category and resolution_summary plus resolved team and resolved_at."
+        ]
+      }
+    },
+    {
+      "requirement_id": "FR-6",
+      "description": "Agents can view the queue, open a ticket, see suggested priority, see suggested routing destination, see similar tickets, and mark the ticket resolved.",
+      "artifact_mapping": {
+        "collections": [
+          "support_tickets",
+          "support_teams"
+        ],
+        "query_patterns": [
+          "QP-1",
+          "QP-2",
+          "QP-3",
+          "QP-7"
+        ],
+        "api_endpoints": [
+          "GET /api/tickets",
+          "GET /api/tickets/{ticketId}",
+          "GET /api/tickets/{ticketId}/similar-resolved",
+          "POST /api/tickets/{ticketId}/resolve"
+        ],
+        "frontend_pages": [
+          "ticket_queue",
+          "ticket_detail"
+        ],
+        "notes": [
+          "All required agent actions are covered except assignment/rerouting, which remains out of scope per FR-11/API exclusions."
+        ]
+      }
+    },
+    {
+      "requirement_id": "FR-7",
+      "description": "Provide a dashboard showing ticket volume by product line and priority over time.",
+      "artifact_mapping": {
+        "collections": [
+          "support_tickets"
+        ],
+        "query_patterns": [
+          "QP-4",
+          "QP-5"
+        ],
+        "api_endpoints": [
+          "GET /api/dashboard/ticket-volume-by-product-line",
+          "GET /api/dashboard/ticket-volume-by-priority"
+        ],
+        "frontend_pages": [
+          "operations_dashboard"
+        ],
+        "notes": []
+      }
+    },
+    {
+      "requirement_id": "FR-8",
+      "description": "Provide average resolution time by team in the dashboard.",
+      "artifact_mapping": {
+        "collections": [
+          "support_tickets",
+          "support_teams"
+        ],
+        "query_patterns": [
+          "QP-6"
+        ],
+        "api_endpoints": [
+          "GET /api/dashboard/average-resolution-time-by-team"
+        ],
+        "frontend_pages": [
+          "operations_dashboard"
+        ],
+        "notes": [
+          "Depends on representative dataset containing created_at, resolved_at, and routing_team_id for resolved tickets."
+        ]
+      }
+    },
+    {
+      "requirement_id": "FR-9",
+      "description": "Internal users only; no customer-facing access required.",
+      "artifact_mapping": {
+        "collections": [],
+        "query_patterns": [],
+        "api_endpoints": [],
+        "frontend_pages": [
+          "ticket_queue",
+          "ticket_detail",
+          "operations_dashboard"
+        ],
+        "notes": [
+          "Frontend contract explicitly scopes the app as internal and excludes customer-facing/auth flows from design."
+        ]
+      }
+    },
+    {
+      "requirement_id": "FR-10",
+      "description": "Do not integrate with the actual helpdesk tool in the first-pass POV.",
+      "artifact_mapping": {
+        "collections": [
+          "support_tickets"
+        ],
+        "query_patterns": [
+          "QP-1",
+          "QP-2",
+          "QP-3",
+          "QP-4",
+          "QP-5",
+          "QP-6",
+          "QP-7"
+        ],
+        "api_endpoints": [
+          "GET /api/tickets",
+          "GET /api/tickets/{ticketId}",
+          "GET /api/tickets/{ticketId}/similar-resolved",
+          "GET /api/dashboard/ticket-volume-by-product-line",
+          "GET /api/dashboard/ticket-volume-by-priority",
+          "GET /api/dashboard/average-resolution-time-by-team",
+          "POST /api/tickets/{ticketId}/resolve"
+        ],
+        "frontend_pages": [
+          "ticket_queue",
+          "ticket_detail",
+          "operations_dashboard"
+        ],
+        "notes": [
+          "API contract explicitly excludes helpdesk integration endpoints.",
+          "All workflows operate on imported POV data in MongoDB."
+        ]
+      }
+    },
+    {
+      "requirement_id": "FR-11",
+      "description": "Whether routing only recommends a team or actually performs assignment is unresolved.",
+      "artifact_mapping": {
+        "collections": [
+          "support_tickets",
+          "support_teams"
+        ],
+        "query_patterns": [
+          "QP-2"
+        ],
+        "api_endpoints": [
+          "GET /api/tickets/{ticketId}"
+        ],
+        "frontend_pages": [
+          "ticket_detail"
+        ],
+        "notes": [
+          "Data model preserves ambiguity with routing_suggestion.advisory_only.",
+          "API contract states routing remains advisory unless confirmed otherwise.",
+          "Frontend is instructed to present routing as recommendation only and no assignment endpoint exists."
+        ]
+      }
+    },
+    {
+      "requirement_id": "AI-1",
+      "description": "Use ticket subject and free-text description to derive triage suggestions from actual ticket content.",
+      "artifact_mapping": {
+        "collections": [
+          "support_tickets"
+        ],
+        "query_patterns": [
+          "QP-2"
+        ],
+        "api_endpoints": [
+          "GET /api/tickets/{ticketId}"
+        ],
+        "frontend_pages": [
+          "ticket_detail",
+          "ticket_queue"
+        ],
+        "notes": [
+          "support_tickets stores subject, description, and text_combined as the primary text payload.",
+          "No suggestion-generation endpoint is defined; contract covers display of persisted suggestions only."
+        ]
+      }
+    },
+    {
+      "requirement_id": "AI-2",
+      "description": "Provide similarity-based retrieval over historical tickets.",
+      "artifact_mapping": {
+        "collections": [
+          "support_tickets",
+          "support_teams"
+        ],
+        "query_patterns": [
+          "QP-3"
+        ],
+        "api_endpoints": [
+          "GET /api/tickets/{ticketId}/similar-resolved"
+        ],
+        "frontend_pages": [
+          "ticket_detail"
+        ],
+        "notes": [
+          "Uses embedding field plus vector index ticket_similarity_vector."
+        ]
+      }
+    },
+    {
+      "requirement_id": "AI-3",
+      "description": "Use historical tickets with resolution category and resolution summary as search context.",
+      "artifact_mapping": {
+        "collections": [
+          "support_tickets"
+        ],
+        "query_patterns": [
+          "QP-3"
+        ],
+        "api_endpoints": [
+          "GET /api/tickets/{ticketId}/similar-resolved"
+        ],
+        "frontend_pages": [
+          "ticket_detail"
+        ],
+        "notes": [
+          "Returned similar-ticket payload includes resolution_category and resolution_summary from historical resolved tickets."
+        ]
+      }
+    },
+    {
+      "requirement_id": "UC-1",
+      "description": "Suggest priority for an incoming ticket.",
+      "artifact_mapping": {
+        "collections": [
+          "support_tickets"
+        ],
+        "query_patterns": [
+          "QP-2"
+        ],
+        "api_endpoints": [
+          "GET /api/tickets/{ticketId}"
+        ],
+        "frontend_pages": [
+          "ticket_detail",
+          "ticket_queue"
+        ],
+        "notes": []
+      }
+    },
+    {
+      "requirement_id": "UC-2",
+      "description": "Suggest routing destination for an incoming ticket.",
+      "artifact_mapping": {
+        "collections": [
+          "support_tickets",
+          "support_teams"
+        ],
+        "query_patterns": [
+          "QP-2"
+        ],
+        "api_endpoints": [
+          "GET /api/tickets/{ticketId}"
+        ],
+        "frontend_pages": [
+          "ticket_detail",
+          "ticket_queue"
+        ],
+        "notes": []
+      }
+    },
+    {
+      "requirement_id": "UC-3",
+      "description": "Retrieve similar resolved tickets.",
+      "artifact_mapping": {
+        "collections": [
+          "support_tickets",
+          "support_teams"
+        ],
+        "query_patterns": [
+          "QP-3"
+        ],
+        "api_endpoints": [
+          "GET /api/tickets/{ticketId}/similar-resolved"
+        ],
+        "frontend_pages": [
+          "ticket_detail"
+        ],
+        "notes": []
+      }
+    },
+    {
+      "requirement_id": "UC-4",
+      "description": "View live support dashboard.",
+      "artifact_mapping": {
+        "collections": [
+          "support_tickets",
+          "support_teams"
+        ],
+        "query_patterns": [
+          "QP-4",
+          "QP-5",
+          "QP-6"
+        ],
+        "api_endpoints": [
+          "GET /api/dashboard/ticket-volume-by-product-line",
+          "GET /api/dashboard/ticket-volume-by-priority",
+          "GET /api/dashboard/average-resolution-time-by-team"
+        ],
+        "frontend_pages": [
+          "operations_dashboard"
+        ],
+        "notes": [
+          "Frontend orchestrates three separate dashboard requests; no combined dashboard endpoint exists."
+        ]
+      }
+    },
+    {
+      "requirement_id": "J-1",
+      "description": "Agent triages an incoming ticket.",
+      "artifact_mapping": {
+        "collections": [
+          "support_tickets",
+          "support_teams"
+        ],
+        "query_patterns": [
+          "QP-1",
+          "QP-2",
+          "QP-3",
+          "QP-7"
+        ],
+        "api_endpoints": [
+          "GET /api/tickets",
+          "GET /api/tickets/{ticketId}",
+          "GET /api/tickets/{ticketId}/similar-resolved",
+          "POST /api/tickets/{ticketId}/resolve"
+        ],
+        "frontend_pages": [
+          "ticket_queue",
+          "ticket_detail"
+        ],
+        "notes": []
+      }
+    },
+    {
+      "requirement_id": "J-2",
+      "description": "Team lead monitors support operations.",
+      "artifact_mapping": {
+        "collections": [
+          "support_tickets",
+          "support_teams"
+        ],
+        "query_patterns": [
+          "QP-4",
+          "QP-5",
+          "QP-6"
+        ],
+        "api_endpoints": [
+          "GET /api/dashboard/ticket-volume-by-product-line",
+          "GET /api/dashboard/ticket-volume-by-priority",
+          "GET /api/dashboard/average-resolution-time-by-team"
+        ],
+        "frontend_pages": [
+          "operations_dashboard"
+        ],
+        "notes": []
+      }
+    },
+    {
+      "requirement_id": "SC-2",
+      "description": "Similar-ticket suggestions should feel instant when an agent opens a ticket.",
+      "artifact_mapping": {
+        "collections": [
+          "support_tickets"
+        ],
+        "query_patterns": [
+          "QP-3"
+        ],
+        "api_endpoints": [
+          "GET /api/tickets/{ticketId}/similar-resolved"
+        ],
+        "frontend_pages": [
+          "ticket_detail"
+        ],
+        "notes": [
+          "Supported by vector index ticket_similarity_vector and dedicated similar-ticket panel loading behavior."
+        ]
+      }
+    },
+    {
+      "requirement_id": "SC-3",
+      "description": "Historical-ticket search performance should remain fast as volume grows into the hundreds of thousands.",
+      "artifact_mapping": {
+        "collections": [
+          "support_tickets"
+        ],
+        "query_patterns": [
+          "QP-3"
+        ],
+        "api_endpoints": [
+          "GET /api/tickets/{ticketId}/similar-resolved"
+        ],
+        "frontend_pages": [
+          "ticket_detail"
+        ],
+        "notes": [
+          "Backed by Atlas Vector Search index on embeddings."
+        ]
+      }
+    },
+    {
+      "requirement_id": "SC-4",
+      "description": "Dashboard reporting should be live rather than manually updated weekly.",
+      "artifact_mapping": {
+        "collections": [
+          "support_tickets",
+          "support_teams"
+        ],
+        "query_patterns": [
+          "QP-4",
+          "QP-5",
+          "QP-6"
+        ],
+        "api_endpoints": [
+          "GET /api/dashboard/ticket-volume-by-product-line",
+          "GET /api/dashboard/ticket-volume-by-priority",
+          "GET /api/dashboard/average-resolution-time-by-team"
+        ],
+        "frontend_pages": [
+          "operations_dashboard"
+        ],
+        "notes": [
+          "Operational metrics are computed directly from current MongoDB data via live aggregate endpoints."
+        ]
+      }
+    }
+  ],
+  "artifact_inventory": {
+    "collections": [
+      "support_tickets",
+      "support_teams"
+    ],
+    "query_patterns": [
+      "QP-1",
+      "QP-2",
+      "QP-3",
+      "QP-4",
+      "QP-5",
+      "QP-6",
+      "QP-7"
+    ],
+    "api_endpoints": [
+      "GET /api/tickets",
+      "GET /api/tickets/{ticketId}",
+      "GET /api/tickets/{ticketId}/similar-resolved",
+      "GET /api/dashboard/ticket-volume-by-product-line",
+      "GET /api/dashboard/ticket-volume-by-priority",
+      "GET /api/dashboard/average-resolution-time-by-team",
+      "POST /api/tickets/{ticketId}/resolve"
+    ],
+    "frontend_pages": [
+      "ticket_queue",
+      "ticket_detail",
+      "operations_dashboard"
+    ]
+  },
+  "known_gaps_or_out_of_scope": [
+    {
+      "requirement_id": "FR-1",
+      "gap": "Historical import is required by the InitialPOVSpec, but no authoritative API endpoint or workflow was designed for import."
+    },
+    {
+      "requirement_id": "FR-11",
+      "gap": "Assignment behavior remains intentionally unresolved; no assign/reroute endpoint exists."
+    },
+    {
+      "requirement_id": "AI-1",
+      "gap": "Suggestion generation/storage mechanism is implied by the schema but no authoritative endpoint or background workflow contract defines how suggestions are produced."
+    },
+    {
+      "requirement_id": "SC-1",
+      "gap": "Time savings measurement is a success criterion in the InitialPOVSpec, but no explicit telemetry/reporting artifact was designed to measure it."
+    }
+  ]
+}
