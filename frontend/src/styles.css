@@ -1,0 +1,97 @@
+:root {
+  font-family: Inter, system-ui, sans-serif;
+  color: #102a43;
+  background: #f4f7fb;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+a { color: inherit; text-decoration: none; }
+button, input, select { font: inherit; }
+.app-shell { min-height: 100vh; }
+.app-header {
+  background: #0f172a;
+  color: white;
+  padding: 1rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.app-name { margin: 0.15rem 0 0; font-size: 1.5rem; }
+.eyebrow { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.75rem; opacity: 0.8; }
+.primary-nav { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.primary-nav a { padding: 0.5rem 0.8rem; border-radius: 999px; background: rgba(255,255,255,0.08); }
+.primary-nav a.active { background: #2563eb; }
+.page-container { padding: 1.5rem; max-width: 1200px; margin: 0 auto; }
+.panel, .action-card {
+  background: white;
+  border: 1px solid #d9e2ec;
+  border-radius: 14px;
+  padding: 1rem;
+  box-shadow: 0 1px 2px rgba(16, 42, 67, 0.06);
+}
+.action-card:hover { border-color: #2563eb; }
+.lede { color: #486581; max-width: 760px; }
+.card-grid { display: grid; gap: 1rem; }
+.home-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin: 1rem 0; }
+.detail-grid, .dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.full-width { grid-column: 1 / -1; }
+.form-panel { margin-top: 1rem; }
+.form-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+label { display: grid; gap: 0.35rem; color: #243b53; }
+input, select {
+  width: 100%;
+  padding: 0.7rem 0.8rem;
+  border-radius: 10px;
+  border: 1px solid #bcccdc;
+  background: white;
+}
+button, .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 10px;
+  padding: 0.7rem 1rem;
+  cursor: pointer;
+  background: #2563eb;
+  color: white;
+}
+.secondary-button { background: #627d98; }
+button:disabled { opacity: 0.65; cursor: not-allowed; }
+.button-row { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem; }
+.loading-block, .error-box, .empty-box, .info-box {
+  margin-top: 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 12px;
+}
+.loading-block, .loading-inline { color: #1d4ed8; }
+.error-box { background: #fee2e2; color: #991b1b; }
+.empty-box { background: #eff6ff; color: #1e3a8a; }
+.info-box { background: #ecfeff; color: #155e75; }
+.field-error { color: #b91c1c; margin-top: 0.3rem; }
+.badge-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 0.75rem 0; }
+.badge { background: #e0f2fe; color: #075985; padding: 0.25rem 0.55rem; border-radius: 999px; font-size: 0.85rem; }
+.status-badge { background: #dcfce7; color: #166534; }
+.stat-row { display: flex; justify-content: space-between; gap: 1rem; padding: 0.4rem 0; border-bottom: 1px solid #eef2f7; }
+.stat-label { color: #486581; }
+.stat-value { font-weight: 600; text-align: right; }
+.ticket-description { white-space: pre-wrap; line-height: 1.5; }
+.panel-header { display: flex; justify-content: space-between; gap: 1rem; align-items: center; flex-wrap: wrap; }
+.similar-ticket-list { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.similar-card { border: 1px solid #d9e2ec; border-radius: 12px; padding: 1rem; background: #f8fbff; }
+.series-table { display: grid; gap: 1rem; }
+.series-group table { width: 100%; border-collapse: collapse; }
+.series-group th, .series-group td { text-align: left; padding: 0.55rem; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+.filter-actions { display: flex; gap: 0.75rem; align-items: end; flex-wrap: wrap; }
+.skeleton-block { min-height: 180px; background: linear-gradient(90deg, #f1f5f9, #e2e8f0, #f1f5f9); }
+.toast-stack { position: fixed; right: 1rem; bottom: 1rem; display: grid; gap: 0.75rem; z-index: 1000; }
+.toast { min-width: 260px; max-width: 360px; padding: 0.8rem 1rem; border-radius: 12px; color: white; display: flex; justify-content: space-between; gap: 1rem; }
+.toast-success { background: #15803d; }
+.toast-error { background: #b91c1c; }
+.toast-info { background: #1d4ed8; }
+.toast button { background: transparent; padding: 0; font-size: 1.2rem; }
+@media (max-width: 900px) {
+  .detail-grid, .dashboard-grid { grid-template-columns: 1fr; }
+}
