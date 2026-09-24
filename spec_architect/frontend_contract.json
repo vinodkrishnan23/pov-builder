@@ -1,0 +1,648 @@
+{
+  "app_name": "Northwind Support Ticket Triage POV",
+  "routes": [
+    {
+      "path": "/",
+      "redirect_to": "/tickets",
+      "purpose": "Default internal landing route redirects users to the primary agent queue."
+    },
+    {
+      "path": "/tickets",
+      "page_id": "ticket_queue",
+      "purpose": "Agent queue view for browsing incoming/open tickets and opening a ticket for triage."
+    },
+    {
+      "path": "/tickets/:ticketId",
+      "page_id": "ticket_detail",
+      "purpose": "Detailed triage workspace for a single ticket, including suggestions, similar resolved tickets, and resolve action."
+    },
+    {
+      "path": "/dashboard",
+      "page_id": "operations_dashboard",
+      "purpose": "Live support operations dashboard for team leads and support leadership."
+    }
+  ],
+  "pages": [
+    {
+      "page_id": "ticket_queue",
+      "route": "/tickets",
+      "title": "Ticket Queue",
+      "primary_personas": [
+        "Support Agent"
+      ],
+      "purpose": "Show incoming and open tickets in a queue so an agent can review triage suggestions at a glance and open a ticket for full detail.",
+      "data_requirements": [
+        {
+          "name": "ticket queue",
+          "description": "List of new/open tickets with summary metadata and lightweight triage suggestion fields.",
+          "source": "GET /api/tickets",
+          "fields": [
+            "id",
+            "ticket_id",
+            "channel",
+            "subject",
+            "customer_account_tier",
+            "product_line",
+            "status",
+            "created_at",
+            "priority",
+            "priority_suggestion.value",
+            "priority_suggestion.confidence",
+            "routing_suggestion.team_id",
+            "routing_suggestion.confidence"
+          ],
+          "notes": "API only returns routing_suggestion.team_id, not team name, in the queue list. UI should display team ID only if desired, or label as suggested team unavailable in list view; a team-name display cannot be guaranteed without another endpoint."
+        }
+      ],
+      "api_consumed": [
+        {
+          "operation_id": "listTicketQueue",
+          "method": "GET",
+          "path": "/api/tickets",
+          "usage": "Initial page load and manual refresh of queue."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "view queue",
+          "effect": "Loads up to 100 new/open tickets sorted by newest first."
+        },
+        {
+          "action": "refresh queue",
+          "effect": "Re-fetches GET /api/tickets with current query params."
+        },
+        {
+          "action": "open ticket",
+          "effect": "Navigates to /tickets/:ticketId for selected ticket."
+        }
+      ],
+      "loading_states": [
+        {
+          "state": "initial_page_loading",
+          "description": "Show page skeleton and table/list placeholders while queue data loads."
+        },
+        {
+          "state": "refresh_loading",
+          "description": "Keep current list visible and show inline spinner/disabled refresh control during refetch."
+        }
+      ],
+      "error_states": [
+        {
+          "state": "queue_load_failed_invalid_query",
+          "when": "GET /api/tickets returns 400 INVALID_QUERY_PARAMETER",
+          "ui_response": "Show non-blocking error banner and retry option; fall back to default query values if the client generated invalid params."
+        },
+        {
+          "state": "queue_load_failed_generic",
+          "when": "Network or unexpected error",
+          "ui_response": "Show full-page empty/error state with retry action."
+        }
+      ],
+      "empty_states": [
+        {
+          "state": "no_open_tickets",
+          "when": "GET /api/tickets returns count 0",
+          "ui_response": "Show empty queue message indicating no new/open tickets available."
+        }
+      ]
+    },
+    {
+      "page_id": "ticket_detail",
+      "route": "/tickets/:ticketId",
+      "title": "Ticket Triage Workspace",
+      "primary_personas": [
+        "Support Agent"
+      ],
+      "purpose": "Let an agent review full ticket content, inspect suggested priority and routing recommendation, see 3-4 similar resolved tickets with resolution context, and mark the ticket resolved.",
+      "data_requirements": [
+        {
+          "name": "ticket details",
+          "description": "Full ticket content, actual priority, suggested priority, routing recommendation, suggested team details when present, actual team details when present, and prior triage metadata.",
+          "source": "GET /api/tickets/{ticketId}",
+          "fields": [
+            "ticket_id",
+            "channel",
+            "subject",
+            "description",
+            "text_combined",
+            "customer_account_tier",
+            "product_line",
+            "status",
+            "created_at",
+            "priority",
+            "priority_suggestion.value",
+            "priority_suggestion.confidence",
+            "priority_suggestion.generated_at",
+            "priority_suggestion.model_version",
+            "routing_suggestion.team_id",
+            "routing_suggestion.confidence",
+            "routing_suggestion.generated_at",
+            "routing_suggestion.model_version",
+            "routing_suggestion.advisory_only",
+            "suggested_team",
+            "routing_team_id",
+            "actual_team",
+            "resolution_category",
+            "resolution_summary",
+            "triage.triaged_at",
+            "triage.triaged_by",
+            "triage.notes"
+          ]
+        },
+        {
+          "name": "similar resolved tickets",
+          "description": "3-4 historical similar tickets with resolution context for agent assist.",
+          "source": "GET /api/tickets/{ticketId}/similar-resolved",
+          "fields": [
+            "ticket_id",
+            "similar_tickets[].ticket_id",
+            "similar_tickets[].subject",
+            "similar_tickets[].description",
+            "similar_tickets[].product_line",
+            "similar_tickets[].customer_account_tier",
+            "similar_tickets[].priority",
+            "similar_tickets[].routing_team_id",
+            "similar_tickets[].resolved_team",
+            "similar_tickets[].resolution_category",
+            "similar_tickets[].resolution_summary",
+            "similar_tickets[].resolved_at",
+            "similar_tickets[].score"
+          ],
+          "notes": "Contract supports retrieval but does not promise exactly 3-4 in response shape; UI should render whatever array is returned."
+        }
+      ],
+      "api_consumed": [
+        {
+          "operation_id": "getTicketDetails",
+          "method": "GET",
+          "path": "/api/tickets/{ticketId}",
+          "usage": "Initial load of the ticket workspace and refresh after resolution."
+        },
+        {
+          "operation_id": "getSimilarResolvedTickets",
+          "method": "GET",
+          "path": "/api/tickets/{ticketId}/similar-resolved",
+          "usage": "Load similar resolved tickets when workspace opens; may be fetched in parallel with ticket details."
+        },
+        {
+          "operation_id": "markTicketResolved",
+          "method": "POST",
+          "path": "/api/tickets/{ticketId}/resolve",
+          "usage": "Submit resolution category and summary to mark the current ticket resolved."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "review full ticket",
+          "effect": "Inspect subject, description, ticket metadata, current status, and triage metadata."
+        },
+        {
+          "action": "review suggested priority",
+          "effect": "Read suggestion value/confidence/model metadata; no edit/save endpoint exists for suggestions."
+        },
+        {
+          "action": "review suggested routing destination",
+          "effect": "Read advisory routing suggestion and suggested team details when present. Because assignment endpoint does not exist, UI must present this as recommendation only."
+        },
+        {
+          "action": "review similar resolved tickets",
+          "effect": "Expand/scan historical tickets and their resolution summaries for guidance."
+        },
+        {
+          "action": "mark ticket resolved",
+          "effect": "Open/submit resolve form with required resolution_category and resolution_summary, then refresh or update local ticket state to resolved on success."
+        }
+      ],
+      "loading_states": [
+        {
+          "state": "initial_ticket_loading",
+          "description": "Show ticket workspace skeleton while details load."
+        },
+        {
+          "state": "similar_tickets_loading",
+          "description": "Show similar-ticket card placeholders independently so ticket detail can render first if needed."
+        },
+        {
+          "state": "resolve_submitting",
+          "description": "Disable submit button and show inline progress while POST /resolve is in flight."
+        },
+        {
+          "state": "post_resolve_refresh",
+          "description": "Optionally refresh ticket details after successful resolution; show lightweight updating indicator."
+        }
+      ],
+      "error_states": [
+        {
+          "state": "ticket_not_found",
+          "when": "GET /api/tickets/{ticketId} returns 404 TICKET_NOT_FOUND",
+          "ui_response": "Show not-found page with link back to queue."
+        },
+        {
+          "state": "invalid_ticket_id",
+          "when": "GET /api/tickets/{ticketId} returns 400 INVALID_TICKET_ID",
+          "ui_response": "Show invalid ticket error and link back to queue."
+        },
+        {
+          "state": "ticket_details_load_failed_generic",
+          "when": "Network or unexpected detail error",
+          "ui_response": "Show page-level error state with retry."
+        },
+        {
+          "state": "similar_tickets_not_found",
+          "when": "GET /api/tickets/{ticketId}/similar-resolved returns 404 TICKET_NOT_FOUND",
+          "ui_response": "Treat as page inconsistency; show inline error in similar tickets panel while retaining ticket details."
+        },
+        {
+          "state": "embedding_unavailable",
+          "when": "GET /api/tickets/{ticketId}/similar-resolved returns 422 EMBEDDING_UNAVAILABLE",
+          "ui_response": "Show inline message that similar historical matches are unavailable for this ticket right now; ticket triage page remains usable."
+        },
+        {
+          "state": "similarity_query_failed",
+          "when": "GET /api/tickets/{ticketId}/similar-resolved returns 500 SIMILARITY_QUERY_FAILED",
+          "ui_response": "Show inline error with retry action inside similar tickets panel."
+        },
+        {
+          "state": "resolve_invalid_request",
+          "when": "POST /api/tickets/{ticketId}/resolve returns 400 INVALID_REQUEST_BODY",
+          "ui_response": "Show field validation errors for missing/invalid resolution category or summary."
+        },
+        {
+          "state": "resolve_ticket_not_found",
+          "when": "POST /api/tickets/{ticketId}/resolve returns 404 TICKET_NOT_FOUND",
+          "ui_response": "Show error toast/banner and offer navigation back to queue."
+        },
+        {
+          "state": "resolve_conflict_already_resolved",
+          "when": "POST /api/tickets/{ticketId}/resolve returns 409 TICKET_ALREADY_RESOLVED",
+          "ui_response": "Show warning that ticket is already resolved and refresh ticket details."
+        },
+        {
+          "state": "resolve_failed_generic",
+          "when": "Network or unexpected submit error",
+          "ui_response": "Keep form data, show inline submit error, allow retry."
+        }
+      ],
+      "empty_states": [
+        {
+          "state": "no_similar_tickets",
+          "when": "GET /api/tickets/{ticketId}/similar-resolved succeeds with empty array",
+          "ui_response": "Show message that no similar resolved tickets were found."
+        }
+      ],
+      "constraints": [
+        {
+          "type": "api_contract_gap",
+          "description": "No API exists to assign/reroute a ticket, update triage notes, or edit suggested priority/routing. The page can display suggestions and resolve the ticket only."
+        },
+        {
+          "type": "api_contract_gap",
+          "description": "No endpoint exists to fetch team lists independently, so all team names shown on this page must come from getTicketDetails/getSimilarResolvedTickets payloads only."
+        }
+      ]
+    },
+    {
+      "page_id": "operations_dashboard",
+      "route": "/dashboard",
+      "title": "Support Operations Dashboard",
+      "primary_personas": [
+        "Team Lead",
+        "Head of Customer Support"
+      ],
+      "purpose": "Provide live operational visibility across ticket volume by product line, ticket volume by priority, and average resolution time by team for a selected date range.",
+      "data_requirements": [
+        {
+          "name": "ticket volume by product line",
+          "description": "Time-series counts grouped by day and product line.",
+          "source": "GET /api/dashboard/ticket-volume-by-product-line",
+          "fields": [
+            "start_date",
+            "end_date",
+            "granularity",
+            "results[].date",
+            "results[].product_line",
+            "results[].ticket_count"
+          ]
+        },
+        {
+          "name": "ticket volume by priority",
+          "description": "Time-series counts grouped by day and priority.",
+          "source": "GET /api/dashboard/ticket-volume-by-priority",
+          "fields": [
+            "start_date",
+            "end_date",
+            "granularity",
+            "results[].date",
+            "results[].priority",
+            "results[].ticket_count"
+          ]
+        },
+        {
+          "name": "average resolution time by team",
+          "description": "Aggregate average resolution hours and resolved ticket count per team in selected range.",
+          "source": "GET /api/dashboard/average-resolution-time-by-team",
+          "fields": [
+            "start_date",
+            "end_date",
+            "results[].team_id",
+            "results[].team",
+            "results[].avg_resolution_time_hours",
+            "results[].resolved_ticket_count"
+          ]
+        }
+      ],
+      "api_consumed": [
+        {
+          "operation_id": "getTicketVolumeByProductLine",
+          "method": "GET",
+          "path": "/api/dashboard/ticket-volume-by-product-line",
+          "usage": "Load and refresh product-line chart for selected date range."
+        },
+        {
+          "operation_id": "getTicketVolumeByPriority",
+          "method": "GET",
+          "path": "/api/dashboard/ticket-volume-by-priority",
+          "usage": "Load and refresh priority chart for selected date range."
+        },
+        {
+          "operation_id": "getAverageResolutionTimeByTeam",
+          "method": "GET",
+          "path": "/api/dashboard/average-resolution-time-by-team",
+          "usage": "Load and refresh team resolution metric table/chart for selected date range."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "select date range",
+          "effect": "Triggers refetch of all three dashboard datasets with start_date and end_date."
+        },
+        {
+          "action": "refresh dashboard",
+          "effect": "Re-fetches all dashboard endpoints using current date range."
+        },
+        {
+          "action": "inspect charts/tables",
+          "effect": "Reads live operational metrics; no drill-down endpoint exists in contract."
+        }
+      ],
+      "loading_states": [
+        {
+          "state": "initial_dashboard_loading",
+          "description": "Show skeletons for all metric cards/charts on first load."
+        },
+        {
+          "state": "range_change_loading",
+          "description": "Keep current visualizations visible with per-widget loading overlays while new range results load."
+        },
+        {
+          "state": "partial_widget_loading",
+          "description": "If widgets are fetched independently, one chart/table may show loading while others remain interactive."
+        }
+      ],
+      "error_states": [
+        {
+          "state": "invalid_date_range",
+          "when": "Any dashboard endpoint returns 400 INVALID_DATE_RANGE",
+          "ui_response": "Show inline form validation on date controls and prevent/undo invalid query submission."
+        },
+        {
+          "state": "product_line_widget_failed",
+          "when": "Product line endpoint fails for network/unexpected reason",
+          "ui_response": "Show widget-level error and retry for that chart."
+        },
+        {
+          "state": "priority_widget_failed",
+          "when": "Priority endpoint fails for network/unexpected reason",
+          "ui_response": "Show widget-level error and retry for that chart."
+        },
+        {
+          "state": "resolution_time_widget_failed",
+          "when": "Average resolution endpoint fails for network/unexpected reason",
+          "ui_response": "Show widget-level error and retry for that widget."
+        },
+        {
+          "state": "all_widgets_failed",
+          "when": "All three datasets fail on first load",
+          "ui_response": "Show page-level error state with retry."
+        }
+      ],
+      "empty_states": [
+        {
+          "state": "no_dashboard_data_in_range",
+          "when": "Endpoints return empty results for selected range",
+          "ui_response": "Show no-data messaging in affected widgets."
+        }
+      ],
+      "constraints": [
+        {
+          "type": "api_contract_gap",
+          "description": "No backend endpoint provides a single combined dashboard payload; frontend should orchestrate three separate requests."
+        },
+        {
+          "type": "api_contract_gap",
+          "description": "No drill-through or export endpoint exists; dashboard scope is read-only visualization of provided aggregates."
+        }
+      ]
+    }
+  ],
+  "components": [
+    {
+      "component_id": "app_shell",
+      "name": "Internal App Shell",
+      "purpose": "Global layout with top navigation between queue and dashboard.",
+      "used_on_pages": [
+        "ticket_queue",
+        "ticket_detail",
+        "operations_dashboard"
+      ]
+    },
+    {
+      "component_id": "top_nav",
+      "name": "Top Navigation",
+      "purpose": "Primary navigation links to Ticket Queue and Dashboard.",
+      "used_on_pages": [
+        "ticket_queue",
+        "ticket_detail",
+        "operations_dashboard"
+      ]
+    },
+    {
+      "component_id": "page_header",
+      "name": "Page Header",
+      "purpose": "Page title, contextual actions, and status messaging.",
+      "used_on_pages": [
+        "ticket_queue",
+        "ticket_detail",
+        "operations_dashboard"
+      ]
+    },
+    {
+      "component_id": "ticket_queue_table",
+      "name": "Ticket Queue Table/List",
+      "purpose": "Render queue rows with ticket summary metadata and suggestion indicators.",
+      "used_on_pages": [
+        "ticket_queue"
+      ]
+    },
+    {
+      "component_id": "ticket_queue_row",
+      "name": "Ticket Queue Row",
+      "purpose": "Display single ticket summary with open action.",
+      "used_on_pages": [
+        "ticket_queue"
+      ]
+    },
+    {
+      "component_id": "status_badge",
+      "name": "Status Badge",
+      "purpose": "Visualize ticket status values.",
+      "used_on_pages": [
+        "ticket_queue",
+        "ticket_detail"
+      ]
+    },
+    {
+      "component_id": "priority_badge",
+      "name": "Priority Badge",
+      "purpose": "Visualize actual or suggested priority.",
+      "used_on_pages": [
+        "ticket_queue",
+        "ticket_detail",
+        "operations_dashboard"
+      ]
+    },
+    {
+      "component_id": "confidence_indicator",
+      "name": "Confidence Indicator",
+      "purpose": "Display confidence score for suggestions in a compact way.",
+      "used_on_pages": [
+        "ticket_queue",
+        "ticket_detail"
+      ]
+    },
+    {
+      "component_id": "ticket_detail_panel",
+      "name": "Ticket Detail Panel",
+      "purpose": "Render full ticket subject, description, metadata, and lifecycle data.",
+      "used_on_pages": [
+        "ticket_detail"
+      ]
+    },
+    {
+      "component_id": "triage_suggestion_panel",
+      "name": "Triage Suggestion Panel",
+      "purpose": "Display priority suggestion, routing suggestion, advisory-only status, model metadata, and suggested/actual team information.",
+      "used_on_pages": [
+        "ticket_detail"
+      ]
+    },
+    {
+      "component_id": "similar_tickets_panel",
+      "name": "Similar Resolved Tickets Panel",
+      "purpose": "Container for similar resolved ticket results, empty states, and retry action.",
+      "used_on_pages": [
+        "ticket_detail"
+      ]
+    },
+    {
+      "component_id": "similar_ticket_card",
+      "name": "Similar Ticket Card",
+      "purpose": "Show a historical similar ticket and its resolution context.",
+      "used_on_pages": [
+        "ticket_detail"
+      ]
+    },
+    {
+      "component_id": "resolve_ticket_form",
+      "name": "Resolve Ticket Form",
+      "purpose": "Capture required resolution_category and resolution_summary and submit resolution.",
+      "used_on_pages": [
+        "ticket_detail"
+      ]
+    },
+    {
+      "component_id": "date_range_filter",
+      "name": "Date Range Filter",
+      "purpose": "Collect valid start/end date inputs for dashboard queries.",
+      "used_on_pages": [
+        "operations_dashboard"
+      ]
+    },
+    {
+      "component_id": "chart_card",
+      "name": "Chart Card",
+      "purpose": "Reusable widget shell with title, loading, error, and empty states.",
+      "used_on_pages": [
+        "operations_dashboard"
+      ]
+    },
+    {
+      "component_id": "ticket_volume_product_line_chart",
+      "name": "Ticket Volume by Product Line Chart",
+      "purpose": "Visualize daily ticket counts grouped by product line.",
+      "used_on_pages": [
+        "operations_dashboard"
+      ]
+    },
+    {
+      "component_id": "ticket_volume_priority_chart",
+      "name": "Ticket Volume by Priority Chart",
+      "purpose": "Visualize daily ticket counts grouped by priority.",
+      "used_on_pages": [
+        "operations_dashboard"
+      ]
+    },
+    {
+      "component_id": "average_resolution_time_team_table",
+      "name": "Average Resolution Time by Team Table/Chart",
+      "purpose": "Display average resolution time hours and resolved ticket count by team.",
+      "used_on_pages": [
+        "operations_dashboard"
+      ]
+    },
+    {
+      "component_id": "error_banner",
+      "name": "Error Banner",
+      "purpose": "Reusable non-blocking error messaging with retry where appropriate.",
+      "used_on_pages": [
+        "ticket_queue",
+        "ticket_detail",
+        "operations_dashboard"
+      ]
+    },
+    {
+      "component_id": "empty_state",
+      "name": "Empty State",
+      "purpose": "Reusable no-data and no-results messaging.",
+      "used_on_pages": [
+        "ticket_queue",
+        "ticket_detail",
+        "operations_dashboard"
+      ]
+    },
+    {
+      "component_id": "loading_skeleton",
+      "name": "Loading Skeleton",
+      "purpose": "Reusable loading placeholders for page and widget states.",
+      "used_on_pages": [
+        "ticket_queue",
+        "ticket_detail",
+        "operations_dashboard"
+      ]
+    }
+  ],
+  "notes": [
+    {
+      "type": "scope",
+      "text": "Frontend must treat routing as advisory-only because the API contract explicitly leaves assignment unresolved and provides no assignment endpoint."
+    },
+    {
+      "type": "scope",
+      "text": "Frontend should not design ingestion/admin screens because no authoritative import/admin endpoint exists in the API contract."
+    },
+    {
+      "type": "scope",
+      "text": "Frontend should not design authentication/customer-facing flows because the POV is internal-only and auth endpoints are not in contract."
+    }
+  ]
+}
