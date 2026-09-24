@@ -1,0 +1,478 @@
+{
+  "QP-1": {
+    "name": "Get ticket detail with triage guidance and similar resolved tickets",
+    "serves": [
+      "UC-1",
+      "UC-2",
+      "UJ-1",
+      "FR-1",
+      "FR-2",
+      "FR-4",
+      "FR-5"
+    ],
+    "collections": [
+      "tickets",
+      "support_teams"
+    ],
+    "for": "When an agent opens a ticket, return the ticket text, any generated triage suggestion, suggested team details, and 3-4 similar resolved historical tickets with their resolution information.",
+    "query": {
+      "collection": "tickets",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "ticket_number": "<ticket_number>"
+          }
+        },
+        {
+          "$limit": 1
+        },
+        {
+          "$lookup": {
+            "from": "support_teams",
+            "localField": "triage_suggestion.suggested_team_id",
+            "foreignField": "_id",
+            "as": "suggested_team"
+          }
+        },
+        {
+          "$lookup": {
+            "from": "tickets",
+            "let": {
+              "similarIds": "$similar_ticket_cache.ticket_id"
+            },
+            "pipeline": [
+              {
+                "$match": {
+                  "$expr": {
+                    "$and": [
+                      {
+                        "$in": [
+                          "$_id",
+                          "$$similarIds"
+                        ]
+                      },
+                      {
+                        "$eq": [
+                          "$status",
+                          "resolved"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "$project": {
+                  "_id": 1,
+                  "ticket_number": 1,
+                  "subject": 1,
+                  "description": 1,
+                  "product_line": 1,
+                  "manual_priority": 1,
+                  "resolution_category": 1,
+                  "resolution_summary": 1
+                }
+              }
+            ],
+            "as": "similar_tickets"
+          }
+        },
+        {
+          "$project": {
+            "_id": 1,
+            "ticket_number": 1,
+            "source_channel": 1,
+            "subject": 1,
+            "description": 1,
+            "account_tier": 1,
+            "product_line": 1,
+            "status": 1,
+            "created_at": 1,
+            "manual_priority": 1,
+            "triage_suggestion": {
+              "suggested_priority": "$triage_suggestion.suggested_priority",
+              "confidence": "$triage_suggestion.confidence",
+              "generated_at": "$triage_suggestion.generated_at",
+              "model_version": "$triage_suggestion.model_version",
+              "suggested_team": {
+                "$first": "$suggested_team"
+              }
+            },
+            "similar_tickets": 1
+          }
+        }
+      ]
+    }
+  },
+  "QP-2": {
+    "name": "Find similar resolved tickets by vector search",
+    "serves": [
+      "UC-2",
+      "FR-4",
+      "FR-5",
+      "FR-6",
+      "AI-3",
+      "SC-2",
+      "SC-3"
+    ],
+    "collections": [
+      "tickets"
+    ],
+    "for": "Retrieve 3-4 semantically similar previously resolved historical tickets for a given ticket or ad hoc ticket text, including how they were resolved.",
+    "query": {
+      "collection": "tickets",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$vectorSearch": {
+            "index": "ticket_embedding_vector",
+            "path": "embedding",
+            "queryVector": "<query_embedding>",
+            "numCandidates": 100,
+            "limit": 4,
+            "filter": {
+              "status": "resolved"
+            }
+          }
+        },
+        {
+          "$project": {
+            "_id": 1,
+            "ticket_number": 1,
+            "subject": 1,
+            "description": 1,
+            "product_line": 1,
+            "manual_priority": 1,
+            "resolution_category": 1,
+            "resolution_summary": 1,
+            "score": {
+              "$meta": "vectorSearchScore"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "QP-3": {
+    "name": "Get triage suggestion for a ticket",
+    "serves": [
+      "UC-1",
+      "FR-1",
+      "FR-2",
+      "FR-3",
+      "AI-1",
+      "AI-2"
+    ],
+    "collections": [
+      "tickets",
+      "support_teams"
+    ],
+    "for": "Return the stored system-generated suggested priority and team recommendation for a ticket so the agent can review triage guidance.",
+    "query": {
+      "collection": "tickets",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "ticket_number": "<ticket_number>"
+          }
+        },
+        {
+          "$limit": 1
+        },
+        {
+          "$lookup": {
+            "from": "support_teams",
+            "localField": "triage_suggestion.suggested_team_id",
+            "foreignField": "_id",
+            "as": "suggested_team"
+          }
+        },
+        {
+          "$project": {
+            "_id": 1,
+            "ticket_number": 1,
+            "subject": 1,
+            "description": 1,
+            "manual_priority": 1,
+            "triage_suggestion.suggested_priority": 1,
+            "triage_suggestion.confidence": 1,
+            "triage_suggestion.generated_at": 1,
+            "triage_suggestion.model_version": 1,
+            "suggested_team": {
+              "$first": "$suggested_team"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "QP-4": {
+    "name": "Dashboard ticket volume by product line and priority over time",
+    "serves": [
+      "UC-3",
+      "UJ-2",
+      "FR-7",
+      "SC-4"
+    ],
+    "collections": [
+      "dashboard_metric_snapshots"
+    ],
+    "for": "Populate the live operations dashboard chart showing ticket volume trends by product line and priority over time.",
+    "query": {
+      "collection": "dashboard_metric_snapshots",
+      "operation": "find",
+      "filter": {
+        "metric_type": "ticket_volume",
+        "time_granularity": "<hour|day|week>",
+        "bucket_start": {
+          "$gte": "<start_date>",
+          "$lt": "<end_date>"
+        }
+      },
+      "projection": {
+        "_id": 0,
+        "bucket_start": 1,
+        "product_line": 1,
+        "priority": 1,
+        "value": 1,
+        "ticket_count": 1,
+        "refreshed_at": 1
+      },
+      "sort": {
+        "bucket_start": 1,
+        "product_line": 1,
+        "priority": 1
+      }
+    }
+  },
+  "QP-5": {
+    "name": "Dashboard average resolution time by team",
+    "serves": [
+      "UC-3",
+      "UJ-2",
+      "FR-8",
+      "SC-4"
+    ],
+    "collections": [
+      "dashboard_metric_snapshots",
+      "support_teams"
+    ],
+    "for": "Populate the live operations dashboard chart showing average resolution time by team over time.",
+    "query": {
+      "collection": "dashboard_metric_snapshots",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "metric_type": "avg_resolution_time",
+            "time_granularity": "<hour|day|week>",
+            "bucket_start": {
+              "$gte": "<start_date>",
+              "$lt": "<end_date>"
+            }
+          }
+        },
+        {
+          "$lookup": {
+            "from": "support_teams",
+            "localField": "team_id",
+            "foreignField": "_id",
+            "as": "team"
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "bucket_start": 1,
+            "value": 1,
+            "ticket_count": 1,
+            "refreshed_at": 1,
+            "team": {
+              "$first": "$team"
+            }
+          }
+        },
+        {
+          "$sort": {
+            "bucket_start": 1,
+            "team.name": 1
+          }
+        }
+      ]
+    }
+  },
+  "QP-6": {
+    "name": "Refresh ticket volume snapshots from tickets",
+    "serves": [
+      "UC-3",
+      "FR-7",
+      "FR-10",
+      "MAO-3"
+    ],
+    "collections": [
+      "tickets",
+      "dashboard_metric_snapshots"
+    ],
+    "for": "Compute or refresh pre-aggregated ticket volume metrics from imported ticket history for near-real-time dashboard reads in the POV.",
+    "query": {
+      "collection": "tickets",
+      "operation": "aggregate_merge",
+      "pipeline": [
+        {
+          "$match": {
+            "created_at": {
+              "$gte": "<start_date>",
+              "$lt": "<end_date>"
+            }
+          }
+        },
+        {
+          "$group": {
+            "_id": {
+              "bucket_start": {
+                "$dateTrunc": {
+                  "date": "$created_at",
+                  "unit": "<hour|day|week>"
+                }
+              },
+              "product_line": "$product_line",
+              "priority": "$manual_priority"
+            },
+            "value": {
+              "$sum": 1
+            },
+            "ticket_count": {
+              "$sum": 1
+            }
+          }
+        },
+        {
+          "$project": {
+            "metric_type": {
+              "$literal": "ticket_volume"
+            },
+            "time_granularity": {
+              "$literal": "<hour|day|week>"
+            },
+            "bucket_start": "$_id.bucket_start",
+            "product_line": "$_id.product_line",
+            "priority": "$_id.priority",
+            "team_id": {
+              "$literal": null
+            },
+            "value": "$value",
+            "ticket_count": "$ticket_count",
+            "refreshed_at": "$$NOW"
+          }
+        },
+        {
+          "$merge": {
+            "into": "dashboard_metric_snapshots",
+            "on": [
+              "metric_type",
+              "time_granularity",
+              "bucket_start",
+              "product_line",
+              "priority",
+              "team_id"
+            ],
+            "whenMatched": "replace",
+            "whenNotMatched": "insert"
+          }
+        }
+      ]
+    }
+  },
+  "QP-7": {
+    "name": "Refresh average resolution time snapshots from tickets",
+    "serves": [
+      "UC-3",
+      "FR-8",
+      "FR-10",
+      "MAO-3"
+    ],
+    "collections": [
+      "tickets",
+      "dashboard_metric_snapshots"
+    ],
+    "for": "Compute or refresh pre-aggregated average resolution time by team from imported resolved ticket history for near-real-time dashboard reads in the POV.",
+    "query": {
+      "collection": "tickets",
+      "operation": "aggregate_merge",
+      "pipeline": [
+        {
+          "$match": {
+            "status": "resolved",
+            "resolved_at": {
+              "$gte": "<start_date>",
+              "$lt": "<end_date>"
+            },
+            "assigned_team_id": {
+              "$ne": null
+            },
+            "resolution_time_minutes": {
+              "$ne": null
+            }
+          }
+        },
+        {
+          "$group": {
+            "_id": {
+              "bucket_start": {
+                "$dateTrunc": {
+                  "date": "$resolved_at",
+                  "unit": "<hour|day|week>"
+                }
+              },
+              "team_id": "$assigned_team_id"
+            },
+            "value": {
+              "$avg": "$resolution_time_minutes"
+            },
+            "ticket_count": {
+              "$sum": 1
+            }
+          }
+        },
+        {
+          "$project": {
+            "metric_type": {
+              "$literal": "avg_resolution_time"
+            },
+            "time_granularity": {
+              "$literal": "<hour|day|week>"
+            },
+            "bucket_start": "$_id.bucket_start",
+            "product_line": {
+              "$literal": null
+            },
+            "priority": {
+              "$literal": null
+            },
+            "team_id": "$_id.team_id",
+            "value": "$value",
+            "ticket_count": "$ticket_count",
+            "refreshed_at": "$$NOW"
+          }
+        },
+        {
+          "$merge": {
+            "into": "dashboard_metric_snapshots",
+            "on": [
+              "metric_type",
+              "time_granularity",
+              "bucket_start",
+              "product_line",
+              "priority",
+              "team_id"
+            ],
+            "whenMatched": "replace",
+            "whenNotMatched": "insert"
+          }
+        }
+      ]
+    }
+  }
+}
