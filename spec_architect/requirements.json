@@ -1,0 +1,528 @@
+{
+  "summary": {
+    "scope": "Internal-only POV using imported historical ticket data to demonstrate triage guidance, similar-ticket retrieval, and live dashboarding without production helpdesk integration.",
+    "authoritative_sources": [
+      "InitialPOVSpec",
+      "data_model",
+      "query_patterns",
+      "api_contract",
+      "frontend_contract"
+    ]
+  },
+  "traceability": {
+    "BO-1": {
+      "description": "Reduce time spent on manual triage of incoming support tickets.",
+      "collections": [
+        "tickets",
+        "support_teams"
+      ],
+      "query_patterns": [
+        "QP-1",
+        "QP-3"
+      ],
+      "api_endpoints": [
+        "getTicketDetail",
+        "getTicketTriageSuggestion"
+      ],
+      "frontend_pages": [
+        "ticket_lookup",
+        "ticket_detail"
+      ]
+    },
+    "BO-2": {
+      "description": "Improve agent efficiency by surfacing similar resolved tickets so agents do not start from scratch.",
+      "collections": [
+        "tickets"
+      ],
+      "query_patterns": [
+        "QP-1",
+        "QP-2"
+      ],
+      "api_endpoints": [
+        "getTicketDetail",
+        "findSimilarResolvedTickets"
+      ],
+      "frontend_pages": [
+        "ticket_detail"
+      ]
+    },
+    "BO-3": {
+      "description": "Provide faster operational insight into ticket trends and team performance.",
+      "collections": [
+        "tickets",
+        "support_teams",
+        "dashboard_metric_snapshots"
+      ],
+      "query_patterns": [
+        "QP-4",
+        "QP-5",
+        "QP-6",
+        "QP-7"
+      ],
+      "api_endpoints": [
+        "getDashboardTicketVolume",
+        "getDashboardAverageResolutionTime",
+        "refreshDashboardTicketVolumeSnapshots",
+        "refreshDashboardAverageResolutionTimeSnapshots"
+      ],
+      "frontend_pages": [
+        "dashboard",
+        "dashboard_refresh_admin"
+      ]
+    },
+    "BO-4": {
+      "description": "Demonstrate real time savings on triage in the POV to justify future production integration.",
+      "collections": [
+        "tickets",
+        "dashboard_metric_snapshots"
+      ],
+      "query_patterns": [
+        "QP-1",
+        "QP-3",
+        "QP-4",
+        "QP-5"
+      ],
+      "api_endpoints": [
+        "getTicketDetail",
+        "getTicketTriageSuggestion",
+        "getDashboardTicketVolume",
+        "getDashboardAverageResolutionTime"
+      ],
+      "frontend_pages": [
+        "ticket_detail",
+        "dashboard"
+      ]
+    },
+    "FR-1": {
+      "description": "Provide a suggested priority for a ticket based on ticket text.",
+      "collections": [
+        "tickets"
+      ],
+      "query_patterns": [
+        "QP-1",
+        "QP-3"
+      ],
+      "api_endpoints": [
+        "getTicketDetail",
+        "getTicketTriageSuggestion"
+      ],
+      "frontend_pages": [
+        "ticket_detail"
+      ]
+    },
+    "FR-2": {
+      "description": "Provide a routing suggestion to the appropriate team based on ticket content.",
+      "collections": [
+        "tickets",
+        "support_teams"
+      ],
+      "query_patterns": [
+        "QP-1",
+        "QP-3"
+      ],
+      "api_endpoints": [
+        "getTicketDetail",
+        "getTicketTriageSuggestion",
+        "listSupportTeams"
+      ],
+      "frontend_pages": [
+        "ticket_detail"
+      ]
+    },
+    "FR-3": {
+      "description": "Priority and routing suggestions should rely on ticket text rather than simple keyword rules.",
+      "collections": [
+        "tickets"
+      ],
+      "query_patterns": [
+        "QP-3"
+      ],
+      "api_endpoints": [
+        "getTicketTriageSuggestion"
+      ],
+      "frontend_pages": [
+        "ticket_detail"
+      ]
+    },
+    "FR-4": {
+      "description": "Present 3-4 similar resolved tickets from historical data when an agent opens a ticket.",
+      "collections": [
+        "tickets"
+      ],
+      "query_patterns": [
+        "QP-1",
+        "QP-2"
+      ],
+      "api_endpoints": [
+        "getTicketDetail",
+        "findSimilarResolvedTickets"
+      ],
+      "frontend_pages": [
+        "ticket_detail"
+      ]
+    },
+    "FR-5": {
+      "description": "Include how similar historical tickets were resolved.",
+      "collections": [
+        "tickets"
+      ],
+      "query_patterns": [
+        "QP-1",
+        "QP-2"
+      ],
+      "api_endpoints": [
+        "getTicketDetail",
+        "findSimilarResolvedTickets"
+      ],
+      "frontend_pages": [
+        "ticket_detail"
+      ]
+    },
+    "FR-6": {
+      "description": "Use historical tickets tagged with resolution category and resolution summary as the source for similar-ticket retrieval.",
+      "collections": [
+        "tickets"
+      ],
+      "query_patterns": [
+        "QP-2"
+      ],
+      "api_endpoints": [
+        "findSimilarResolvedTickets"
+      ],
+      "frontend_pages": [
+        "ticket_detail"
+      ]
+    },
+    "FR-7": {
+      "description": "Provide dashboard showing ticket volume by product line and priority over time.",
+      "collections": [
+        "tickets",
+        "dashboard_metric_snapshots"
+      ],
+      "query_patterns": [
+        "QP-4",
+        "QP-6"
+      ],
+      "api_endpoints": [
+        "getDashboardTicketVolume",
+        "refreshDashboardTicketVolumeSnapshots"
+      ],
+      "frontend_pages": [
+        "dashboard",
+        "dashboard_refresh_admin"
+      ]
+    },
+    "FR-8": {
+      "description": "Provide dashboard showing average resolution time by team.",
+      "collections": [
+        "tickets",
+        "support_teams",
+        "dashboard_metric_snapshots"
+      ],
+      "query_patterns": [
+        "QP-5",
+        "QP-7"
+      ],
+      "api_endpoints": [
+        "getDashboardAverageResolutionTime",
+        "refreshDashboardAverageResolutionTimeSnapshots"
+      ],
+      "frontend_pages": [
+        "dashboard",
+        "dashboard_refresh_admin"
+      ]
+    },
+    "FR-9": {
+      "description": "POV is internal-only and not customer-facing.",
+      "collections": [],
+      "query_patterns": [],
+      "api_endpoints": [],
+      "frontend_pages": [
+        "home",
+        "ticket_lookup",
+        "ticket_detail",
+        "dashboard",
+        "dashboard_refresh_admin"
+      ]
+    },
+    "FR-10": {
+      "description": "Use representative historical ticket slice rather than production helpdesk integration in phase one.",
+      "collections": [
+        "tickets",
+        "dashboard_metric_snapshots",
+        "support_teams"
+      ],
+      "query_patterns": [
+        "QP-6",
+        "QP-7"
+      ],
+      "api_endpoints": [
+        "refreshDashboardTicketVolumeSnapshots",
+        "refreshDashboardAverageResolutionTimeSnapshots"
+      ],
+      "frontend_pages": [
+        "ticket_detail",
+        "dashboard",
+        "dashboard_refresh_admin"
+      ]
+    },
+    "AI-1": {
+      "description": "Infer ticket priority from unstructured ticket text.",
+      "collections": [
+        "tickets"
+      ],
+      "query_patterns": [
+        "QP-3"
+      ],
+      "api_endpoints": [
+        "getTicketTriageSuggestion"
+      ],
+      "frontend_pages": [
+        "ticket_detail"
+      ]
+    },
+    "AI-2": {
+      "description": "Infer appropriate handling team from unstructured ticket text.",
+      "collections": [
+        "tickets",
+        "support_teams"
+      ],
+      "query_patterns": [
+        "QP-3"
+      ],
+      "api_endpoints": [
+        "getTicketTriageSuggestion"
+      ],
+      "frontend_pages": [
+        "ticket_detail"
+      ]
+    },
+    "AI-3": {
+      "description": "Retrieve semantically similar historical tickets rather than rely only on keyword matching.",
+      "collections": [
+        "tickets"
+      ],
+      "query_patterns": [
+        "QP-2"
+      ],
+      "api_endpoints": [
+        "findSimilarResolvedTickets"
+      ],
+      "frontend_pages": [
+        "ticket_detail"
+      ]
+    },
+    "UC-1": {
+      "description": "Generate triage guidance for incoming support tickets.",
+      "collections": [
+        "tickets",
+        "support_teams"
+      ],
+      "query_patterns": [
+        "QP-1",
+        "QP-3"
+      ],
+      "api_endpoints": [
+        "getTicketDetail",
+        "getTicketTriageSuggestion"
+      ],
+      "frontend_pages": [
+        "ticket_detail"
+      ]
+    },
+    "UC-2": {
+      "description": "Find similar historical tickets.",
+      "collections": [
+        "tickets"
+      ],
+      "query_patterns": [
+        "QP-1",
+        "QP-2"
+      ],
+      "api_endpoints": [
+        "getTicketDetail",
+        "findSimilarResolvedTickets"
+      ],
+      "frontend_pages": [
+        "ticket_detail"
+      ]
+    },
+    "UC-3": {
+      "description": "Monitor support performance metrics.",
+      "collections": [
+        "tickets",
+        "support_teams",
+        "dashboard_metric_snapshots"
+      ],
+      "query_patterns": [
+        "QP-4",
+        "QP-5",
+        "QP-6",
+        "QP-7"
+      ],
+      "api_endpoints": [
+        "getDashboardTicketVolume",
+        "getDashboardAverageResolutionTime",
+        "refreshDashboardTicketVolumeSnapshots",
+        "refreshDashboardAverageResolutionTimeSnapshots"
+      ],
+      "frontend_pages": [
+        "dashboard",
+        "dashboard_refresh_admin"
+      ]
+    },
+    "UJ-1": {
+      "description": "Review a ticket with triage guidance and similar historical cases.",
+      "collections": [
+        "tickets",
+        "support_teams"
+      ],
+      "query_patterns": [
+        "QP-1",
+        "QP-3"
+      ],
+      "api_endpoints": [
+        "getTicketDetail",
+        "getTicketTriageSuggestion",
+        "updateTicketStatus"
+      ],
+      "frontend_pages": [
+        "ticket_lookup",
+        "ticket_detail"
+      ]
+    },
+    "UJ-2": {
+      "description": "Monitor live support operations.",
+      "collections": [
+        "dashboard_metric_snapshots",
+        "support_teams"
+      ],
+      "query_patterns": [
+        "QP-4",
+        "QP-5"
+      ],
+      "api_endpoints": [
+        "getDashboardTicketVolume",
+        "getDashboardAverageResolutionTime"
+      ],
+      "frontend_pages": [
+        "dashboard"
+      ]
+    },
+    "SC-1": {
+      "description": "Show measurable time savings in triage work.",
+      "collections": [
+        "tickets"
+      ],
+      "query_patterns": [
+        "QP-1",
+        "QP-3"
+      ],
+      "api_endpoints": [
+        "getTicketDetail",
+        "getTicketTriageSuggestion"
+      ],
+      "frontend_pages": [
+        "ticket_detail"
+      ]
+    },
+    "SC-2": {
+      "description": "Similar-ticket suggestions should feel instant.",
+      "collections": [
+        "tickets"
+      ],
+      "query_patterns": [
+        "QP-1",
+        "QP-2"
+      ],
+      "api_endpoints": [
+        "getTicketDetail",
+        "findSimilarResolvedTickets"
+      ],
+      "frontend_pages": [
+        "ticket_detail"
+      ]
+    },
+    "SC-3": {
+      "description": "Search should remain fast as historical ticket volume grows.",
+      "collections": [
+        "tickets"
+      ],
+      "query_patterns": [
+        "QP-2"
+      ],
+      "api_endpoints": [
+        "findSimilarResolvedTickets"
+      ],
+      "frontend_pages": [
+        "ticket_detail"
+      ]
+    },
+    "SC-4": {
+      "description": "Dashboard should provide fresher operational visibility than weekly spreadsheet reporting.",
+      "collections": [
+        "dashboard_metric_snapshots",
+        "tickets"
+      ],
+      "query_patterns": [
+        "QP-4",
+        "QP-5",
+        "QP-6",
+        "QP-7"
+      ],
+      "api_endpoints": [
+        "getDashboardTicketVolume",
+        "getDashboardAverageResolutionTime",
+        "refreshDashboardTicketVolumeSnapshots",
+        "refreshDashboardAverageResolutionTimeSnapshots"
+      ],
+      "frontend_pages": [
+        "dashboard",
+        "dashboard_refresh_admin"
+      ]
+    }
+  },
+  "entities_to_collections": {
+    "Support Ticket": [
+      "tickets"
+    ],
+    "Historical Ticket": [
+      "tickets"
+    ],
+    "Support Team": [
+      "support_teams"
+    ],
+    "Product Line": [
+      "tickets",
+      "dashboard_metric_snapshots"
+    ],
+    "Priority": [
+      "tickets",
+      "dashboard_metric_snapshots"
+    ],
+    "Resolution Category": [
+      "tickets"
+    ],
+    "Resolution Summary": [
+      "tickets"
+    ]
+  },
+  "pages_to_endpoints": {
+    "home": [],
+    "ticket_lookup": [],
+    "ticket_detail": [
+      "getTicketDetail",
+      "getTicketTriageSuggestion",
+      "listSupportTeams",
+      "updateTicketStatus"
+    ],
+    "dashboard": [
+      "getDashboardTicketVolume",
+      "getDashboardAverageResolutionTime"
+    ],
+    "dashboard_refresh_admin": [
+      "refreshDashboardTicketVolumeSnapshots",
+      "refreshDashboardAverageResolutionTimeSnapshots"
+    ]
+  }
+}
