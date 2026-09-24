@@ -1,0 +1,498 @@
+{
+  "app_name": "Northwind Support POV",
+  "summary": "Internal-only frontend for simulated ticket triage review, similar-ticket assistance, and live support dashboarding using only authoritative API endpoints.",
+  "routes": [
+    {
+      "path": "/",
+      "page_id": "home",
+      "title": "POV Home",
+      "primary_personas": [
+        "P-1",
+        "P-2",
+        "P-3"
+      ]
+    },
+    {
+      "path": "/tickets/new",
+      "page_id": "ticket_create",
+      "title": "Create Simulated Ticket",
+      "primary_personas": [
+        "P-1",
+        "P-3"
+      ]
+    },
+    {
+      "path": "/tickets/:ticketId",
+      "page_id": "ticket_review",
+      "title": "Ticket Review",
+      "primary_personas": [
+        "P-1",
+        "P-3"
+      ]
+    },
+    {
+      "path": "/dashboard",
+      "page_id": "dashboard",
+      "title": "Operations Dashboard",
+      "primary_personas": [
+        "P-2",
+        "P-3"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "page_id": "home",
+      "route_path": "/",
+      "purpose": "Provide a simple internal landing page to start the POV workflows: create a simulated ticket for review, open a known ticket by ID, or navigate to the live dashboard.",
+      "data_requirements": [
+        {
+          "name": "support teams reference",
+          "needed_for": "Optional contextual summary or route to create/review forms that may display known teams.",
+          "source": "GET /api/teams?active=true",
+          "required": false
+        }
+      ],
+      "api_consumption": [
+        {
+          "endpoint": "GET /api/teams?active=true",
+          "operationId": "listSupportTeams",
+          "usage": "Optional prefetch for display of available support teams and reference data."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "Navigate to simulated ticket creation",
+          "result": "Open /tickets/new."
+        },
+        {
+          "action": "Enter an existing ticket ID and open review",
+          "result": "Navigate to /tickets/:ticketId."
+        },
+        {
+          "action": "Navigate to dashboard",
+          "result": "Open /dashboard."
+        }
+      ],
+      "loading_states": [
+        "Initial shell load.",
+        "Optional teams prefetch skeleton if showing reference content."
+      ],
+      "error_states": [
+        {
+          "case": "Optional teams reference fails",
+          "ui_response": "Show non-blocking warning; landing actions remain usable."
+        }
+      ],
+      "components": [
+        "AppShell",
+        "PageHeader",
+        "QuickActionCard",
+        "OpenTicketByIdForm",
+        "OptionalTeamsReferenceList",
+        "InlineWarning"
+      ]
+    },
+    {
+      "page_id": "ticket_create",
+      "route_path": "/tickets/new",
+      "purpose": "Allow an internal user to create a simulated POV ticket record that can then be reviewed for stored triage suggestions and similar resolved tickets.",
+      "data_requirements": [
+        {
+          "name": "active support teams",
+          "needed_for": "Populate optional assigned team selector if the simulated ticket should be created with an assigned_team_id.",
+          "source": "GET /api/teams?active=true",
+          "required": false
+        }
+      ],
+      "api_consumption": [
+        {
+          "endpoint": "GET /api/teams?active=true",
+          "operationId": "listSupportTeams",
+          "usage": "Populate optional assigned team dropdown and team labels."
+        },
+        {
+          "endpoint": "POST /api/tickets",
+          "operationId": "createSimulatedTicket",
+          "usage": "Create the simulated ticket record."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "Fill ticket form fields",
+          "result": "Prepare POST body with required ticket fields and optional manual_priority/channel/assigned_team_id/resolution/triage_suggestion."
+        },
+        {
+          "action": "Submit simulated ticket",
+          "result": "Create ticket via POST /api/tickets."
+        },
+        {
+          "action": "After successful create, continue to ticket review",
+          "result": "Navigate to /tickets/:ticketId."
+        }
+      ],
+      "loading_states": [
+        "Teams dropdown loading state.",
+        "Form submission in-progress state with submit button disabled."
+      ],
+      "error_states": [
+        {
+          "case": "GET /api/teams fails",
+          "ui_response": "Keep form usable; hide or disable optional assigned team selection and show non-blocking warning."
+        },
+        {
+          "case": "POST validation error 400 INVALID_REQUEST",
+          "ui_response": "Show field-level and form-level validation messages based on API contract constraints."
+        },
+        {
+          "case": "POST conflict 409 TICKET_ID_ALREADY_EXISTS",
+          "ui_response": "Show duplicate ticket ID error and let user edit ticket_id."
+        },
+        {
+          "case": "Unexpected create failure",
+          "ui_response": "Show retryable error banner; preserve entered values."
+        }
+      ],
+      "components": [
+        "AppShell",
+        "PageHeader",
+        "SimulatedTicketForm",
+        "FormField",
+        "TeamSelect",
+        "EnumSelect",
+        "DateTimeInput",
+        "ResolutionFields",
+        "OptionalTriageSuggestionFields",
+        "SubmitButton",
+        "ErrorBanner",
+        "SuccessRedirectNotice"
+      ]
+    },
+    {
+      "page_id": "ticket_review",
+      "route_path": "/tickets/:ticketId",
+      "purpose": "Support simulated agent review of a ticket by showing the ticket details, any stored triage suggestion, and 3-4 similar resolved historical tickets with resolutions.",
+      "data_requirements": [
+        {
+          "name": "ticket details",
+          "needed_for": "Display the current simulated or imported ticket context.",
+          "source": "GET /api/tickets/{ticketId}",
+          "required": true
+        },
+        {
+          "name": "stored triage suggestion and suggested team",
+          "needed_for": "Show suggested priority and routing recommendation.",
+          "source": "GET /api/tickets/{ticketId}/triage-suggestion",
+          "required": true
+        },
+        {
+          "name": "similar resolved tickets",
+          "needed_for": "Show 3-4 semantically similar resolved tickets and resolution details.",
+          "source": "GET /api/tickets/{ticketId}/similar-resolved?limit=4",
+          "required": true
+        },
+        {
+          "name": "active support teams",
+          "needed_for": "Fallback team-name mapping or supporting context if needed elsewhere on page.",
+          "source": "GET /api/teams?active=true",
+          "required": false
+        }
+      ],
+      "api_consumption": [
+        {
+          "endpoint": "GET /api/tickets/{ticketId}",
+          "operationId": "getTicketById",
+          "usage": "Load ticket metadata and body text for the review screen."
+        },
+        {
+          "endpoint": "GET /api/tickets/{ticketId}/triage-suggestion",
+          "operationId": "getTicketTriageSuggestion",
+          "usage": "Load stored suggested priority and suggested team."
+        },
+        {
+          "endpoint": "GET /api/tickets/{ticketId}/similar-resolved?limit=4",
+          "operationId": "getSimilarResolvedTicketsForTicket",
+          "usage": "Load 3-4 similar resolved tickets for agent assistance."
+        },
+        {
+          "endpoint": "GET /api/teams?active=true",
+          "operationId": "listSupportTeams",
+          "usage": "Optional reference prefetch only; primary triage API already returns suggested_team details."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "Open ticket review by URL or navigation after create",
+          "result": "Load ticket detail, triage suggestion, and similar tickets in parallel where possible."
+        },
+        {
+          "action": "Toggle number of similar tickets between 3 and 4",
+          "result": "Refetch similar tickets with limit=3 or limit=4."
+        },
+        {
+          "action": "Retry triage suggestion load",
+          "result": "Re-run GET /api/tickets/{ticketId}/triage-suggestion."
+        },
+        {
+          "action": "Retry similar tickets load",
+          "result": "Re-run GET /api/tickets/{ticketId}/similar-resolved."
+        },
+        {
+          "action": "Open dashboard from review context",
+          "result": "Navigate to /dashboard."
+        },
+        {
+          "action": "Create another simulated ticket",
+          "result": "Navigate to /tickets/new."
+        }
+      ],
+      "loading_states": [
+        "Initial page skeleton while ticket details load.",
+        "Independent card-level loading placeholders for triage suggestion and similar tickets.",
+        "Refetch spinner when switching similar-ticket limit."
+      ],
+      "error_states": [
+        {
+          "case": "GET /api/tickets/{ticketId} returns 404 TICKET_NOT_FOUND",
+          "ui_response": "Show not-found empty state and actions to create a new simulated ticket or go home."
+        },
+        {
+          "case": "GET triage suggestion returns 404 because ticket not found",
+          "ui_response": "Treat as page-level not-found if ticket details also missing; otherwise show section error if inconsistent."
+        },
+        {
+          "case": "GET triage suggestion succeeds with triage_suggestion=null and suggested_team=null",
+          "ui_response": "Show neutral empty state: no stored triage suggestion is available yet. Do not imply the frontend can generate one because no such API exists."
+        },
+        {
+          "case": "GET similar tickets returns 409 TICKET_EMBEDDING_MISSING",
+          "ui_response": "Show explicit empty/error state that similar-ticket retrieval is unavailable because the ticket lacks text_embedding; do not offer generation because no embedding API exists."
+        },
+        {
+          "case": "GET similar tickets returns 404 TICKET_NOT_FOUND",
+          "ui_response": "Treat as page-level not-found if ticket details missing; otherwise show section error if inconsistent."
+        },
+        {
+          "case": "Optional teams lookup fails",
+          "ui_response": "Ignore silently or show low-priority warning; page remains functional from ticket and triage APIs."
+        },
+        {
+          "case": "Unexpected partial failure in triage or similar sections",
+          "ui_response": "Keep other sections visible and offer section-level retry."
+        }
+      ],
+      "components": [
+        "AppShell",
+        "PageHeader",
+        "TicketSummaryCard",
+        "TicketAttributesList",
+        "TicketTextPanel",
+        "TriageSuggestionCard",
+        "ConfidenceBadge",
+        "SuggestedTeamPanel",
+        "SectionRetryButton",
+        "SimilarTicketsPanel",
+        "SimilarTicketLimitToggle",
+        "SimilarTicketCard",
+        "ResolutionSummaryBlock",
+        "SimilarityScoreBadge",
+        "SectionEmptyState",
+        "ErrorBanner",
+        "NotFoundState",
+        "PageActionsBar"
+      ]
+    },
+    {
+      "page_id": "dashboard",
+      "route_path": "/dashboard",
+      "purpose": "Provide live operational visibility into support performance with ticket volume by product line, ticket volume by priority, and average resolution time by team using the authoritative dashboard APIs.",
+      "data_requirements": [
+        {
+          "name": "ticket volume by product line",
+          "needed_for": "Time-series chart.",
+          "source": "GET /api/dashboard/ticket-volume-by-product-line",
+          "required": true
+        },
+        {
+          "name": "ticket volume by priority",
+          "needed_for": "Time-series chart.",
+          "source": "GET /api/dashboard/ticket-volume-by-priority",
+          "required": true
+        },
+        {
+          "name": "average resolution time by team",
+          "needed_for": "Team performance chart/table.",
+          "source": "GET /api/dashboard/avg-resolution-time-by-team",
+          "required": true
+        },
+        {
+          "name": "active support teams",
+          "needed_for": "Optional reference list or filter labels if desired, but not required because avg-resolution response already includes team_name.",
+          "source": "GET /api/teams?active=true",
+          "required": false
+        }
+      ],
+      "api_consumption": [
+        {
+          "endpoint": "GET /api/dashboard/ticket-volume-by-product-line?startDate=&endDate=&granularity=&source=",
+          "operationId": "getDashboardTicketVolumeByProductLine",
+          "usage": "Load product-line volume series."
+        },
+        {
+          "endpoint": "GET /api/dashboard/ticket-volume-by-priority?startDate=&endDate=&granularity=&source=",
+          "operationId": "getDashboardTicketVolumeByPriority",
+          "usage": "Load priority volume series."
+        },
+        {
+          "endpoint": "GET /api/dashboard/avg-resolution-time-by-team?startDate=&endDate=&granularity=&source=",
+          "operationId": "getDashboardAvgResolutionTimeByTeam",
+          "usage": "Load average resolution metric; note raw returns team aggregates over range, snapshot can return time-bucketed points."
+        },
+        {
+          "endpoint": "GET /api/teams?active=true",
+          "operationId": "listSupportTeams",
+          "usage": "Optional reference call only."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "Set date range",
+          "result": "Refetch all dashboard queries with selected startDate and endDate."
+        },
+        {
+          "action": "Set granularity for time-series charts",
+          "result": "Refetch product-line and priority charts; for avg-resolution endpoint include granularity only when using snapshot mode."
+        },
+        {
+          "action": "Switch source between raw and snapshot",
+          "result": "Refetch all metric endpoints with chosen source. UI must require granularity for avg-resolution-time when source=snapshot."
+        },
+        {
+          "action": "Retry failed metric card",
+          "result": "Refetch only that metric."
+        },
+        {
+          "action": "Refresh dashboard",
+          "result": "Refetch all three metrics on demand."
+        }
+      ],
+      "loading_states": [
+        "Initial dashboard skeleton.",
+        "Independent metric-card loading states.",
+        "Filter-change refetch indicators that preserve prior chart content when possible."
+      ],
+      "error_states": [
+        {
+          "case": "Any metric returns 400 INVALID_DATE_RANGE",
+          "ui_response": "Show filter validation message and prevent or correct invalid date submission."
+        },
+        {
+          "case": "Any metric returns 400 INVALID_GRANULARITY",
+          "ui_response": "Show filter validation or card error. For avg-resolution-time snapshot mode, require granularity before request."
+        },
+        {
+          "case": "One metric fails while others succeed",
+          "ui_response": "Display partial dashboard with per-card error and retry."
+        },
+        {
+          "case": "No points returned for a valid range",
+          "ui_response": "Show no-data state for that chart, not an error."
+        }
+      ],
+      "components": [
+        "AppShell",
+        "PageHeader",
+        "DashboardFilterBar",
+        "DateRangePicker",
+        "GranularitySelect",
+        "SourceToggle",
+        "MetricCard",
+        "TimeSeriesChart",
+        "TeamPerformanceChartOrTable",
+        "RefreshButton",
+        "CardSkeleton",
+        "CardErrorState",
+        "NoDataState",
+        "LastComputedAtLabel"
+      ]
+    }
+  ],
+  "components": [
+    {
+      "name": "AppShell",
+      "purpose": "Global navigation and internal-only layout wrapper linking Home, Create Ticket, and Dashboard."
+    },
+    {
+      "name": "PageHeader",
+      "purpose": "Standardized page title and contextual actions."
+    },
+    {
+      "name": "OpenTicketByIdForm",
+      "purpose": "Minimal form to navigate to a known ticket review route because no list/queue endpoint exists."
+    },
+    {
+      "name": "SimulatedTicketForm",
+      "purpose": "Form for POST /api/tickets using only fields allowed by the API contract."
+    },
+    {
+      "name": "TeamSelect",
+      "purpose": "Dropdown backed by GET /api/teams for optional assigned_team_id selection."
+    },
+    {
+      "name": "OptionalTriageSuggestionFields",
+      "purpose": "Optional advanced fields allowing seeded triage_suggestion values at ticket creation because the API stores but does not generate them."
+    },
+    {
+      "name": "TicketSummaryCard",
+      "purpose": "Display current ticket metadata and status."
+    },
+    {
+      "name": "TicketTextPanel",
+      "purpose": "Display ticket subject and description prominently for agent review."
+    },
+    {
+      "name": "TriageSuggestionCard",
+      "purpose": "Show stored suggested priority, model metadata, confidence, and suggested team details."
+    },
+    {
+      "name": "SimilarTicketsPanel",
+      "purpose": "Container for similar resolved ticket results and limit toggle."
+    },
+    {
+      "name": "SimilarTicketCard",
+      "purpose": "Render each historical similar ticket including resolution category, summary, assigned team, and similarity score."
+    },
+    {
+      "name": "DashboardFilterBar",
+      "purpose": "Shared controls for date range, granularity, source mode, and refresh."
+    },
+    {
+      "name": "MetricCard",
+      "purpose": "Reusable dashboard section container with loading, error, and no-data variants."
+    },
+    {
+      "name": "TimeSeriesChart",
+      "purpose": "Visualization for product-line and priority time-series points."
+    },
+    {
+      "name": "TeamPerformanceChartOrTable",
+      "purpose": "Visualization for average resolution time by team; handles both raw aggregate and snapshot time-bucketed response shapes."
+    },
+    {
+      "name": "NotFoundState",
+      "purpose": "Page-level empty state for missing ticket IDs."
+    },
+    {
+      "name": "SectionEmptyState",
+      "purpose": "Section-level explanation when data is validly absent, such as no stored triage suggestion."
+    }
+  ],
+  "constraints_and_non_goals": [
+    "Do not design or imply a queue/queue-list page because no authoritative queue endpoint exists.",
+    "Do not design controls to generate triage suggestions or embeddings; the API only retrieves stored suggestions and similar tickets when embeddings already exist.",
+    "Do not design mark-resolved or workflow completion actions because no such endpoint exists.",
+    "Ticket review is by direct navigation or after create; there is no API for browsing tickets.",
+    "Similar-ticket assistance depends on text_embedding already existing on the ticket record; frontend must expose this limitation clearly.",
+    "Dashboard avg-resolution-time visualization must respect API asymmetry: raw mode is aggregate by team over range, snapshot mode may be time-bucketed."
+  ]
+}
