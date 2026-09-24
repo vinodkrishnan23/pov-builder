@@ -1,0 +1,483 @@
+{
+  "pov_name": "northwind_support_ticket_triage",
+  "version": "1.0.0",
+  "notes": [
+    "This contract is limited to endpoints directly backed by the authoritative query patterns (QP-1 through QP-7) or straightforward CRUD on the modeled collections.",
+    "Routing remains advisory in this contract unless and until POV requirements explicitly confirm actual assignment behavior; the data model preserves this ambiguity via routing_suggestion.advisory_only.",
+    "No endpoint is included for helpdesk integration because the POV explicitly excludes production integration in first pass.",
+    "No bulk import/admin ingestion endpoint is included because import mechanics are not covered by the provided query patterns; while ingest is a functional requirement, its delivery mechanism is out of scope for this API contract given the authoritative inputs."
+  ],
+  "endpoints": [
+    {
+      "operation_id": "listTicketQueue",
+      "method": "GET",
+      "path": "/api/tickets",
+      "purpose": "List incoming and open support tickets for agent triage queue view.",
+      "request": {
+        "path_params": {},
+        "query_params": {
+          "status": {
+            "type": "array<string>",
+            "required": false,
+            "allowed_values": [
+              "new",
+              "open"
+            ],
+            "default": [
+              "new",
+              "open"
+            ],
+            "notes": "Contract only supports the queue statuses present in QP-1."
+          },
+          "limit": {
+            "type": "integer",
+            "required": false,
+            "default": 100,
+            "minimum": 1,
+            "maximum": 100,
+            "notes": "QP-1 limits results to 100; API should not exceed that."
+          },
+          "sort": {
+            "type": "string",
+            "required": false,
+            "default": "-created_at",
+            "allowed_values": [
+              "-created_at"
+            ]
+          }
+        },
+        "headers": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "tickets": [
+            {
+              "id": "objectId",
+              "ticket_id": "string",
+              "channel": "email|chat|phone",
+              "subject": "string",
+              "customer_account_tier": "string",
+              "product_line": "string",
+              "status": "new|open",
+              "created_at": "date",
+              "priority": "string|null",
+              "priority_suggestion": {
+                "value": "string|null",
+                "confidence": "number|null"
+              },
+              "routing_suggestion": {
+                "team_id": "objectId|null",
+                "confidence": "number|null"
+              }
+            }
+          ],
+          "count": "integer"
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_QUERY_PARAMETER",
+          "message": "One or more query parameters are invalid."
+        }
+      ],
+      "backing": {
+        "type": "query_pattern",
+        "id": "QP-1",
+        "mongodb_operation": "find on support_tickets"
+      }
+    },
+    {
+      "operation_id": "getTicketDetails",
+      "method": "GET",
+      "path": "/api/tickets/{ticketId}",
+      "purpose": "Open a selected ticket and return full ticket details with suggested priority, suggested routing destination, and resolved/actual team details when present.",
+      "request": {
+        "path_params": {
+          "ticketId": {
+            "type": "string",
+            "required": true,
+            "description": "Business ticket identifier mapped to support_tickets.ticket_id."
+          }
+        },
+        "query_params": {},
+        "headers": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "ticket": {
+            "id": "objectId",
+            "ticket_id": "string",
+            "channel": "email|chat|phone",
+            "subject": "string",
+            "description": "string",
+            "text_combined": "string",
+            "customer_account_tier": "string",
+            "product_line": "string",
+            "status": "new|open|resolved",
+            "created_at": "date",
+            "priority": "string|null",
+            "priority_suggestion": {
+              "value": "string",
+              "confidence": "number|null",
+              "generated_at": "date|null",
+              "model_version": "string|null"
+            },
+            "routing_suggestion": {
+              "team_id": "objectId",
+              "confidence": "number|null",
+              "generated_at": "date|null",
+              "model_version": "string|null",
+              "advisory_only": "boolean|null"
+            },
+            "suggested_team": {
+              "_id": "objectId",
+              "team_code": "string",
+              "name": "string",
+              "description": "string|null",
+              "active": "boolean"
+            },
+            "routing_team_id": "objectId|null",
+            "actual_team": {
+              "_id": "objectId",
+              "team_code": "string",
+              "name": "string",
+              "description": "string|null",
+              "active": "boolean"
+            },
+            "resolution_category": "string|null",
+            "resolution_summary": "string|null",
+            "triage": {
+              "triaged_at": "date|null",
+              "triaged_by": "string|null",
+              "notes": "string|null"
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "status": 404,
+          "code": "TICKET_NOT_FOUND",
+          "message": "No ticket exists for the provided ticketId."
+        },
+        {
+          "status": 400,
+          "code": "INVALID_TICKET_ID",
+          "message": "ticketId is invalid or empty."
+        }
+      ],
+      "backing": {
+        "type": "query_pattern",
+        "id": "QP-2",
+        "mongodb_operation": "aggregate on support_tickets with lookups to support_teams"
+      }
+    },
+    {
+      "operation_id": "getSimilarResolvedTickets",
+      "method": "GET",
+      "path": "/api/tickets/{ticketId}/similar-resolved",
+      "purpose": "Return 3-4 similar previously resolved tickets with resolution context for the opened ticket.",
+      "request": {
+        "path_params": {
+          "ticketId": {
+            "type": "string",
+            "required": true,
+            "description": "Business ticket identifier of the currently opened ticket."
+          }
+        },
+        "query_params": {},
+        "headers": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "ticket_id": "string",
+          "similar_tickets": [
+            {
+              "id": "objectId",
+              "ticket_id": "string",
+              "subject": "string",
+              "description": "string",
+              "product_line": "string",
+              "customer_account_tier": "string",
+              "priority": "string|null",
+              "routing_team_id": "objectId|null",
+              "resolved_team": {
+                "_id": "objectId",
+                "team_code": "string",
+                "name": "string",
+                "description": "string|null",
+                "active": "boolean"
+              },
+              "resolution_category": "string|null",
+              "resolution_summary": "string|null",
+              "resolved_at": "date|null",
+              "score": "number"
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 404,
+          "code": "TICKET_NOT_FOUND",
+          "message": "No source ticket exists for the provided ticketId."
+        },
+        {
+          "status": 422,
+          "code": "EMBEDDING_UNAVAILABLE",
+          "message": "Similarity retrieval could not be performed because query text or embedding could not be produced for the source ticket."
+        },
+        {
+          "status": 500,
+          "code": "SIMILARITY_QUERY_FAILED",
+          "message": "The similar-ticket retrieval query failed."
+        }
+      ],
+      "backing": {
+        "type": "query_pattern_plus_prerequisite_lookup",
+        "id": "QP-3",
+        "mongodb_operation": "source ticket lookup by ticket_id on support_tickets, then aggregate with $vectorSearch on support_tickets and lookup to support_teams",
+        "notes": "QP-3 requires a query embedding for the opened ticket text. The API implementation must first load the source ticket text (straightforward lookup by ticket_id, implied by ux_ticket_id) and generate/retrieve the embedding used by the vector search."
+      }
+    },
+    {
+      "operation_id": "getTicketVolumeByProductLine",
+      "method": "GET",
+      "path": "/api/dashboard/ticket-volume-by-product-line",
+      "purpose": "Return ticket counts by product line over time for the live dashboard.",
+      "request": {
+        "path_params": {},
+        "query_params": {
+          "start_date": {
+            "type": "string",
+            "format": "date-time",
+            "required": true
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date-time",
+            "required": true
+          }
+        },
+        "headers": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "start_date": "date-time",
+          "end_date": "date-time",
+          "granularity": "day",
+          "results": [
+            {
+              "date": "date",
+              "product_line": "string",
+              "ticket_count": "integer"
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_DATE_RANGE",
+          "message": "start_date and end_date must be valid and start_date must be earlier than or equal to end_date."
+        }
+      ],
+      "backing": {
+        "type": "query_pattern",
+        "id": "QP-4",
+        "mongodb_operation": "aggregate on support_tickets"
+      }
+    },
+    {
+      "operation_id": "getTicketVolumeByPriority",
+      "method": "GET",
+      "path": "/api/dashboard/ticket-volume-by-priority",
+      "purpose": "Return ticket counts by priority over time for the live dashboard.",
+      "request": {
+        "path_params": {},
+        "query_params": {
+          "start_date": {
+            "type": "string",
+            "format": "date-time",
+            "required": true
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date-time",
+            "required": true
+          }
+        },
+        "headers": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "start_date": "date-time",
+          "end_date": "date-time",
+          "granularity": "day",
+          "results": [
+            {
+              "date": "date",
+              "priority": "string|null",
+              "ticket_count": "integer"
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_DATE_RANGE",
+          "message": "start_date and end_date must be valid and start_date must be earlier than or equal to end_date."
+        }
+      ],
+      "backing": {
+        "type": "query_pattern",
+        "id": "QP-5",
+        "mongodb_operation": "aggregate on support_tickets"
+      }
+    },
+    {
+      "operation_id": "getAverageResolutionTimeByTeam",
+      "method": "GET",
+      "path": "/api/dashboard/average-resolution-time-by-team",
+      "purpose": "Return average resolution time by team for resolved tickets in the selected time range.",
+      "request": {
+        "path_params": {},
+        "query_params": {
+          "start_date": {
+            "type": "string",
+            "format": "date-time",
+            "required": true
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date-time",
+            "required": true
+          }
+        },
+        "headers": {}
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "start_date": "date-time",
+          "end_date": "date-time",
+          "results": [
+            {
+              "team_id": "objectId",
+              "team": {
+                "_id": "objectId",
+                "team_code": "string",
+                "name": "string",
+                "description": "string|null",
+                "active": "boolean"
+              },
+              "avg_resolution_time_hours": "number",
+              "resolved_ticket_count": "integer"
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_DATE_RANGE",
+          "message": "start_date and end_date must be valid and start_date must be earlier than or equal to end_date."
+        }
+      ],
+      "backing": {
+        "type": "query_pattern",
+        "id": "QP-6",
+        "mongodb_operation": "aggregate on support_tickets with lookup to support_teams"
+      }
+    },
+    {
+      "operation_id": "markTicketResolved",
+      "method": "POST",
+      "path": "/api/tickets/{ticketId}/resolve",
+      "purpose": "Mark a ticket resolved and capture its resolution category and resolution summary.",
+      "request": {
+        "path_params": {
+          "ticketId": {
+            "type": "string",
+            "required": true
+          }
+        },
+        "query_params": {},
+        "headers": {},
+        "body": {
+          "resolution_category": {
+            "type": "string",
+            "required": true
+          },
+          "resolution_summary": {
+            "type": "string",
+            "required": true
+          },
+          "resolved_at": {
+            "type": "string",
+            "format": "date-time",
+            "required": false,
+            "notes": "If omitted, server may use current timestamp consistent with QP-7."
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "ticket_id": "string",
+          "status": "resolved",
+          "resolved_at": "date-time",
+          "resolution_category": "string",
+          "resolution_summary": "string"
+        }
+      },
+      "errors": [
+        {
+          "status": 404,
+          "code": "TICKET_NOT_FOUND",
+          "message": "No ticket exists for the provided ticketId."
+        },
+        {
+          "status": 409,
+          "code": "TICKET_ALREADY_RESOLVED",
+          "message": "The ticket is already resolved."
+        },
+        {
+          "status": 400,
+          "code": "INVALID_REQUEST_BODY",
+          "message": "resolution_category and resolution_summary are required and must be valid strings."
+        }
+      ],
+      "backing": {
+        "type": "query_pattern",
+        "id": "QP-7",
+        "mongodb_operation": "updateOne on support_tickets"
+      }
+    }
+  ],
+  "excluded_endpoints": [
+    {
+      "candidate": "Create/update triage suggestion endpoint",
+      "reason": "Not included because no authoritative query pattern or explicit CRUD flow defines how suggestions are generated or persisted via API, even though the data model contains priority_suggestion and routing_suggestion fields."
+    },
+    {
+      "candidate": "Assign/reroute ticket to a team endpoint",
+      "reason": "Not included because FR-11 leaves routing behavior unresolved and no query pattern covers assignment updates."
+    },
+    {
+      "candidate": "List support teams endpoint",
+      "reason": "Although straightforward CRUD on support_teams is possible from the data model, no current user journey or query pattern requires a standalone teams read endpoint for the stated POV flows."
+    },
+    {
+      "candidate": "Historical import endpoint",
+      "reason": "Functional requirement FR-1 requires ingest, but the provided authoritative query patterns do not define import workflow/API behavior; adding one would go beyond the supplied design inputs."
+    }
+  ]
+}
