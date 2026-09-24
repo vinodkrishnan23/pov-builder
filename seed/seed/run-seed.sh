@@ -8,4 +8,4 @@ if [ ! -d node_modules ]; then
   npm install
 fi
 
-node seed.js
+node ../seed.js
