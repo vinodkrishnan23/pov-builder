@@ -1,0 +1,371 @@
+{
+  "pov_name": "northwind_support_ticket_triage",
+  "collections": [
+    {
+      "name": "support_tickets",
+      "description": "Core ticket records for the POV, covering both historical resolved tickets used for similarity retrieval/training context and incoming/unresolved tickets shown in the queue and dashboard.",
+      "traceability": [
+        "Support Ticket business entity",
+        "Resolution Category business entity",
+        "Resolution Summary business entity",
+        "Support Team business entity",
+        "Product Line business entity",
+        "Priority Level business entity",
+        "Customer Account Tier business entity",
+        "FR-1",
+        "FR-2",
+        "FR-3",
+        "FR-4",
+        "FR-5",
+        "FR-7",
+        "FR-8",
+        "AI-1",
+        "AI-2",
+        "AI-3",
+        "ISS-4"
+      ],
+      "document_shape": {
+        "_id": {
+          "type": "objectId",
+          "required": true
+        },
+        "ticket_id": {
+          "type": "string",
+          "required": true,
+          "description": "Source/business identifier for the ticket in the representative imported dataset."
+        },
+        "channel": {
+          "type": "string",
+          "required": true,
+          "enum": [
+            "email",
+            "chat",
+            "phone"
+          ],
+          "description": "Ticket source channel, included because current state explicitly mentions email/chat/phone."
+        },
+        "subject": {
+          "type": "string",
+          "required": true
+        },
+        "description": {
+          "type": "string",
+          "required": true
+        },
+        "text_combined": {
+          "type": "string",
+          "required": true,
+          "description": "Pre-concatenated subject + description used as the primary text payload for search/vectorization and triage inference."
+        },
+        "customer_account_tier": {
+          "type": "string",
+          "required": true
+        },
+        "product_line": {
+          "type": "string",
+          "required": true
+        },
+        "status": {
+          "type": "string",
+          "required": true,
+          "enum": [
+            "new",
+            "open",
+            "resolved"
+          ],
+          "description": "POV-level ticket lifecycle state to support queue filtering and resolved-ticket reporting. Kept simple because actual helpdesk workflow is out of scope."
+        },
+        "created_at": {
+          "type": "date",
+          "required": true
+        },
+        "resolved_at": {
+          "type": "date",
+          "required": false,
+          "description": "Needed to calculate resolution time for resolved tickets when present in the representative historical slice."
+        },
+        "priority": {
+          "type": "string",
+          "required": false,
+          "description": "Actual/legacy manually set priority from imported historical data or evaluator-entered outcome."
+        },
+        "priority_suggestion": {
+          "type": "object",
+          "required": false,
+          "fields": {
+            "value": {
+              "type": "string",
+              "required": true
+            },
+            "confidence": {
+              "type": "number",
+              "required": false
+            },
+            "generated_at": {
+              "type": "date",
+              "required": false
+            },
+            "model_version": {
+              "type": "string",
+              "required": false
+            }
+          },
+          "description": "System-suggested priority for POV triage."
+        },
+        "routing_team_id": {
+          "type": "objectId",
+          "required": false,
+          "description": "Actual assigned/resolved team when known from historical data."
+        },
+        "routing_suggestion": {
+          "type": "object",
+          "required": false,
+          "fields": {
+            "team_id": {
+              "type": "objectId",
+              "required": true
+            },
+            "confidence": {
+              "type": "number",
+              "required": false
+            },
+            "generated_at": {
+              "type": "date",
+              "required": false
+            },
+            "model_version": {
+              "type": "string",
+              "required": false
+            },
+            "advisory_only": {
+              "type": "boolean",
+              "required": false,
+              "description": "Preserves FR-11 ambiguity rather than resolving it in the schema."
+            }
+          },
+          "description": "System-recommended routing destination/team."
+        },
+        "resolution_category": {
+          "type": "string",
+          "required": false
+        },
+        "resolution_summary": {
+          "type": "string",
+          "required": false,
+          "description": "Agent-written resolution summary, present for historical resolved tickets and shown as context for similar tickets."
+        },
+        "triage": {
+          "type": "object",
+          "required": false,
+          "fields": {
+            "triaged_at": {
+              "type": "date",
+              "required": false
+            },
+            "triaged_by": {
+              "type": "string",
+              "required": false
+            },
+            "notes": {
+              "type": "string",
+              "required": false
+            }
+          },
+          "description": "Optional POV triage metadata; lightweight because full workflow integration is out of scope."
+        },
+        "embedding": {
+          "type": "array<number>",
+          "required": false,
+          "description": "Vector embedding of text_combined for similarity retrieval over historical tickets."
+        },
+        "ingest_batch_id": {
+          "type": "string",
+          "required": false,
+          "description": "Identifier for the imported representative dataset batch."
+        },
+        "metadata": {
+          "type": "object",
+          "required": false,
+          "fields": {
+            "source_system": {
+              "type": "string",
+              "required": false
+            },
+            "is_historical_seed": {
+              "type": "boolean",
+              "required": false
+            }
+          }
+        }
+      },
+      "embedding_vs_references": {
+        "embedded_documents": [
+          "priority_suggestion",
+          "routing_suggestion",
+          "triage",
+          "metadata"
+        ],
+        "references": [
+          {
+            "field": "routing_team_id",
+            "targets": "support_teams"
+          },
+          {
+            "field": "routing_suggestion.team_id",
+            "targets": "support_teams"
+          }
+        ],
+        "rationale": "Suggestion objects are embedded because they are always accessed with the ticket when an agent opens or triages it. Team is referenced to avoid repeating mutable team metadata across many tickets while allowing dashboard joins/grouping by stable team ids."
+      },
+      "relationships": [
+        {
+          "type": "many_to_one",
+          "from_collection": "support_tickets",
+          "field": "routing_team_id",
+          "to_collection": "support_teams"
+        },
+        {
+          "type": "many_to_one",
+          "from_collection": "support_tickets",
+          "field": "routing_suggestion.team_id",
+          "to_collection": "support_teams"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "ux_ticket_id",
+          "kind": "regular",
+          "fields": [
+            "ticket_id"
+          ],
+          "reason": "Supports idempotent historical import and direct ticket lookup by business identifier in the queue/open-ticket workflow."
+        },
+        {
+          "name": "queue_status_createdAt",
+          "kind": "regular",
+          "fields": [
+            "status",
+            "created_at"
+          ],
+          "reason": "Supports agent queue views of incoming/open tickets sorted by newest/oldest for J-1 and FR-6 context."
+        },
+        {
+          "name": "dashboard_productLine_createdAt",
+          "kind": "regular",
+          "fields": [
+            "product_line",
+            "created_at"
+          ],
+          "reason": "Supports live aggregations/filtering for ticket volume by product line over time in FR-7/UC-4."
+        },
+        {
+          "name": "dashboard_priority_createdAt",
+          "kind": "regular",
+          "fields": [
+            "priority",
+            "created_at"
+          ],
+          "reason": "Supports live aggregations/filtering for ticket volume by priority over time in FR-7/UC-4."
+        },
+        {
+          "name": "dashboard_team_resolvedAt",
+          "kind": "regular",
+          "fields": [
+            "routing_team_id",
+            "resolved_at"
+          ],
+          "reason": "Supports average resolution time by team calculations over resolved tickets for FR-8/UC-4."
+        },
+        {
+          "name": "resolved_lookup",
+          "kind": "regular",
+          "fields": [
+            "status",
+            "resolved_at"
+          ],
+          "reason": "Supports filtering historical resolved tickets for retrieval context and dashboard metrics."
+        },
+        {
+          "name": "ticket_text_search",
+          "kind": "search",
+          "reason": "Supports text-based exploration/debugging of ticket content and can complement triage investigation over subject/description/resolution text; justified because ticket text is central to UC-1/UC-2/AI-1 and support users may inspect content-driven results in the POV."
+        },
+        {
+          "name": "ticket_similarity_vector",
+          "kind": "vector",
+          "reason": "Supports instant retrieval of 3-4 similar resolved historical tickets from ticket text at scale for UC-3, AI-2, MO-1, MO-2, SC-2, and SC-3."
+        }
+      ]
+    },
+    {
+      "name": "support_teams",
+      "description": "Reference data for routing destinations / operational teams used in ticket suggestions and dashboard grouping.",
+      "traceability": [
+        "Support Team business entity",
+        "UC-2",
+        "FR-3",
+        "FR-8",
+        "FR-11"
+      ],
+      "document_shape": {
+        "_id": {
+          "type": "objectId",
+          "required": true
+        },
+        "team_code": {
+          "type": "string",
+          "required": true
+        },
+        "name": {
+          "type": "string",
+          "required": true
+        },
+        "description": {
+          "type": "string",
+          "required": false
+        },
+        "active": {
+          "type": "boolean",
+          "required": true
+        }
+      },
+      "embedding_vs_references": {
+        "embedded_documents": [],
+        "references": [],
+        "rationale": "Small, reusable reference collection avoids duplicating team labels across many ticket documents and supports consistent routing suggestion output and dashboard grouping."
+      },
+      "relationships": [
+        {
+          "type": "one_to_many",
+          "from_collection": "support_teams",
+          "to_collection": "support_tickets",
+          "via": "routing_team_id"
+        },
+        {
+          "type": "one_to_many",
+          "from_collection": "support_teams",
+          "to_collection": "support_tickets",
+          "via": "routing_suggestion.team_id"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "ux_team_code",
+          "kind": "regular",
+          "fields": [
+            "team_code"
+          ],
+          "reason": "Supports stable lookup of routing destinations during seed import and suggestion generation."
+        },
+        {
+          "name": "ux_team_name",
+          "kind": "regular",
+          "fields": [
+            "name"
+          ],
+          "reason": "Supports admin/config lookups and dashboard label resolution by human-readable team name."
+        }
+      ]
+    }
+  ]
+}
