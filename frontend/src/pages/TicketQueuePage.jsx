@@ -47,7 +47,11 @@ export default function TicketQueuePage() {
     return (
       <div>
         <PageHeader title="Ticket Queue" actions={refreshButton}>Browse incoming and open tickets with AI triage suggestions.</PageHeader>
-        <LoadingIndicator text="Loading ticket queue…" />
+        <SectionCard title="Incoming & Open Tickets">
+          <div className="table-wrap" data-testid="ticket-queue-list">
+            <LoadingIndicator text="Loading ticket queue…" />
+          </div>
+        </SectionCard>
       </div>
     );
   }
@@ -57,6 +61,11 @@ export default function TicketQueuePage() {
       <div>
         <PageHeader title="Ticket Queue" actions={refreshButton}>Browse incoming and open tickets with AI triage suggestions.</PageHeader>
         <ErrorMessage message={error} action={<button className="button" onClick={() => loadTickets()}>Retry</button>} />
+        <SectionCard title="Incoming & Open Tickets">
+          <div className="table-wrap" data-testid="ticket-queue-list">
+            <EmptyState message="No queue data available yet." />
+          </div>
+        </SectionCard>
       </div>
     );
   }
@@ -66,10 +75,10 @@ export default function TicketQueuePage() {
       <PageHeader title="Ticket Queue" actions={refreshButton}>Showing up to 100 newest new/open tickets. Total loaded: {count}.</PageHeader>
       {error ? <ErrorMessage message={error} action={<button className="button secondary" onClick={() => loadTickets(true)}>Retry</button>} /> : null}
       <SectionCard title="Incoming & Open Tickets" extra={refreshing ? <LoadingIndicator text="Refreshing queue…" /> : null}>
-        {tickets.length === 0 ? (
-          <EmptyState message="No new or open tickets are currently available." />
-        ) : (
-          <div className="table-wrap" data-testid="ticket-queue-list">
+        <div className="table-wrap" data-testid="ticket-queue-list">
+          {tickets.length === 0 ? (
+            <EmptyState message="No new or open tickets are currently available." />
+          ) : (
             <table className="table">
               <thead>
                 <tr>
@@ -122,8 +131,8 @@ export default function TicketQueuePage() {
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
+          )}
+        </div>
       </SectionCard>
     </div>
   );
