@@ -907,14 +907,16 @@ async function createSearchIndexes(db) {
       name: 'ticket_embedding_vector',
       type: 'vectorSearch',
       definition: {
-        fields: [
-          {
-            type: 'vector',
-            path: 'embedding',
-            numDimensions: EMBEDDING_DIMENSIONS,
-            similarity: 'cosine'
+        mappings: {
+          dynamic: false,
+          fields: {
+            embedding: {
+              type: 'knnVector',
+              dimensions: EMBEDDING_DIMENSIONS,
+              similarity: 'cosine'
+            }
           }
-        ]
+        }
       }
     });
   } catch (err) {
