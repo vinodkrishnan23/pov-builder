@@ -1,0 +1,420 @@
+{
+  "QP-1": {
+    "id": "QP-1",
+    "name": "List incoming ticket queue for agent triage",
+    "serves": [
+      "J-1",
+      "FR-6"
+    ],
+    "collections": [
+      "support_tickets"
+    ],
+    "for": "Show agents the queue of incoming/open tickets they can select for triage.",
+    "query": {
+      "collection": "support_tickets",
+      "operation": "find",
+      "filter": {
+        "status": {
+          "$in": [
+            "new",
+            "open"
+          ]
+        }
+      },
+      "projection": {
+        "_id": 1,
+        "ticket_id": 1,
+        "channel": 1,
+        "subject": 1,
+        "customer_account_tier": 1,
+        "product_line": 1,
+        "status": 1,
+        "created_at": 1,
+        "priority": 1,
+        "priority_suggestion.value": 1,
+        "priority_suggestion.confidence": 1,
+        "routing_suggestion.team_id": 1,
+        "routing_suggestion.confidence": 1
+      },
+      "sort": {
+        "created_at": -1
+      },
+      "limit": 100
+    }
+  },
+  "QP-2": {
+    "id": "QP-2",
+    "name": "Open ticket with triage suggestions and team details",
+    "serves": [
+      "UC-1",
+      "UC-2",
+      "J-1",
+      "FR-2",
+      "FR-3",
+      "FR-6"
+    ],
+    "collections": [
+      "support_tickets",
+      "support_teams"
+    ],
+    "for": "Load a selected ticket and display the suggested priority and suggested routing destination/team for agent review.",
+    "query": {
+      "collection": "support_tickets",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "ticket_id": "<ticket_id>"
+          }
+        },
+        {
+          "$lookup": {
+            "from": "support_teams",
+            "localField": "routing_suggestion.team_id",
+            "foreignField": "_id",
+            "as": "suggested_team"
+          }
+        },
+        {
+          "$lookup": {
+            "from": "support_teams",
+            "localField": "routing_team_id",
+            "foreignField": "_id",
+            "as": "actual_team"
+          }
+        },
+        {
+          "$project": {
+            "_id": 1,
+            "ticket_id": 1,
+            "channel": 1,
+            "subject": 1,
+            "description": 1,
+            "text_combined": 1,
+            "customer_account_tier": 1,
+            "product_line": 1,
+            "status": 1,
+            "created_at": 1,
+            "priority": 1,
+            "priority_suggestion": 1,
+            "routing_suggestion": 1,
+            "suggested_team": {
+              "$arrayElemAt": [
+                "$suggested_team",
+                0
+              ]
+            },
+            "routing_team_id": 1,
+            "actual_team": {
+              "$arrayElemAt": [
+                "$actual_team",
+                0
+              ]
+            },
+            "resolution_category": 1,
+            "resolution_summary": 1,
+            "triage": 1
+          }
+        }
+      ]
+    }
+  },
+  "QP-3": {
+    "id": "QP-3",
+    "name": "Retrieve similar resolved historical tickets for an opened ticket",
+    "serves": [
+      "UC-3",
+      "J-1",
+      "FR-4",
+      "FR-5",
+      "AI-2",
+      "AI-3"
+    ],
+    "collections": [
+      "support_tickets",
+      "support_teams"
+    ],
+    "for": "Return 3-4 similar previously resolved tickets with their resolution details when an agent opens a ticket.",
+    "query": {
+      "collection": "support_tickets",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$vectorSearch": {
+            "index": "ticket_similarity_vector",
+            "path": "embedding",
+            "queryVector": "<query_embedding_for_opened_ticket_text>",
+            "numCandidates": 100,
+            "limit": 4,
+            "filter": {
+              "status": "resolved"
+            }
+          }
+        },
+        {
+          "$lookup": {
+            "from": "support_teams",
+            "localField": "routing_team_id",
+            "foreignField": "_id",
+            "as": "resolved_team"
+          }
+        },
+        {
+          "$project": {
+            "_id": 1,
+            "ticket_id": 1,
+            "subject": 1,
+            "description": 1,
+            "product_line": 1,
+            "customer_account_tier": 1,
+            "priority": 1,
+            "routing_team_id": 1,
+            "resolved_team": {
+              "$arrayElemAt": [
+                "$resolved_team",
+                0
+              ]
+            },
+            "resolution_category": 1,
+            "resolution_summary": 1,
+            "resolved_at": 1,
+            "score": {
+              "$meta": "vectorSearchScore"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "QP-4": {
+    "id": "QP-4",
+    "name": "Aggregate ticket volume by product line over time",
+    "serves": [
+      "UC-4",
+      "J-2",
+      "FR-7"
+    ],
+    "collections": [
+      "support_tickets"
+    ],
+    "for": "Populate the live dashboard chart showing ticket volume by product line over time.",
+    "query": {
+      "collection": "support_tickets",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "created_at": {
+              "$gte": "<start_date>",
+              "$lte": "<end_date>"
+            }
+          }
+        },
+        {
+          "$group": {
+            "_id": {
+              "bucket": {
+                "$dateTrunc": {
+                  "date": "$created_at",
+                  "unit": "day"
+                }
+              },
+              "product_line": "$product_line"
+            },
+            "ticket_count": {
+              "$sum": 1
+            }
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "date": "$_id.bucket",
+            "product_line": "$_id.product_line",
+            "ticket_count": 1
+          }
+        },
+        {
+          "$sort": {
+            "date": 1,
+            "product_line": 1
+          }
+        }
+      ]
+    }
+  },
+  "QP-5": {
+    "id": "QP-5",
+    "name": "Aggregate ticket volume by priority over time",
+    "serves": [
+      "UC-4",
+      "J-2",
+      "FR-7"
+    ],
+    "collections": [
+      "support_tickets"
+    ],
+    "for": "Populate the live dashboard chart showing ticket volume by priority over time.",
+    "query": {
+      "collection": "support_tickets",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "created_at": {
+              "$gte": "<start_date>",
+              "$lte": "<end_date>"
+            }
+          }
+        },
+        {
+          "$group": {
+            "_id": {
+              "bucket": {
+                "$dateTrunc": {
+                  "date": "$created_at",
+                  "unit": "day"
+                }
+              },
+              "priority": "$priority"
+            },
+            "ticket_count": {
+              "$sum": 1
+            }
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "date": "$_id.bucket",
+            "priority": "$_id.priority",
+            "ticket_count": 1
+          }
+        },
+        {
+          "$sort": {
+            "date": 1,
+            "priority": 1
+          }
+        }
+      ]
+    }
+  },
+  "QP-6": {
+    "id": "QP-6",
+    "name": "Aggregate average resolution time by team",
+    "serves": [
+      "UC-4",
+      "J-2",
+      "FR-8"
+    ],
+    "collections": [
+      "support_tickets",
+      "support_teams"
+    ],
+    "for": "Populate the live dashboard metric showing average resolution time by team for resolved tickets.",
+    "query": {
+      "collection": "support_tickets",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "status": "resolved",
+            "resolved_at": {
+              "$exists": true,
+              "$ne": null
+            },
+            "routing_team_id": {
+              "$exists": true,
+              "$ne": null
+            },
+            "created_at": {
+              "$gte": "<start_date>",
+              "$lte": "<end_date>"
+            }
+          }
+        },
+        {
+          "$addFields": {
+            "resolution_time_hours": {
+              "$divide": [
+                {
+                  "$subtract": [
+                    "$resolved_at",
+                    "$created_at"
+                  ]
+                },
+                3600000
+              ]
+            }
+          }
+        },
+        {
+          "$group": {
+            "_id": "$routing_team_id",
+            "avg_resolution_time_hours": {
+              "$avg": "$resolution_time_hours"
+            },
+            "resolved_ticket_count": {
+              "$sum": 1
+            }
+          }
+        },
+        {
+          "$lookup": {
+            "from": "support_teams",
+            "localField": "_id",
+            "foreignField": "_id",
+            "as": "team"
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "team_id": "$_id",
+            "team": {
+              "$arrayElemAt": [
+                "$team",
+                0
+              ]
+            },
+            "avg_resolution_time_hours": 1,
+            "resolved_ticket_count": 1
+          }
+        },
+        {
+          "$sort": {
+            "avg_resolution_time_hours": -1
+          }
+        }
+      ]
+    }
+  },
+  "QP-7": {
+    "id": "QP-7",
+    "name": "Mark ticket resolved",
+    "serves": [
+      "J-1",
+      "FR-6"
+    ],
+    "collections": [
+      "support_tickets"
+    ],
+    "for": "Update a ticket to resolved status when the agent completes work.",
+    "query": {
+      "collection": "support_tickets",
+      "operation": "updateOne",
+      "filter": {
+        "ticket_id": "<ticket_id>"
+      },
+      "update": {
+        "$set": {
+          "status": "resolved",
+          "resolved_at": "<resolved_timestamp>",
+          "resolution_category": "<resolution_category>",
+          "resolution_summary": "<resolution_summary>"
+        }
+      }
+    }
+  }
+}
