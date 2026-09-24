@@ -1,0 +1,659 @@
+{
+  "business_objectives": {
+    "BO-1": {
+      "description": "Reduce time spent on manual support ticket triage.",
+      "mapped_use_cases": [
+        "UC-1",
+        "UC-2",
+        "UC-3"
+      ],
+      "collections": [
+        "support_tickets"
+      ],
+      "query_patterns": [
+        "QP-1",
+        "QP-2"
+      ],
+      "api_endpoints": [
+        "GET /api/tickets/{ticketId}/triage-suggestion",
+        "GET /api/tickets/{ticketId}/similar-resolved?limit=3|4"
+      ],
+      "frontend_pages": [
+        "ticket_review",
+        "ticket_create"
+      ]
+    },
+    "BO-2": {
+      "description": "Improve triage accuracy by using ticket text rather than simple keyword-based rules.",
+      "mapped_use_cases": [
+        "UC-1",
+        "UC-2"
+      ],
+      "collections": [
+        "support_tickets",
+        "support_teams"
+      ],
+      "query_patterns": [
+        "QP-1"
+      ],
+      "api_endpoints": [
+        "GET /api/tickets/{ticketId}/triage-suggestion"
+      ],
+      "frontend_pages": [
+        "ticket_review"
+      ]
+    },
+    "BO-3": {
+      "description": "Help agents resolve tickets faster by reusing knowledge from similar previously resolved tickets.",
+      "mapped_use_cases": [
+        "UC-3"
+      ],
+      "collections": [
+        "support_tickets",
+        "support_teams"
+      ],
+      "query_patterns": [
+        "QP-2"
+      ],
+      "api_endpoints": [
+        "GET /api/tickets/{ticketId}/similar-resolved?limit=3|4"
+      ],
+      "frontend_pages": [
+        "ticket_review"
+      ]
+    },
+    "BO-4": {
+      "description": "Provide live operational visibility for support leadership instead of weekly manual reporting.",
+      "mapped_use_cases": [
+        "UC-4"
+      ],
+      "collections": [
+        "support_tickets",
+        "support_teams",
+        "dashboard_metric_snapshots"
+      ],
+      "query_patterns": [
+        "QP-3",
+        "QP-4",
+        "QP-5",
+        "QP-6",
+        "QP-7",
+        "QP-8"
+      ],
+      "api_endpoints": [
+        "GET /api/dashboard/ticket-volume-by-product-line",
+        "GET /api/dashboard/ticket-volume-by-priority",
+        "GET /api/dashboard/avg-resolution-time-by-team"
+      ],
+      "frontend_pages": [
+        "dashboard"
+      ]
+    }
+  },
+  "functional_requirements": {
+    "FR-1": {
+      "description": "Use support ticket records containing subject, free-text description, customer account tier, product line, and current priority data.",
+      "collections": [
+        "support_tickets"
+      ],
+      "fields": [
+        "ticket_id",
+        "subject",
+        "description",
+        "customer_account_tier",
+        "product_line",
+        "manual_priority"
+      ],
+      "query_patterns": [],
+      "api_endpoints": [
+        "POST /api/tickets",
+        "GET /api/tickets/{ticketId}"
+      ],
+      "frontend_pages": [
+        "ticket_create",
+        "ticket_review"
+      ]
+    },
+    "FR-2": {
+      "description": "Support ticket data originating from email, chat, and phone channels within the imported dataset.",
+      "collections": [
+        "support_tickets"
+      ],
+      "fields": [
+        "channel"
+      ],
+      "query_patterns": [
+        "QP-2"
+      ],
+      "api_endpoints": [
+        "POST /api/tickets",
+        "GET /api/tickets/{ticketId}"
+      ],
+      "frontend_pages": [
+        "ticket_create",
+        "ticket_review"
+      ]
+    },
+    "FR-3": {
+      "description": "Automatically suggest a priority for a ticket.",
+      "collections": [
+        "support_tickets"
+      ],
+      "fields": [
+        "triage_suggestion.suggested_priority",
+        "triage_suggestion.generated_at",
+        "triage_suggestion.model_version",
+        "triage_suggestion.confidence"
+      ],
+      "query_patterns": [
+        "QP-1"
+      ],
+      "api_endpoints": [
+        "GET /api/tickets/{ticketId}/triage-suggestion"
+      ],
+      "frontend_pages": [
+        "ticket_review"
+      ]
+    },
+    "FR-4": {
+      "description": "Recommend routing a ticket to the appropriate team.",
+      "collections": [
+        "support_tickets",
+        "support_teams"
+      ],
+      "fields": [
+        "triage_suggestion.suggested_team_id",
+        "assigned_team_id"
+      ],
+      "query_patterns": [
+        "QP-1"
+      ],
+      "api_endpoints": [
+        "GET /api/tickets/{ticketId}/triage-suggestion",
+        "GET /api/teams"
+      ],
+      "frontend_pages": [
+        "ticket_review",
+        "ticket_create"
+      ]
+    },
+    "FR-5": {
+      "description": "Priority and routing suggestions should be based on ticket text content rather than only keyword rules.",
+      "collections": [
+        "support_tickets"
+      ],
+      "fields": [
+        "subject",
+        "description",
+        "triage_suggestion"
+      ],
+      "query_patterns": [
+        "QP-1"
+      ],
+      "api_endpoints": [
+        "GET /api/tickets/{ticketId}/triage-suggestion"
+      ],
+      "frontend_pages": [
+        "ticket_review"
+      ]
+    },
+    "FR-6": {
+      "description": "Show 3-4 similar previously resolved tickets when reviewing a ticket.",
+      "collections": [
+        "support_tickets"
+      ],
+      "fields": [
+        "text_embedding",
+        "status",
+        "is_historical_import"
+      ],
+      "query_patterns": [
+        "QP-2"
+      ],
+      "api_endpoints": [
+        "GET /api/tickets/{ticketId}/similar-resolved?limit=3|4"
+      ],
+      "frontend_pages": [
+        "ticket_review"
+      ]
+    },
+    "FR-7": {
+      "description": "Include how prior similar tickets were resolved.",
+      "collections": [
+        "support_tickets"
+      ],
+      "fields": [
+        "resolution.category",
+        "resolution.summary"
+      ],
+      "query_patterns": [
+        "QP-2"
+      ],
+      "api_endpoints": [
+        "GET /api/tickets/{ticketId}/similar-resolved?limit=3|4"
+      ],
+      "frontend_pages": [
+        "ticket_review"
+      ]
+    },
+    "FR-8": {
+      "description": "Use historical tickets tagged with resolution category and resolution summary as the search basis for similar-ticket retrieval.",
+      "collections": [
+        "support_tickets"
+      ],
+      "fields": [
+        "is_historical_import",
+        "status",
+        "resolution.category",
+        "resolution.summary",
+        "text_embedding"
+      ],
+      "query_patterns": [
+        "QP-2"
+      ],
+      "api_endpoints": [
+        "GET /api/tickets/{ticketId}/similar-resolved?limit=3|4"
+      ],
+      "frontend_pages": [
+        "ticket_review"
+      ]
+    },
+    "FR-9": {
+      "description": "Provide a dashboard showing ticket volume by product line over time.",
+      "collections": [
+        "support_tickets",
+        "dashboard_metric_snapshots"
+      ],
+      "fields": [
+        "created_at",
+        "product_line"
+      ],
+      "query_patterns": [
+        "QP-3",
+        "QP-6"
+      ],
+      "api_endpoints": [
+        "GET /api/dashboard/ticket-volume-by-product-line"
+      ],
+      "frontend_pages": [
+        "dashboard"
+      ]
+    },
+    "FR-10": {
+      "description": "Provide a dashboard showing ticket volume by priority over time.",
+      "collections": [
+        "support_tickets",
+        "dashboard_metric_snapshots"
+      ],
+      "fields": [
+        "created_at",
+        "manual_priority"
+      ],
+      "query_patterns": [
+        "QP-4",
+        "QP-7"
+      ],
+      "api_endpoints": [
+        "GET /api/dashboard/ticket-volume-by-priority"
+      ],
+      "frontend_pages": [
+        "dashboard"
+      ]
+    },
+    "FR-11": {
+      "description": "Provide a dashboard showing average resolution time by team.",
+      "collections": [
+        "support_tickets",
+        "support_teams",
+        "dashboard_metric_snapshots"
+      ],
+      "fields": [
+        "assigned_team_id",
+        "created_at",
+        "resolved_at",
+        "status"
+      ],
+      "query_patterns": [
+        "QP-5",
+        "QP-8"
+      ],
+      "api_endpoints": [
+        "GET /api/dashboard/avg-resolution-time-by-team",
+        "GET /api/teams"
+      ],
+      "frontend_pages": [
+        "dashboard"
+      ]
+    },
+    "FR-12": {
+      "description": "Provide live dashboard visibility rather than weekly manual reporting.",
+      "collections": [
+        "support_tickets",
+        "dashboard_metric_snapshots"
+      ],
+      "fields": [
+        "created_at",
+        "resolved_at",
+        "last_computed_at"
+      ],
+      "query_patterns": [
+        "QP-3",
+        "QP-4",
+        "QP-5",
+        "QP-6",
+        "QP-7",
+        "QP-8"
+      ],
+      "api_endpoints": [
+        "GET /api/dashboard/ticket-volume-by-product-line",
+        "GET /api/dashboard/ticket-volume-by-priority",
+        "GET /api/dashboard/avg-resolution-time-by-team"
+      ],
+      "frontend_pages": [
+        "dashboard"
+      ]
+    },
+    "FR-13": {
+      "description": "Internal-only and not customer-facing.",
+      "collections": [],
+      "query_patterns": [],
+      "api_endpoints": [],
+      "frontend_pages": [
+        "home",
+        "ticket_create",
+        "ticket_review",
+        "dashboard"
+      ],
+      "notes": "Enforced as an application scope and UX constraint in the frontend summary and API out-of-scope statements, not by a dedicated endpoint."
+    },
+    "FR-14": {
+      "description": "Import a representative slice of historical tickets for the POV.",
+      "collections": [
+        "support_tickets"
+      ],
+      "fields": [
+        "ingest_batch_id",
+        "is_historical_import"
+      ],
+      "query_patterns": [
+        "QP-2"
+      ],
+      "api_endpoints": [],
+      "frontend_pages": [],
+      "notes": "Supported by the data model; import process itself is outside the runtime API contract."
+    },
+    "FR-15": {
+      "description": "Triage suggestion, similar-ticket search, and live dashboard are in scope.",
+      "collections": [
+        "support_tickets",
+        "support_teams",
+        "dashboard_metric_snapshots"
+      ],
+      "query_patterns": [
+        "QP-1",
+        "QP-2",
+        "QP-3",
+        "QP-4",
+        "QP-5",
+        "QP-6",
+        "QP-7",
+        "QP-8"
+      ],
+      "api_endpoints": [
+        "POST /api/tickets",
+        "GET /api/tickets/{ticketId}/triage-suggestion",
+        "GET /api/tickets/{ticketId}/similar-resolved?limit=3|4",
+        "GET /api/dashboard/ticket-volume-by-product-line",
+        "GET /api/dashboard/ticket-volume-by-priority",
+        "GET /api/dashboard/avg-resolution-time-by-team"
+      ],
+      "frontend_pages": [
+        "ticket_create",
+        "ticket_review",
+        "dashboard"
+      ]
+    },
+    "FR-16": {
+      "description": "No first-pass integration with the actual helpdesk tool.",
+      "collections": [
+        "support_tickets"
+      ],
+      "query_patterns": [],
+      "api_endpoints": [
+        "POST /api/tickets",
+        "GET /api/tickets/{ticketId}"
+      ],
+      "frontend_pages": [
+        "ticket_create",
+        "ticket_review",
+        "home"
+      ],
+      "notes": "Simulated ticket creation/review replaces production integration."
+    },
+    "FR-17": {
+      "description": "Queue viewing, ticket opening, and ticket resolution are simulated POV interactions unless explicitly added later.",
+      "collections": [
+        "support_tickets"
+      ],
+      "query_patterns": [],
+      "api_endpoints": [
+        "POST /api/tickets",
+        "GET /api/tickets/{ticketId}"
+      ],
+      "frontend_pages": [
+        "home",
+        "ticket_create",
+        "ticket_review"
+      ],
+      "notes": "No queue-list or mark-resolved endpoints/pages exist by design."
+    }
+  },
+  "ai_genai_requirements": {
+    "AI-1": {
+      "description": "Use free-text ticket content to generate or infer suggested priority.",
+      "collections": [
+        "support_tickets"
+      ],
+      "fields": [
+        "subject",
+        "description",
+        "triage_suggestion.suggested_priority"
+      ],
+      "query_patterns": [
+        "QP-1"
+      ],
+      "api_endpoints": [
+        "GET /api/tickets/{ticketId}/triage-suggestion"
+      ],
+      "frontend_pages": [
+        "ticket_review"
+      ],
+      "notes": "Runtime only retrieves stored inference output."
+    },
+    "AI-2": {
+      "description": "Use free-text ticket content to generate or infer routing to the appropriate team.",
+      "collections": [
+        "support_tickets",
+        "support_teams"
+      ],
+      "fields": [
+        "subject",
+        "description",
+        "triage_suggestion.suggested_team_id"
+      ],
+      "query_patterns": [
+        "QP-1"
+      ],
+      "api_endpoints": [
+        "GET /api/tickets/{ticketId}/triage-suggestion"
+      ],
+      "frontend_pages": [
+        "ticket_review"
+      ],
+      "notes": "Runtime only retrieves stored inference output."
+    },
+    "AI-3": {
+      "description": "Retrieve semantically similar historical tickets rather than relying only on keyword matching.",
+      "collections": [
+        "support_tickets",
+        "support_teams"
+      ],
+      "fields": [
+        "text_embedding",
+        "resolution",
+        "assigned_team_id"
+      ],
+      "query_patterns": [
+        "QP-2"
+      ],
+      "api_endpoints": [
+        "GET /api/tickets/{ticketId}/similar-resolved?limit=3|4"
+      ],
+      "frontend_pages": [
+        "ticket_review"
+      ]
+    }
+  },
+  "use_cases": {
+    "UC-1": {
+      "title": "Suggest ticket priority from ticket content",
+      "collections": [
+        "support_tickets"
+      ],
+      "query_patterns": [
+        "QP-1"
+      ],
+      "api_endpoints": [
+        "GET /api/tickets/{ticketId}/triage-suggestion"
+      ],
+      "frontend_pages": [
+        "ticket_review"
+      ]
+    },
+    "UC-2": {
+      "title": "Suggest routing to the right team",
+      "collections": [
+        "support_tickets",
+        "support_teams"
+      ],
+      "query_patterns": [
+        "QP-1"
+      ],
+      "api_endpoints": [
+        "GET /api/tickets/{ticketId}/triage-suggestion",
+        "GET /api/teams"
+      ],
+      "frontend_pages": [
+        "ticket_review",
+        "ticket_create"
+      ]
+    },
+    "UC-3": {
+      "title": "Find similar previously resolved tickets",
+      "collections": [
+        "support_tickets",
+        "support_teams"
+      ],
+      "query_patterns": [
+        "QP-2"
+      ],
+      "api_endpoints": [
+        "GET /api/tickets/{ticketId}/similar-resolved?limit=3|4"
+      ],
+      "frontend_pages": [
+        "ticket_review"
+      ]
+    },
+    "UC-4": {
+      "title": "View live support operations dashboard",
+      "collections": [
+        "support_tickets",
+        "support_teams",
+        "dashboard_metric_snapshots"
+      ],
+      "query_patterns": [
+        "QP-3",
+        "QP-4",
+        "QP-5",
+        "QP-6",
+        "QP-7",
+        "QP-8"
+      ],
+      "api_endpoints": [
+        "GET /api/dashboard/ticket-volume-by-product-line",
+        "GET /api/dashboard/ticket-volume-by-priority",
+        "GET /api/dashboard/avg-resolution-time-by-team"
+      ],
+      "frontend_pages": [
+        "dashboard"
+      ]
+    }
+  },
+  "pages": {
+    "home": {
+      "route": "/",
+      "endpoints": [
+        "GET /api/teams?active=true"
+      ],
+      "supports_requirements": [
+        "FR-13",
+        "FR-16",
+        "FR-17"
+      ]
+    },
+    "ticket_create": {
+      "route": "/tickets/new",
+      "endpoints": [
+        "GET /api/teams?active=true",
+        "POST /api/tickets"
+      ],
+      "supports_requirements": [
+        "FR-1",
+        "FR-4",
+        "FR-15",
+        "FR-16",
+        "FR-17"
+      ]
+    },
+    "ticket_review": {
+      "route": "/tickets/:ticketId",
+      "endpoints": [
+        "GET /api/tickets/{ticketId}",
+        "GET /api/tickets/{ticketId}/triage-suggestion",
+        "GET /api/tickets/{ticketId}/similar-resolved?limit=4",
+        "GET /api/teams?active=true"
+      ],
+      "supports_requirements": [
+        "FR-1",
+        "FR-3",
+        "FR-4",
+        "FR-5",
+        "FR-6",
+        "FR-7",
+        "FR-8",
+        "FR-15",
+        "FR-16",
+        "FR-17",
+        "AI-1",
+        "AI-2",
+        "AI-3"
+      ]
+    },
+    "dashboard": {
+      "route": "/dashboard",
+      "endpoints": [
+        "GET /api/dashboard/ticket-volume-by-product-line",
+        "GET /api/dashboard/ticket-volume-by-priority",
+        "GET /api/dashboard/avg-resolution-time-by-team",
+        "GET /api/teams?active=true"
+      ],
+      "supports_requirements": [
+        "FR-9",
+        "FR-10",
+        "FR-11",
+        "FR-12",
+        "FR-15"
+      ]
+    }
+  }
+}
