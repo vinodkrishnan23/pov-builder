@@ -1,0 +1,14 @@
+{
+  "name": "northwind-support-ticket-triage-backend",
+  "version": "1.0.0",
+  "description": "Backend for northwind_support_ticket_triage POV",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "mongodb": "^6.8.0"
+  }
+}
