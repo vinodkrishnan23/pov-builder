@@ -1,0 +1,1125 @@
+{
+  "service": "northwind_support_pov_api",
+  "version": "1.0.0",
+  "scope": {
+    "in_scope": [
+      "ticket triage suggestion retrieval for simulated/internal POV review",
+      "similar resolved ticket retrieval for agent assistance",
+      "live dashboard metric retrieval",
+      "reference retrieval of support teams",
+      "straightforward CRUD needed to create and inspect simulated POV tickets"
+    ],
+    "out_of_scope": [
+      "production helpdesk integration",
+      "customer-facing access",
+      "workflow actions like full queue management or mark-resolved APIs unless directly supported by existing model/query patterns",
+      "inventing model-training or inference orchestration endpoints not backed by the authoritative model/query patterns"
+    ]
+  },
+  "resources": {
+    "tickets": {
+      "collection": "support_tickets",
+      "identifier": "ticket_id"
+    },
+    "teams": {
+      "collection": "support_teams",
+      "identifier": "team_id"
+    },
+    "dashboard_metric_snapshots": {
+      "collection": "dashboard_metric_snapshots"
+    }
+  },
+  "endpoints": [
+    {
+      "operationId": "createSimulatedTicket",
+      "method": "POST",
+      "path": "/api/tickets",
+      "purpose": "Create a simulated POV ticket that can later be reviewed for triage assistance and similar-ticket retrieval. This is a straightforward create on support_tickets and is limited to simulated/internal tickets.",
+      "request": {
+        "contentType": "application/json",
+        "body": {
+          "type": "object",
+          "required": [
+            "ticket_id",
+            "subject",
+            "description",
+            "customer_account_tier",
+            "product_line",
+            "status",
+            "created_at",
+            "is_historical_import"
+          ],
+          "properties": {
+            "ticket_id": {
+              "type": "string"
+            },
+            "subject": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "customer_account_tier": {
+              "type": "string"
+            },
+            "product_line": {
+              "type": "string"
+            },
+            "manual_priority": {
+              "type": "string",
+              "nullable": true
+            },
+            "channel": {
+              "type": "string",
+              "enum": [
+                "email",
+                "chat",
+                "phone"
+              ],
+              "nullable": true
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "new",
+                "open",
+                "resolved",
+                "closed"
+              ]
+            },
+            "assigned_team_id": {
+              "type": "string",
+              "description": "MongoDB ObjectId string for support_teams._id",
+              "nullable": true
+            },
+            "created_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "triaged_at": {
+              "type": "string",
+              "format": "date-time",
+              "nullable": true
+            },
+            "resolved_at": {
+              "type": "string",
+              "format": "date-time",
+              "nullable": true
+            },
+            "resolution": {
+              "type": "object",
+              "nullable": true,
+              "properties": {
+                "category": {
+                  "type": "string"
+                },
+                "summary": {
+                  "type": "string"
+                }
+              }
+            },
+            "triage_suggestion": {
+              "type": "object",
+              "nullable": true,
+              "properties": {
+                "suggested_priority": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "suggested_team_id": {
+                  "type": "string",
+                  "description": "MongoDB ObjectId string for support_teams._id",
+                  "nullable": true
+                },
+                "generated_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "model_version": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "confidence": {
+                  "type": "number",
+                  "nullable": true
+                }
+              }
+            },
+            "text_embedding": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "nullable": true
+            },
+            "ingest_batch_id": {
+              "type": "string",
+              "nullable": true
+            },
+            "is_historical_import": {
+              "type": "boolean",
+              "enum": [
+                false
+              ],
+              "description": "For this endpoint, only simulated/non-historical tickets should be created."
+            }
+          }
+        },
+        "notes": [
+          "This endpoint does not itself generate triage suggestions or embeddings; it only stores provided fields.",
+          "If triage_suggestion is omitted, later triage review may return no suggestion yet."
+        ]
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "type": "object",
+          "properties": {
+            "ticket_id": {
+              "type": "string"
+            },
+            "created": {
+              "type": "boolean"
+            },
+            "ticket": {
+              "type": "object",
+              "properties": {
+                "ticket_id": {
+                  "type": "string"
+                },
+                "subject": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "customer_account_tier": {
+                  "type": "string"
+                },
+                "product_line": {
+                  "type": "string"
+                },
+                "manual_priority": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "channel": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "status": {
+                  "type": "string"
+                },
+                "assigned_team_id": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "triaged_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "resolved_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "resolution": {
+                  "type": "object",
+                  "nullable": true
+                },
+                "triage_suggestion": {
+                  "type": "object",
+                  "nullable": true
+                },
+                "ingest_batch_id": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "is_historical_import": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        },
+        "errors": [
+          {
+            "status": 400,
+            "code": "INVALID_REQUEST",
+            "when": "Required fields are missing, enum/date formats are invalid, or is_historical_import is not false."
+          },
+          {
+            "status": 409,
+            "code": "TICKET_ID_ALREADY_EXISTS",
+            "when": "A ticket with the same ticket_id already exists."
+          }
+        ],
+        "backing": {
+          "type": "mongodb_operation",
+          "collection": "support_tickets",
+          "operation": "insertOne"
+        },
+        "traceability": {
+          "use_cases": [
+            "UC-1",
+            "UC-2",
+            "UC-3"
+          ],
+          "functional_requirements": [
+            "FR-1",
+            "FR-15",
+            "FR-17"
+          ]
+        }
+      },
+      ":{": "invalid due to formatting issue, ignore"
+    },
+    {
+      "operationId": "getTicketById",
+      "method": "GET",
+      "path": "/api/tickets/{ticketId}",
+      "purpose": "Fetch a ticket by ticket_id for simulated POV review or inspection.",
+      "request": {
+        "pathParams": {
+          "ticketId": {
+            "type": "string"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "type": "object",
+          "properties": {
+            "ticket_id": {
+              "type": "string"
+            },
+            "subject": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "customer_account_tier": {
+              "type": "string"
+            },
+            "product_line": {
+              "type": "string"
+            },
+            "manual_priority": {
+              "type": "string",
+              "nullable": true
+            },
+            "channel": {
+              "type": "string",
+              "nullable": true
+            },
+            "status": {
+              "type": "string"
+            },
+            "assigned_team_id": {
+              "type": "string",
+              "nullable": true
+            },
+            "created_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "triaged_at": {
+              "type": "string",
+              "format": "date-time",
+              "nullable": true
+            },
+            "resolved_at": {
+              "type": "string",
+              "format": "date-time",
+              "nullable": true
+            },
+            "resolution": {
+              "type": "object",
+              "nullable": true
+            },
+            "triage_suggestion": {
+              "type": "object",
+              "nullable": true
+            },
+            "ingest_batch_id": {
+              "type": "string",
+              "nullable": true
+            },
+            "is_historical_import": {
+              "type": "boolean"
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "status": 404,
+          "code": "TICKET_NOT_FOUND",
+          "when": "No ticket exists for the supplied ticket_id."
+        }
+      ],
+      "backing": {
+        "type": "mongodb_operation",
+        "collection": "support_tickets",
+        "operation": "findOne",
+        "filter": {
+          "ticket_id": "{ticketId}"
+        }
+      },
+      "traceability": {
+        "functional_requirements": [
+          "FR-1",
+          "FR-17"
+        ]
+      }
+    },
+    {
+      "operationId": "getTicketTriageSuggestion",
+      "method": "GET",
+      "path": "/api/tickets/{ticketId}/triage-suggestion",
+      "purpose": "Get the stored suggested priority and suggested routing team for a specific ticket so an agent can review triage assistance.",
+      "request": {
+        "pathParams": {
+          "ticketId": {
+            "type": "string"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "type": "object",
+          "properties": {
+            "ticket_id": {
+              "type": "string"
+            },
+            "subject": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "customer_account_tier": {
+              "type": "string"
+            },
+            "product_line": {
+              "type": "string"
+            },
+            "manual_priority": {
+              "type": "string",
+              "nullable": true
+            },
+            "status": {
+              "type": "string"
+            },
+            "triage_suggestion": {
+              "type": "object",
+              "nullable": true,
+              "properties": {
+                "suggested_priority": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "generated_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "model_version": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "confidence": {
+                  "type": "number",
+                  "nullable": true
+                }
+              }
+            },
+            "suggested_team": {
+              "type": "object",
+              "nullable": true,
+              "properties": {
+                "team_id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "active": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "status": 404,
+          "code": "TICKET_NOT_FOUND",
+          "when": "No ticket exists for the supplied ticket_id."
+        }
+      ],
+      "backing": {
+        "type": "query_pattern",
+        "query_pattern_id": "QP-1"
+      },
+      "traceability": {
+        "use_cases": [
+          "UC-1",
+          "UC-2"
+        ],
+        "functional_requirements": [
+          "FR-3",
+          "FR-4",
+          "FR-5",
+          "FR-15"
+        ],
+        "ai_genai_requirements": [
+          "AI-1",
+          "AI-2"
+        ]
+      }
+    },
+    {
+      "operationId": "getSimilarResolvedTicketsForTicket",
+      "method": "GET",
+      "path": "/api/tickets/{ticketId}/similar-resolved",
+      "purpose": "Return up to 4 semantically similar resolved historical tickets, including prior resolution details, for the current ticket under review.",
+      "request": {
+        "pathParams": {
+          "ticketId": {
+            "type": "string"
+          }
+        },
+        "queryParams": {
+          "limit": {
+            "type": "integer",
+            "required": false,
+            "default": 4,
+            "allowedValues": [
+              3,
+              4
+            ],
+            "description": "UI should request 3 or 4 to align to the stated POV requirement; backend still caps at 4."
+          }
+        },
+        "notes": [
+          "Backend must first load the current ticket to obtain text_embedding and ticket_id, then execute the vector search query pattern.",
+          "If the current ticket has no text_embedding, the API cannot execute the authoritative vector-search pattern."
+        ]
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "type": "object",
+          "properties": {
+            "ticket_id": {
+              "type": "string"
+            },
+            "results": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "ticket_id": {
+                    "type": "string"
+                  },
+                  "subject": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "product_line": {
+                    "type": "string"
+                  },
+                  "customer_account_tier": {
+                    "type": "string"
+                  },
+                  "manual_priority": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "channel": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "resolved_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "nullable": true
+                  },
+                  "resolution": {
+                    "type": "object",
+                    "properties": {
+                      "category": {
+                        "type": "string"
+                      },
+                      "summary": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "assigned_team": {
+                    "type": "object",
+                    "nullable": true,
+                    "properties": {
+                      "team_id": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "similarity_score": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "status": 404,
+          "code": "TICKET_NOT_FOUND",
+          "when": "No current ticket exists for the supplied ticket_id."
+        },
+        {
+          "status": 409,
+          "code": "TICKET_EMBEDDING_MISSING",
+          "when": "The current ticket does not have text_embedding, so the vector-search query pattern cannot be run."
+        }
+      ],
+      "backing": {
+        "type": "query_pattern",
+        "query_pattern_id": "QP-2",
+        "prerequisite_read": {
+          "type": "mongodb_operation",
+          "collection": "support_tickets",
+          "operation": "findOne",
+          "filter": {
+            "ticket_id": "{ticketId}"
+          },
+          "purpose": "Fetch current ticket embedding and validate existence before running QP-2"
+        }
+      },
+      "traceability": {
+        "use_cases": [
+          "UC-3"
+        ],
+        "functional_requirements": [
+          "FR-6",
+          "FR-7",
+          "FR-8",
+          "FR-15"
+        ],
+        "ai_genai_requirements": [
+          "AI-3"
+        ]
+      }
+    },
+    {
+      "operationId": "listSupportTeams",
+      "method": "GET",
+      "path": "/api/teams",
+      "purpose": "List support teams available in the POV for display, mapping, or routing-related UI needs.",
+      "request": {
+        "queryParams": {
+          "active": {
+            "type": "boolean",
+            "required": false
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "type": "object",
+          "properties": {
+            "teams": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "MongoDB ObjectId string"
+                  },
+                  "team_id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "active": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "errors": [],
+      "backing": {
+        "type": "mongodb_operation",
+        "collection": "support_teams",
+        "operation": "find"
+      },
+      "traceability": {
+        "functional_requirements": [
+          "FR-4",
+          "FR-11"
+        ]
+      }
+    },
+    {
+      "operationId": "getDashboardTicketVolumeByProductLine",
+      "method": "GET",
+      "path": "/api/dashboard/ticket-volume-by-product-line",
+      "purpose": "Get live chart points for ticket volume by product line over time.",
+      "request": {
+        "queryParams": {
+          "startDate": {
+            "type": "string",
+            "format": "date-time",
+            "required": true
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date-time",
+            "required": true
+          },
+          "granularity": {
+            "type": "string",
+            "required": true,
+            "enum": [
+              "hour",
+              "day",
+              "week"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "required": false,
+            "enum": [
+              "raw",
+              "snapshot"
+            ],
+            "default": "raw",
+            "description": "Chooses whether the endpoint is backed by raw-ticket aggregation or materialized snapshots."
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "type": "object",
+          "properties": {
+            "metric": {
+              "type": "string",
+              "enum": [
+                "ticket_volume_by_product_line"
+              ]
+            },
+            "source": {
+              "type": "string",
+              "enum": [
+                "raw",
+                "snapshot"
+              ]
+            },
+            "granularity": {
+              "type": "string",
+              "enum": [
+                "hour",
+                "day",
+                "week"
+              ]
+            },
+            "startDate": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "endDate": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "points": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "time_bucket": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "product_line": {
+                    "type": "string"
+                  },
+                  "ticket_count": {
+                    "type": "number"
+                  },
+                  "last_computed_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "nullable": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_DATE_RANGE",
+          "when": "startDate/endDate are missing, malformed, or startDate is not before endDate."
+        },
+        {
+          "status": 400,
+          "code": "INVALID_GRANULARITY",
+          "when": "granularity is not one of hour, day, or week."
+        }
+      ],
+      "backing": {
+        "type": "conditional_query_pattern",
+        "options": [
+          {
+            "when": {
+              "source": "raw"
+            },
+            "query_pattern_id": "QP-3"
+          },
+          {
+            "when": {
+              "source": "snapshot"
+            },
+            "query_pattern_id": "QP-6"
+          }
+        ]
+      },
+      "traceability": {
+        "use_cases": [
+          "UC-4"
+        ],
+        "functional_requirements": [
+          "FR-9",
+          "FR-12",
+          "FR-15"
+        ]
+      }
+    },
+    {
+      "operationId": "getDashboardTicketVolumeByPriority",
+      "method": "GET",
+      "path": "/api/dashboard/ticket-volume-by-priority",
+      "purpose": "Get live chart points for ticket volume by priority over time.",
+      "request": {
+        "queryParams": {
+          "startDate": {
+            "type": "string",
+            "format": "date-time",
+            "required": true
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date-time",
+            "required": true
+          },
+          "granularity": {
+            "type": "string",
+            "required": true,
+            "enum": [
+              "hour",
+              "day",
+              "week"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "required": false,
+            "enum": [
+              "raw",
+              "snapshot"
+            ],
+            "default": "raw"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "type": "object",
+          "properties": {
+            "metric": {
+              "type": "string",
+              "enum": [
+                "ticket_volume_by_priority"
+              ]
+            },
+            "source": {
+              "type": "string",
+              "enum": [
+                "raw",
+                "snapshot"
+              ]
+            },
+            "granularity": {
+              "type": "string",
+              "enum": [
+                "hour",
+                "day",
+                "week"
+              ]
+            },
+            "startDate": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "endDate": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "points": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "time_bucket": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "priority": {
+                    "type": "string"
+                  },
+                  "ticket_count": {
+                    "type": "number"
+                  },
+                  "last_computed_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "nullable": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_DATE_RANGE",
+          "when": "startDate/endDate are missing, malformed, or startDate is not before endDate."
+        },
+        {
+          "status": 400,
+          "code": "INVALID_GRANULARITY",
+          "when": "granularity is not one of hour, day, or week."
+        }
+      ],
+      "backing": {
+        "type": "conditional_query_pattern",
+        "options": [
+          {
+            "when": {
+              "source": "raw"
+            },
+            "query_pattern_id": "QP-4"
+          },
+          {
+            "when": {
+              "source": "snapshot"
+            },
+            "query_pattern_id": "QP-7"
+          }
+        ]
+      },
+      "traceability": {
+        "use_cases": [
+          "UC-4"
+        ],
+        "functional_requirements": [
+          "FR-10",
+          "FR-12",
+          "FR-15"
+        ]
+      }
+    },
+    {
+      "operationId": "getDashboardAvgResolutionTimeByTeam",
+      "method": "GET",
+      "path": "/api/dashboard/avg-resolution-time-by-team",
+      "purpose": "Get live dashboard data for average resolution time by team.",
+      "request": {
+        "queryParams": {
+          "startDate": {
+            "type": "string",
+            "format": "date-time",
+            "required": true
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date-time",
+            "required": true
+          },
+          "granularity": {
+            "type": "string",
+            "required": false,
+            "enum": [
+              "hour",
+              "day",
+              "week"
+            ],
+            "description": "Required when source=snapshot; ignored for raw because the authoritative raw query pattern returns team-level aggregates over the requested date range rather than a time series."
+          },
+          "source": {
+            "type": "string",
+            "required": false,
+            "enum": [
+              "raw",
+              "snapshot"
+            ],
+            "default": "raw"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "type": "object",
+          "properties": {
+            "metric": {
+              "type": "string",
+              "enum": [
+                "avg_resolution_time_by_team"
+              ]
+            },
+            "source": {
+              "type": "string",
+              "enum": [
+                "raw",
+                "snapshot"
+              ]
+            },
+            "granularity": {
+              "type": "string",
+              "enum": [
+                "hour",
+                "day",
+                "week"
+              ],
+              "nullable": true
+            },
+            "startDate": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "endDate": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "points": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "team_id": {
+                    "type": "string"
+                  },
+                  "team_name": {
+                    "type": "string"
+                  },
+                  "avg_resolution_hours": {
+                    "type": "number",
+                    "nullable": true
+                  },
+                  "resolved_ticket_count": {
+                    "type": "number",
+                    "nullable": true
+                  },
+                  "time_bucket": {
+                    "type": "string",
+                    "format": "date-time",
+                    "nullable": true
+                  },
+                  "last_computed_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "nullable": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_DATE_RANGE",
+          "when": "startDate/endDate are missing, malformed, or startDate is not before endDate."
+        },
+        {
+          "status": 400,
+          "code": "INVALID_GRANULARITY",
+          "when": "granularity is invalid, or omitted when source=snapshot."
+        }
+      ],
+      "backing": {
+        "type": "conditional_query_pattern",
+        "options": [
+          {
+            "when": {
+              "source": "raw"
+            },
+            "query_pattern_id": "QP-5"
+          },
+          {
+            "when": {
+              "source": "snapshot"
+            },
+            "query_pattern_id": "QP-8"
+          }
+        ]
+      },
+      "traceability": {
+        "use_cases": [
+          "UC-4"
+        ],
+        "functional_requirements": [
+          "FR-11",
+          "FR-12",
+          "FR-15"
+        ]
+      }
+    }
+  ],
+  "notes": [
+    "No endpoint is defined to generate triage suggestions, compute embeddings, or refresh dashboard snapshots because those operations are not present as authoritative query patterns and are not straightforward CRUD on the provided data model.",
+    "No queue-list endpoint is defined because the spec explicitly treats queue viewing as simulated/out of committed scope and no authoritative query pattern covers it.",
+    "The dashboard average-resolution-time metric has an asymmetry in authoritative query patterns: raw mode returns a team aggregate across the date range, while snapshot mode can return time-bucketed points. The API preserves this rather than inventing a new raw time-series query."
+  ]
+}
