@@ -122,7 +122,7 @@ export default function TicketCreatePage() {
     setSubmitError('');
     try {
       const response = await api.createTicket(body);
-      navigate(`/tickets/${encodeURIComponent(response.ticket_id)}`, { replace: true });
+      navigate(`/tickets/${encodeURIComponent(response.ticket_id)}`);
     } catch (error) {
       if (error.status === 409 && error.code === 'TICKET_ID_ALREADY_EXISTS') {
         setFieldErrors((prev) => ({ ...prev, ticket_id: 'A ticket with this ID already exists.' }));
