@@ -1,0 +1,14 @@
+{
+  "name": "mongodb-pov-support-seeder",
+  "version": "1.0.0",
+  "description": "Seed synthetic support dataset for MongoDB POV Builder",
+  "main": "seed.js",
+  "license": "MIT",
+  "type": "commonjs",
+  "scripts": {
+    "seed": "node seed.js"
+  },
+  "dependencies": {
+    "mongodb": "^6.8.0"
+  }
+}
