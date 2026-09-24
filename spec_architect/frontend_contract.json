@@ -1,0 +1,503 @@
+{
+  "app_name": "Northwind Support POV",
+  "base_path": "/",
+  "notes": [
+    "Frontend is internal-only POV UI for historical-ticket-based support workflows.",
+    "API contract is authoritative; no queue-list endpoint, no ticket list endpoint, no auth flow, no raw-text triage generation endpoint, and no raw-text similar-ticket search endpoint are designed here.",
+    "Because the API exposes ticket detail by ticket number only, the agent workflow requires a ticket-number-driven entry pattern (for example deep link or direct lookup input) rather than a browsable queue.",
+    "Because the API only returns stored triage guidance and stored similar tickets on ticket detail, the UI can display guidance but cannot trigger generation/regeneration from the browser.",
+    "Because similar-ticket search requires a query embedding and no embedding-generation endpoint exists, ad hoc similar-ticket search from raw text is not included as a user-facing screen."
+  ],
+  "routes": [
+    {
+      "path": "/",
+      "page_id": "home",
+      "title": "Home / Entry"
+    },
+    {
+      "path": "/tickets/lookup",
+      "page_id": "ticket_lookup",
+      "title": "Ticket Lookup"
+    },
+    {
+      "path": "/tickets/:ticketNumber",
+      "page_id": "ticket_detail",
+      "title": "Ticket Detail"
+    },
+    {
+      "path": "/dashboard",
+      "page_id": "dashboard",
+      "title": "Operations Dashboard"
+    },
+    {
+      "path": "/admin/dashboard-refresh",
+      "page_id": "dashboard_refresh_admin",
+      "title": "Dashboard Refresh Admin"
+    }
+  ],
+  "pages": [
+    {
+      "id": "home",
+      "route": "/",
+      "purpose": "Provide simple internal landing page with navigation to ticket lookup, dashboard, and admin dashboard refresh workflows. This compensates for the lack of any API-backed ticket list or queue endpoint.",
+      "personas": [
+        "Support Agent",
+        "Support Team Lead",
+        "Head of Customer Support"
+      ],
+      "data_requirements": [],
+      "api_endpoints": [],
+      "user_actions": [
+        {
+          "action": "Go to ticket lookup",
+          "result": "Navigate to /tickets/lookup"
+        },
+        {
+          "action": "Go to dashboard",
+          "result": "Navigate to /dashboard"
+        },
+        {
+          "action": "Go to admin dashboard refresh",
+          "result": "Navigate to /admin/dashboard-refresh"
+        }
+      ],
+      "loading_states": [],
+      "error_states": []
+    },
+    {
+      "id": "ticket_lookup",
+      "route": "/tickets/lookup",
+      "purpose": "Let an internal user enter a known ticket number and open the ticket detail workflow. Necessary because the API contract has no endpoint to list tickets or show a queue.",
+      "personas": [
+        "Support Agent"
+      ],
+      "data_requirements": [
+        {
+          "name": "ticket_number_input",
+          "description": "User-entered ticket number string used to navigate to the ticket detail page."
+        }
+      ],
+      "api_endpoints": [],
+      "user_actions": [
+        {
+          "action": "Enter ticket number",
+          "result": "Client-side form state updates"
+        },
+        {
+          "action": "Submit lookup",
+          "result": "Navigate to /tickets/{ticketNumber}"
+        },
+        {
+          "action": "Open dashboard",
+          "result": "Navigate to /dashboard"
+        }
+      ],
+      "loading_states": [],
+      "error_states": [
+        {
+          "state": "Empty or malformed local input",
+          "handling": "Disable submit or show inline validation before navigation."
+        },
+        {
+          "state": "Ticket not found after navigation",
+          "handling": "Handled on the ticket detail page using GET /tickets/{ticketNumber} 404 response."
+        }
+      ]
+    },
+    {
+      "id": "ticket_detail",
+      "route": "/tickets/:ticketNumber",
+      "purpose": "Primary agent workflow screen showing ticket details, stored triage guidance, and 3-4 similar resolved historical tickets with resolution summaries. Also supports status updates such as marking in progress or resolved.",
+      "personas": [
+        "Support Agent"
+      ],
+      "data_requirements": [
+        {
+          "name": "ticket core details",
+          "description": "Ticket number, source channel, subject, description, account tier, product line, status, created_at, manual_priority."
+        },
+        {
+          "name": "triage suggestion",
+          "description": "Suggested priority, confidence, generated_at, model_version, suggested team details; may be null/unavailable."
+        },
+        {
+          "name": "similar resolved tickets",
+          "description": "3-4 similar tickets including subject, description, product line, manual priority, resolution category, and resolution summary."
+        },
+        {
+          "name": "support teams",
+          "description": "Optional reference data used to validate or populate assigned team selection when updating status with assigned_team_id."
+        }
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "getTicketDetail",
+          "usage": "Initial page load for full ticket context, triage suggestion, and similar tickets."
+        },
+        {
+          "operation_id": "listSupportTeams",
+          "usage": "Optional fetch for active teams if UI allows agent to set assigned team while updating status."
+        },
+        {
+          "operation_id": "updateTicketStatus",
+          "usage": "Update workflow status, optional resolved_at, resolution_time_minutes, and assigned_team_id."
+        },
+        {
+          "operation_id": "getTicketTriageSuggestion",
+          "usage": "Optional lightweight refresh of triage panel only, if UI offers manual panel refresh without reloading the whole page."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "View ticket details",
+          "result": "Inspect imported historical ticket content and current status."
+        },
+        {
+          "action": "Review triage suggestion",
+          "result": "See suggested priority, confidence, model version, generation time, and recommended team when available."
+        },
+        {
+          "action": "Review similar tickets",
+          "result": "Inspect 3-4 resolved historical tickets and their resolution summaries for guidance."
+        },
+        {
+          "action": "Refresh triage suggestion panel",
+          "result": "Re-fetch stored triage suggestion only via GET /tickets/{ticketNumber}/triage-suggestion; note this does not generate new guidance."
+        },
+        {
+          "action": "Mark ticket in progress",
+          "result": "PATCH /tickets/{ticketNumber}/status with status=in_progress and optional assigned_team_id."
+        },
+        {
+          "action": "Mark ticket resolved",
+          "result": "PATCH /tickets/{ticketNumber}/status with status=resolved and optional resolved_at, resolution_time_minutes, assigned_team_id."
+        },
+        {
+          "action": "Mark ticket closed",
+          "result": "PATCH /tickets/{ticketNumber}/status with status=closed and optional assigned_team_id."
+        },
+        {
+          "action": "Return to lookup",
+          "result": "Navigate to /tickets/lookup"
+        }
+      ],
+      "loading_states": [
+        {
+          "state": "Initial page loading",
+          "handling": "Show ticket detail skeleton with separate placeholders for ticket header, triage card, and similar-ticket cards."
+        },
+        {
+          "state": "Triage panel refreshing",
+          "handling": "Show inline spinner in triage card while preserving current triage data if already loaded."
+        },
+        {
+          "state": "Status update saving",
+          "handling": "Disable status action controls and show saving indicator until PATCH completes."
+        },
+        {
+          "state": "Support teams loading",
+          "handling": "Show disabled team selector placeholder if team assignment control is present."
+        }
+      ],
+      "error_states": [
+        {
+          "state": "404 TICKET_NOT_FOUND from getTicketDetail",
+          "handling": "Show dedicated not-found state with entered ticket number and link back to lookup."
+        },
+        {
+          "state": "400 INVALID_TICKET_NUMBER from getTicketDetail or getTicketTriageSuggestion",
+          "handling": "Show invalid ticket number message and link back to lookup."
+        },
+        {
+          "state": "Ticket detail fetch failure (network/server)",
+          "handling": "Show retry action for full-page fetch error."
+        },
+        {
+          "state": "No stored triage suggestion",
+          "handling": "Render neutral empty state explaining stored suggestion is not available yet; do not imply on-demand generation."
+        },
+        {
+          "state": "No similar tickets returned",
+          "handling": "Render empty state indicating no cached similar resolved tickets are available for this ticket."
+        },
+        {
+          "state": "Support teams fetch failure",
+          "handling": "Hide or disable team assignment selector and allow status updates without assigned_team_id when possible."
+        },
+        {
+          "state": "400 INVALID_STATUS or INVALID_TEAM_ID on update",
+          "handling": "Show inline form error and preserve user selections."
+        },
+        {
+          "state": "404 TICKET_NOT_FOUND on update",
+          "handling": "Show toast/banner that ticket no longer exists and offer return to lookup."
+        }
+      ]
+    },
+    {
+      "id": "dashboard",
+      "route": "/dashboard",
+      "purpose": "Operational dashboard for team leads and stakeholders showing ticket volume by product line and priority over time plus average resolution time by team over time, based on imported historical data snapshots.",
+      "personas": [
+        "Support Team Lead",
+        "Head of Customer Support"
+      ],
+      "data_requirements": [
+        {
+          "name": "ticket volume series",
+          "description": "Trend points bucketed by selected granularity and date range, with product_line, priority, value, ticket_count, refreshed_at."
+        },
+        {
+          "name": "average resolution time series",
+          "description": "Trend points bucketed by selected granularity and date range, with team details, value, ticket_count, refreshed_at."
+        },
+        {
+          "name": "dashboard query controls",
+          "description": "Granularity (hour/day/week), start_date, end_date."
+        }
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "getDashboardTicketVolume",
+          "usage": "Fetch ticket volume trend chart data for selected date range and granularity."
+        },
+        {
+          "operation_id": "getDashboardAverageResolutionTime",
+          "usage": "Fetch average resolution time by team chart data for selected date range and granularity."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "Set date range",
+          "result": "Trigger dashboard data reload using selected start_date and end_date."
+        },
+        {
+          "action": "Set granularity",
+          "result": "Trigger dashboard data reload using hour/day/week."
+        },
+        {
+          "action": "Refresh dashboard view",
+          "result": "Re-fetch both metric endpoints using current controls."
+        },
+        {
+          "action": "Navigate to admin refresh",
+          "result": "Open admin page to request recomputation of snapshots when fresher data is needed."
+        }
+      ],
+      "loading_states": [
+        {
+          "state": "Initial dashboard load",
+          "handling": "Show page-level skeleton with chart placeholders."
+        },
+        {
+          "state": "Metric reload after control changes",
+          "handling": "Keep current charts visible with loading overlay/spinner per chart or section."
+        }
+      ],
+      "error_states": [
+        {
+          "state": "400 INVALID_GRANULARITY",
+          "handling": "Show inline control validation and revert to last valid granularity."
+        },
+        {
+          "state": "400 INVALID_DATE_RANGE",
+          "handling": "Show inline date-range validation and block fetch until fixed."
+        },
+        {
+          "state": "Ticket volume fetch failure",
+          "handling": "Show card-level error with retry for volume chart while allowing avg-resolution chart to remain usable."
+        },
+        {
+          "state": "Average resolution time fetch failure",
+          "handling": "Show card-level error with retry for resolution chart while allowing volume chart to remain usable."
+        },
+        {
+          "state": "No data returned for selected range",
+          "handling": "Show no-data state per chart with current filters summarized."
+        }
+      ],
+      "constraints": [
+        {
+          "constraint": "No server-side filters by team, product line, or priority are available beyond granularity and date range. UI may group/split returned data client-side but cannot request narrower slices from the API."
+        }
+      ]
+    },
+    {
+      "id": "dashboard_refresh_admin",
+      "route": "/admin/dashboard-refresh",
+      "purpose": "Internal operational page to request recomputation/refresh of pre-aggregated dashboard snapshots for ticket volume and average resolution time. This exists because dashboard freshness expectations are open and the API exposes admin refresh endpoints.",
+      "personas": [
+        "Support Team Lead",
+        "Head of Customer Support"
+      ],
+      "data_requirements": [
+        {
+          "name": "refresh request inputs",
+          "description": "Metric type selection, granularity, start_date, end_date."
+        },
+        {
+          "name": "optional support teams reference",
+          "description": "Not required for refresh workflow; no job status endpoint exists."
+        }
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "refreshDashboardTicketVolumeSnapshots",
+          "usage": "Submit refresh request for ticket volume snapshots."
+        },
+        {
+          "operation_id": "refreshDashboardAverageResolutionTimeSnapshots",
+          "usage": "Submit refresh request for avg resolution time snapshots."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "Select metric type ticket volume",
+          "result": "Prepare POST /admin/dashboard-metrics/ticket-volume/refresh payload."
+        },
+        {
+          "action": "Select metric type average resolution time",
+          "result": "Prepare POST /admin/dashboard-metrics/avg-resolution-time/refresh payload."
+        },
+        {
+          "action": "Set granularity and date range",
+          "result": "Prepare refresh payload."
+        },
+        {
+          "action": "Submit refresh request",
+          "result": "POST selected refresh endpoint and show accepted confirmation."
+        },
+        {
+          "action": "Return to dashboard",
+          "result": "Navigate to /dashboard and manually refresh charts."
+        }
+      ],
+      "loading_states": [
+        {
+          "state": "Submitting refresh request",
+          "handling": "Disable submit and show pending indicator until 202 or error response returns."
+        }
+      ],
+      "error_states": [
+        {
+          "state": "400 INVALID_GRANULARITY",
+          "handling": "Show inline validation for granularity field."
+        },
+        {
+          "state": "400 INVALID_DATE_RANGE",
+          "handling": "Show inline validation for date range fields."
+        },
+        {
+          "state": "Network/server failure",
+          "handling": "Show retryable form-level error."
+        },
+        {
+          "state": "No job tracking available after 202",
+          "handling": "Show informational state that refresh was accepted but completion progress cannot be tracked because the API contract provides no job-status endpoint."
+        }
+      ]
+    }
+  ],
+  "components": [
+    {
+      "id": "app_shell",
+      "type": "layout",
+      "description": "Global internal layout with header, nav, and page container."
+    },
+    {
+      "id": "primary_nav",
+      "type": "navigation",
+      "description": "Links to Home, Ticket Lookup, Dashboard, and Admin Dashboard Refresh."
+    },
+    {
+      "id": "ticket_lookup_form",
+      "type": "form",
+      "description": "Single-field ticket number lookup form with client-side validation and navigation."
+    },
+    {
+      "id": "ticket_header_card",
+      "type": "data_display",
+      "description": "Displays ticket metadata and current workflow status."
+    },
+    {
+      "id": "ticket_body_panel",
+      "type": "data_display",
+      "description": "Shows subject and free-text description."
+    },
+    {
+      "id": "triage_suggestion_card",
+      "type": "data_display",
+      "description": "Displays suggested priority, confidence, model version, generated time, and suggested team or unavailable state."
+    },
+    {
+      "id": "similar_ticket_list",
+      "type": "data_display",
+      "description": "Container for 3-4 similar resolved ticket cards."
+    },
+    {
+      "id": "similar_ticket_card",
+      "type": "data_display",
+      "description": "Displays historical ticket summary plus resolution category and resolution summary."
+    },
+    {
+      "id": "status_update_form",
+      "type": "form",
+      "description": "Controls for changing ticket status with optional resolved_at, resolution_time_minutes, and assigned team."
+    },
+    {
+      "id": "team_select",
+      "type": "form_control",
+      "description": "Dropdown populated from GET /support-teams?active=true when assignment is exposed in UI."
+    },
+    {
+      "id": "inline_error_alert",
+      "type": "feedback",
+      "description": "Reusable inline error message for form or section-level API errors."
+    },
+    {
+      "id": "full_page_error_state",
+      "type": "feedback",
+      "description": "Reusable full-page fetch error/not-found state."
+    },
+    {
+      "id": "empty_state_panel",
+      "type": "feedback",
+      "description": "Reusable empty state for missing triage, similar tickets, or no chart data."
+    },
+    {
+      "id": "date_range_picker",
+      "type": "form_control",
+      "description": "Shared start_date and end_date control for dashboard and admin refresh."
+    },
+    {
+      "id": "granularity_selector",
+      "type": "form_control",
+      "description": "Shared hour/day/week selector for dashboard and admin refresh."
+    },
+    {
+      "id": "ticket_volume_chart",
+      "type": "visualization",
+      "description": "Chart rendering ticket volume over time with client-side grouping by product line and priority from returned points."
+    },
+    {
+      "id": "avg_resolution_time_chart",
+      "type": "visualization",
+      "description": "Chart rendering average resolution time over time by team from returned points."
+    },
+    {
+      "id": "dashboard_filters_bar",
+      "type": "form",
+      "description": "Control row for granularity, date range, and manual dashboard reload."
+    },
+    {
+      "id": "refresh_request_form",
+      "type": "form",
+      "description": "Admin form for requesting snapshot recomputation for one metric at a time."
+    },
+    {
+      "id": "toast_notifications",
+      "type": "feedback",
+      "description": "Transient success/error messages for saves and refresh submissions."
+    }
+  ]
+}
