@@ -1,0 +1,821 @@
+{
+  "app_name": "POV Intake Review Console",
+  "base_path": "/",
+  "constraints": [
+    "Frontend is limited to POV intake/review workflows supported by the authoritative API contract.",
+    "No UI capability should imply unsupported backend features such as search, auth, pagination beyond limit=50, comments/history, bulk actions, or fine-grained open-question mutation.",
+    "Where data is not exposed by the API (for example revision history or user ownership), the UI should state that the information is unavailable rather than infer it."
+  ],
+  "routes": [
+    {
+      "path": "/",
+      "page_id": "dashboard",
+      "name": "Dashboard"
+    },
+    {
+      "path": "/intakes",
+      "page_id": "recent_intakes",
+      "name": "Recent Intakes"
+    },
+    {
+      "path": "/intakes/new",
+      "page_id": "new_intake",
+      "name": "New Intake"
+    },
+    {
+      "path": "/queues/:status",
+      "page_id": "status_queue",
+      "name": "Status Queue",
+      "route_params": [
+        {
+          "name": "status",
+          "type": "string",
+          "allowed_values": [
+            "incomplete",
+            "needs_clarification",
+            "ready_for_redesign"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/intakes/:pov_intake_id",
+      "page_id": "intake_detail",
+      "name": "Intake Detail",
+      "route_params": [
+        {
+          "name": "pov_intake_id",
+          "type": "string",
+          "format": "objectId"
+        }
+      ]
+    },
+    {
+      "path": "/intakes/:pov_intake_id/questions",
+      "page_id": "intake_open_questions",
+      "name": "Intake Open Questions",
+      "route_params": [
+        {
+          "name": "pov_intake_id",
+          "type": "string",
+          "format": "objectId"
+        }
+      ]
+    },
+    {
+      "path": "/questions/unresolved",
+      "page_id": "unresolved_questions",
+      "name": "Unresolved Questions"
+    }
+  ],
+  "pages": [
+    {
+      "page_id": "dashboard",
+      "route": "/",
+      "purpose": "Operational landing page for monitoring intake workflow volume and quickly accessing recent work and pending clarification queues.",
+      "data_requirements": [
+        {
+          "name": "status_counts",
+          "description": "Counts of intakes by workflow status.",
+          "source_endpoint": {
+            "operation_id": "getPovIntakeStatusSummary",
+            "method": "GET",
+            "path": "/api/pov-intakes/summary/status-counts"
+          }
+        },
+        {
+          "name": "recent_intakes_preview",
+          "description": "Most recent intake records for quick triage.",
+          "source_endpoint": {
+            "operation_id": "listRecentPovIntakes",
+            "method": "GET",
+            "path": "/api/pov-intakes",
+            "query": {
+              "limit": 10
+            }
+          }
+        }
+      ],
+      "api_consumption": [
+        "getPovIntakeStatusSummary",
+        "listRecentPovIntakes"
+      ],
+      "user_actions": [
+        {
+          "action": "navigate_to_recent_intakes",
+          "description": "Open full recent intakes list."
+        },
+        {
+          "action": "navigate_to_new_intake",
+          "description": "Open intake creation form."
+        },
+        {
+          "action": "navigate_to_status_queue",
+          "description": "Click a status count card to open the matching queue."
+        },
+        {
+          "action": "navigate_to_intake_detail",
+          "description": "Open a recent intake from the preview list."
+        },
+        {
+          "action": "navigate_to_unresolved_questions",
+          "description": "Open unresolved questions across all intakes."
+        }
+      ],
+      "loading_states": [
+        "Initial skeleton cards for status counts and recent intake list.",
+        "Independent loading indicators so recent list can render even if counts are still loading."
+      ],
+      "error_states": [
+        {
+          "condition": "Status summary request fails",
+          "ui_response": "Show inline error panel in summary section with retry action."
+        },
+        {
+          "condition": "Recent intakes request fails",
+          "ui_response": "Show inline error panel in recent activity section with retry action."
+        },
+        {
+          "condition": "Server returns 500",
+          "ui_response": "Show generic operational error message without implying missing permissions or unsupported features."
+        }
+      ]
+    },
+    {
+      "page_id": "new_intake",
+      "route": "/intakes/new",
+      "purpose": "Create a new POV intake record from the available InitialPOVSpec and review output.",
+      "data_requirements": [
+        {
+          "name": "initial_form_seed",
+          "description": "Client-seeded form values derived from the provided InitialPOVSpec; no API preload required."
+        }
+      ],
+      "api_consumption": [
+        "createPovIntake"
+      ],
+      "user_actions": [
+        {
+          "action": "edit_executive_summary",
+          "description": "Enter or refine executive summary."
+        },
+        {
+          "action": "edit_raw_initial_pov_spec",
+          "description": "Paste or adjust the raw InitialPOVSpec object."
+        },
+        {
+          "action": "edit_review_result",
+          "description": "Provide review context/result object."
+        },
+        {
+          "action": "set_status",
+          "description": "Choose one of incomplete, needs_clarification, ready_for_redesign."
+        },
+        {
+          "action": "manage_open_questions",
+          "description": "Add/remove/edit question, category, status, and optional notes rows."
+        },
+        {
+          "action": "manage_assumptions",
+          "description": "Add/remove assumption strings."
+        },
+        {
+          "action": "manage_success_criteria",
+          "description": "Add/remove success criteria strings."
+        },
+        {
+          "action": "edit_source_note",
+          "description": "Set optional source note."
+        },
+        {
+          "action": "submit_create",
+          "description": "Submit the form to create the intake."
+        },
+        {
+          "action": "cancel",
+          "description": "Return to dashboard or list without saving."
+        }
+      ],
+      "loading_states": [
+        "Disable submit and show saving state during POST."
+      ],
+      "error_states": [
+        {
+          "condition": "Client-side required fields missing",
+          "ui_response": "Prevent submit and highlight required sections."
+        },
+        {
+          "condition": "POST /api/pov-intakes returns 400 VALIDATION_ERROR",
+          "ui_response": "Map validation failure to form-level and section-level errors; preserve entered values."
+        },
+        {
+          "condition": "POST fails with 500",
+          "ui_response": "Show non-destructive error banner and allow retry."
+        }
+      ],
+      "form_contract": {
+        "required_fields": [
+          "executive_summary",
+          "raw_initial_pov_spec",
+          "review_result",
+          "status",
+          "open_questions",
+          "assumptions",
+          "success_criteria"
+        ],
+        "status_options": [
+          "incomplete",
+          "needs_clarification",
+          "ready_for_redesign"
+        ],
+        "open_question_item_fields": [
+          "question",
+          "category",
+          "status",
+          "notes"
+        ]
+      }
+    },
+    {
+      "page_id": "recent_intakes",
+      "route": "/intakes",
+      "purpose": "Browse the latest submitted POV intake records for operational triage.",
+      "data_requirements": [
+        {
+          "name": "recent_intakes",
+          "description": "Recent intake records up to API maximum 50.",
+          "source_endpoint": {
+            "operation_id": "listRecentPovIntakes",
+            "method": "GET",
+            "path": "/api/pov-intakes",
+            "query": {
+              "limit": "user-selectable up to 50"
+            }
+          }
+        }
+      ],
+      "api_consumption": [
+        "listRecentPovIntakes"
+      ],
+      "user_actions": [
+        {
+          "action": "change_limit",
+          "description": "Adjust the number of returned items up to 50."
+        },
+        {
+          "action": "navigate_to_intake_detail",
+          "description": "Open a selected intake."
+        },
+        {
+          "action": "navigate_to_status_queue",
+          "description": "Jump to a filtered queue by clicking a status badge/filter shortcut."
+        },
+        {
+          "action": "navigate_to_new_intake",
+          "description": "Create a new intake."
+        }
+      ],
+      "loading_states": [
+        "List skeleton rows while loading."
+      ],
+      "error_states": [
+        {
+          "condition": "GET recent intakes fails",
+          "ui_response": "Show full-page error state with retry."
+        }
+      ],
+      "notes": [
+        "No search or pagination beyond the limit parameter should be offered because the API does not support it."
+      ]
+    },
+    {
+      "page_id": "status_queue",
+      "route": "/queues/:status",
+      "purpose": "Work a queue of intakes in a single workflow state, with visibility into open questions for prioritization.",
+      "data_requirements": [
+        {
+          "name": "status_filtered_intakes",
+          "description": "Intakes filtered by route status value and ordered by updated recency.",
+          "source_endpoint": {
+            "operation_id": "listPovIntakesByStatus",
+            "method": "GET",
+            "path": "/api/pov-intakes/by-status/{status}",
+            "query": {
+              "limit": 50
+            }
+          }
+        }
+      ],
+      "api_consumption": [
+        "listPovIntakesByStatus"
+      ],
+      "user_actions": [
+        {
+          "action": "switch_status_queue",
+          "description": "Move between incomplete, needs_clarification, and ready_for_redesign queues via tabs/segmented control."
+        },
+        {
+          "action": "navigate_to_intake_detail",
+          "description": "Open full intake review."
+        },
+        {
+          "action": "navigate_to_open_questions_view",
+          "description": "Open focused questions view for the intake."
+        },
+        {
+          "action": "refresh_queue",
+          "description": "Refetch the queue."
+        }
+      ],
+      "loading_states": [
+        "Queue list skeleton on initial load.",
+        "Tab change shows lightweight loading state while new status queue loads."
+      ],
+      "error_states": [
+        {
+          "condition": "Route status is not one of allowed values before request",
+          "ui_response": "Render client-side invalid route state and offer navigation to valid queues."
+        },
+        {
+          "condition": "API returns 400 INVALID_STATUS",
+          "ui_response": "Show invalid status message and redirect option."
+        },
+        {
+          "condition": "Queue fetch fails",
+          "ui_response": "Show retryable error state."
+        }
+      ]
+    },
+    {
+      "page_id": "intake_detail",
+      "route": "/intakes/:pov_intake_id",
+      "purpose": "Primary read/write workspace for reviewing and updating one POV intake.",
+      "data_requirements": [
+        {
+          "name": "intake_detail",
+          "description": "Complete intake record for display and editing.",
+          "source_endpoint": {
+            "operation_id": "getPovIntakeDetail",
+            "method": "GET",
+            "path": "/api/pov-intakes/{pov_intake_id}"
+          }
+        }
+      ],
+      "api_consumption": [
+        "getPovIntakeDetail",
+        "updatePovIntake",
+        "deletePovIntake"
+      ],
+      "user_actions": [
+        {
+          "action": "edit_executive_summary",
+          "description": "Modify executive summary."
+        },
+        {
+          "action": "edit_raw_initial_pov_spec",
+          "description": "Modify raw intake object."
+        },
+        {
+          "action": "edit_review_result",
+          "description": "Modify review result object."
+        },
+        {
+          "action": "set_status",
+          "description": "Update workflow status."
+        },
+        {
+          "action": "edit_open_questions",
+          "description": "Edit the full open_questions array."
+        },
+        {
+          "action": "edit_assumptions",
+          "description": "Edit assumptions array."
+        },
+        {
+          "action": "edit_success_criteria",
+          "description": "Edit success criteria array."
+        },
+        {
+          "action": "edit_source_note",
+          "description": "Modify optional source note."
+        },
+        {
+          "action": "save_changes",
+          "description": "PATCH changed mutable fields."
+        },
+        {
+          "action": "view_questions_only",
+          "description": "Navigate to focused open-questions screen."
+        },
+        {
+          "action": "delete_intake",
+          "description": "Delete the intake after confirmation."
+        },
+        {
+          "action": "back_to_list",
+          "description": "Return to recent intakes or originating queue."
+        }
+      ],
+      "loading_states": [
+        "Full-page skeleton while loading detail.",
+        "Section-level saving indicators during PATCH.",
+        "Modal busy state during DELETE."
+      ],
+      "error_states": [
+        {
+          "condition": "GET returns 400 INVALID_ID",
+          "ui_response": "Show invalid intake id state with navigation back to lists."
+        },
+        {
+          "condition": "GET returns 404 NOT_FOUND",
+          "ui_response": "Show not-found state with link to recent intakes."
+        },
+        {
+          "condition": "PATCH returns 400 VALIDATION_ERROR",
+          "ui_response": "Keep user edits in place and surface field/section validation messages."
+        },
+        {
+          "condition": "PATCH returns 404 NOT_FOUND",
+          "ui_response": "Show record no longer exists and redirect option."
+        },
+        {
+          "condition": "DELETE returns 404 NOT_FOUND",
+          "ui_response": "Inform user record was already removed and redirect to list."
+        },
+        {
+          "condition": "Any request returns 500",
+          "ui_response": "Show retryable banner without losing unsaved local edits where possible."
+        }
+      ],
+      "notes": [
+        "Because the API returns only mutation counts on PATCH, the UI should refetch detail after a successful update to obtain the latest record.",
+        "Fine-grained mutation of single open question items is not supported; the page edits and submits the entire open_questions array."
+      ]
+    },
+    {
+      "page_id": "intake_open_questions",
+      "route": "/intakes/:pov_intake_id/questions",
+      "purpose": "Focused read view for an intake\u2019s open questions and current status, optimized for clarification review.",
+      "data_requirements": [
+        {
+          "name": "intake_open_questions",
+          "description": "Only the intake id, current status, and open questions.",
+          "source_endpoint": {
+            "operation_id": "listOpenQuestionsForIntake",
+            "method": "GET",
+            "path": "/api/pov-intakes/{pov_intake_id}/open-questions"
+          }
+        }
+      ],
+      "api_consumption": [
+        "listOpenQuestionsForIntake"
+      ],
+      "user_actions": [
+        {
+          "action": "navigate_to_full_detail",
+          "description": "Open full intake detail to edit questions or status."
+        },
+        {
+          "action": "refresh_questions",
+          "description": "Refetch open questions for the intake."
+        }
+      ],
+      "loading_states": [
+        "Question list skeleton while loading."
+      ],
+      "error_states": [
+        {
+          "condition": "GET returns 400 INVALID_ID",
+          "ui_response": "Show invalid id state with navigation away."
+        },
+        {
+          "condition": "GET returns 404 NOT_FOUND",
+          "ui_response": "Show not-found state with link to recent intakes."
+        },
+        {
+          "condition": "Fetch fails",
+          "ui_response": "Show retryable error panel."
+        }
+      ],
+      "notes": [
+        "This screen is read-only relative to the API contract. Editing should redirect to the intake detail page because no question-specific update endpoint exists."
+      ]
+    },
+    {
+      "page_id": "unresolved_questions",
+      "route": "/questions/unresolved",
+      "purpose": "Cross-intake queue for unresolved clarification work across incomplete and needs_clarification records.",
+      "data_requirements": [
+        {
+          "name": "unresolved_questions",
+          "description": "Flat list of unresolved questions enriched with intake summary context.",
+          "source_endpoint": {
+            "operation_id": "listUnresolvedQuestionsAcrossIntakes",
+            "method": "GET",
+            "path": "/api/open-questions/unresolved"
+          }
+        }
+      ],
+      "api_consumption": [
+        "listUnresolvedQuestionsAcrossIntakes"
+      ],
+      "user_actions": [
+        {
+          "action": "navigate_to_intake_questions",
+          "description": "Open focused question view for the related intake."
+        },
+        {
+          "action": "navigate_to_intake_detail",
+          "description": "Open full intake detail for editing."
+        },
+        {
+          "action": "refresh_unresolved_questions",
+          "description": "Refetch the unresolved queue."
+        }
+      ],
+      "loading_states": [
+        "Table/list skeleton while loading."
+      ],
+      "error_states": [
+        {
+          "condition": "Fetch fails",
+          "ui_response": "Show retryable full-page error state."
+        }
+      ],
+      "notes": [
+        "No server-side filters are available in the contract; any grouping or sorting beyond returned order should be client-side only."
+      ]
+    }
+  ],
+  "components": [
+    {
+      "component_id": "app_shell",
+      "type": "layout",
+      "purpose": "Global navigation shell with route outlet, primary nav links, and global notification area.",
+      "used_on_pages": [
+        "dashboard",
+        "new_intake",
+        "recent_intakes",
+        "status_queue",
+        "intake_detail",
+        "intake_open_questions",
+        "unresolved_questions"
+      ]
+    },
+    {
+      "component_id": "status_badge",
+      "type": "display",
+      "purpose": "Consistent rendering of intake workflow statuses.",
+      "props": [
+        "status"
+      ],
+      "used_on_pages": [
+        "dashboard",
+        "recent_intakes",
+        "status_queue",
+        "intake_detail",
+        "intake_open_questions",
+        "unresolved_questions"
+      ]
+    },
+    {
+      "component_id": "status_count_cards",
+      "type": "data_display",
+      "purpose": "Grid of summary cards for counts by status with drill-down links.",
+      "used_on_pages": [
+        "dashboard"
+      ]
+    },
+    {
+      "component_id": "recent_intakes_list",
+      "type": "data_display",
+      "purpose": "Reusable list/table for recent intake records.",
+      "used_on_pages": [
+        "dashboard",
+        "recent_intakes"
+      ]
+    },
+    {
+      "component_id": "intake_form",
+      "type": "form",
+      "purpose": "Shared create/edit form structure for mutable intake fields.",
+      "sections": [
+        "executive_summary",
+        "raw_initial_pov_spec",
+        "review_result",
+        "status",
+        "open_questions",
+        "assumptions",
+        "success_criteria",
+        "source_note"
+      ],
+      "used_on_pages": [
+        "new_intake",
+        "intake_detail"
+      ]
+    },
+    {
+      "component_id": "open_questions_editor",
+      "type": "form_section",
+      "purpose": "Manage array of open question objects.",
+      "used_on_pages": [
+        "new_intake",
+        "intake_detail"
+      ]
+    },
+    {
+      "component_id": "string_list_editor",
+      "type": "form_section",
+      "purpose": "Manage list of plain strings for assumptions and success criteria.",
+      "used_on_pages": [
+        "new_intake",
+        "intake_detail"
+      ]
+    },
+    {
+      "component_id": "json_object_editor",
+      "type": "form_section",
+      "purpose": "Edit raw_initial_pov_spec and review_result as structured JSON/text areas with validation assistance.",
+      "used_on_pages": [
+        "new_intake",
+        "intake_detail"
+      ]
+    },
+    {
+      "component_id": "status_queue_tabs",
+      "type": "navigation",
+      "purpose": "Switch among the three supported status queues.",
+      "used_on_pages": [
+        "status_queue"
+      ]
+    },
+    {
+      "component_id": "queue_intake_list",
+      "type": "data_display",
+      "purpose": "List queue records with open-question preview.",
+      "used_on_pages": [
+        "status_queue"
+      ]
+    },
+    {
+      "component_id": "intake_metadata_panel",
+      "type": "data_display",
+      "purpose": "Show id, created_at, updated_at, source_note, and current status.",
+      "used_on_pages": [
+        "intake_detail"
+      ]
+    },
+    {
+      "component_id": "open_questions_list",
+      "type": "data_display",
+      "purpose": "Read-only display of question items with category, status, and notes.",
+      "used_on_pages": [
+        "intake_detail",
+        "intake_open_questions",
+        "unresolved_questions"
+      ]
+    },
+    {
+      "component_id": "delete_confirmation_modal",
+      "type": "feedback",
+      "purpose": "Confirm destructive intake deletion.",
+      "used_on_pages": [
+        "intake_detail"
+      ]
+    },
+    {
+      "component_id": "error_state_panel",
+      "type": "feedback",
+      "purpose": "Reusable error UI with retry and navigation actions.",
+      "used_on_pages": [
+        "dashboard",
+        "recent_intakes",
+        "status_queue",
+        "intake_detail",
+        "intake_open_questions",
+        "unresolved_questions"
+      ]
+    },
+    {
+      "component_id": "loading_skeletons",
+      "type": "feedback",
+      "purpose": "Reusable skeleton states for cards, lists, tables, and forms.",
+      "used_on_pages": [
+        "dashboard",
+        "recent_intakes",
+        "status_queue",
+        "intake_detail",
+        "intake_open_questions",
+        "unresolved_questions"
+      ]
+    },
+    {
+      "component_id": "toast_notifications",
+      "type": "feedback",
+      "purpose": "Transient success/error feedback after create, update, and delete actions.",
+      "used_on_pages": [
+        "new_intake",
+        "intake_detail"
+      ]
+    }
+  ],
+  "data_access_patterns": {
+    "queries": [
+      {
+        "name": "useStatusSummary",
+        "endpoint": "getPovIntakeStatusSummary"
+      },
+      {
+        "name": "useRecentPovIntakes",
+        "endpoint": "listRecentPovIntakes"
+      },
+      {
+        "name": "usePovIntakesByStatus",
+        "endpoint": "listPovIntakesByStatus"
+      },
+      {
+        "name": "usePovIntakeDetail",
+        "endpoint": "getPovIntakeDetail"
+      },
+      {
+        "name": "useIntakeOpenQuestions",
+        "endpoint": "listOpenQuestionsForIntake"
+      },
+      {
+        "name": "useUnresolvedQuestions",
+        "endpoint": "listUnresolvedQuestionsAcrossIntakes"
+      }
+    ],
+    "mutations": [
+      {
+        "name": "useCreatePovIntake",
+        "endpoint": "createPovIntake"
+      },
+      {
+        "name": "useUpdatePovIntake",
+        "endpoint": "updatePovIntake"
+      },
+      {
+        "name": "useDeletePovIntake",
+        "endpoint": "deletePovIntake"
+      }
+    ],
+    "cache_invalidation": [
+      {
+        "after": "createPovIntake",
+        "invalidate": [
+          "useRecentPovIntakes",
+          "useStatusSummary",
+          "usePovIntakesByStatus",
+          "useUnresolvedQuestions"
+        ]
+      },
+      {
+        "after": "updatePovIntake",
+        "invalidate": [
+          "usePovIntakeDetail",
+          "useIntakeOpenQuestions",
+          "useRecentPovIntakes",
+          "useStatusSummary",
+          "usePovIntakesByStatus",
+          "useUnresolvedQuestions"
+        ]
+      },
+      {
+        "after": "deletePovIntake",
+        "invalidate": [
+          "useRecentPovIntakes",
+          "useStatusSummary",
+          "usePovIntakesByStatus",
+          "useUnresolvedQuestions"
+        ]
+      }
+    ]
+  },
+  "unsupported_frontend_capabilities": [
+    {
+      "capability": "Search intakes by text or metadata",
+      "reason": "No search endpoint or query parameters exist in the API contract."
+    },
+    {
+      "capability": "Pagination beyond limit 50 or cursor-based browsing",
+      "reason": "API only exposes limit with maximum 50 on list endpoints."
+    },
+    {
+      "capability": "Authentication/authorization-aware UI states",
+      "reason": "API contract defines no auth model or user identity data."
+    },
+    {
+      "capability": "Audit history/version diff",
+      "reason": "API exposes only current record state and timestamps."
+    },
+    {
+      "capability": "Single-question mutation actions",
+      "reason": "API requires PATCHing the intake record; there is no endpoint for individual question updates."
+    },
+    {
+      "capability": "Bulk update/delete across multiple intakes",
+      "reason": "No bulk endpoints are defined."
+    }
+  ]
+}
