@@ -1,0 +1,108 @@
+{
+  "collections": [
+    {
+      "name": "pov_intake",
+      "description": "Captures the raw InitialPOVSpec and review context because the only concrete requirements in the provided input are the incomplete intake artifact and its open questions.",
+      "traceability": {
+        "source_sections": [
+          "executive_summary",
+          "open_questions",
+          "approved_requirements"
+        ],
+        "notes": "No business entities, use cases, personas, or functional requirements were provided, so the schema is intentionally limited to intake/clarification tracking rather than domain data."
+      },
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "updated_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "executive_summary",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "raw_initial_pov_spec",
+          "type": "object",
+          "required": true
+        },
+        {
+          "name": "review_result",
+          "type": "object",
+          "required": true
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true,
+          "allowed_values": [
+            "incomplete",
+            "needs_clarification",
+            "ready_for_redesign"
+          ]
+        },
+        {
+          "name": "open_questions",
+          "type": "array<object>",
+          "required": true,
+          "items": {
+            "question": "string",
+            "category": "string",
+            "status": "string",
+            "notes": "string?"
+          }
+        },
+        {
+          "name": "assumptions",
+          "type": "array<string>",
+          "required": true
+        },
+        {
+          "name": "success_criteria",
+          "type": "array<string>",
+          "required": true
+        },
+        {
+          "name": "source_note",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "embedding_vs_references": {
+        "approach": "embed",
+        "reason": "The intake document, review result, and open questions are all part of a single small POV intake artifact with 1:1 lifecycle and no evidence of reuse across separate entities."
+      },
+      "relationships": [],
+      "indexes": [
+        {
+          "name": "status_1_updated_at_-1",
+          "kind": "regular",
+          "fields": [
+            "status",
+            "updated_at"
+          ],
+          "reason": "Supports operational view of incomplete/needs-clarification POVs ordered by most recently updated."
+        },
+        {
+          "name": "created_at_-1",
+          "kind": "regular",
+          "fields": [
+            "created_at"
+          ],
+          "reason": "Supports listing recent POV intake submissions."
+        }
+      ]
+    }
+  ]
+}
