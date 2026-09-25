@@ -1,0 +1,934 @@
+{
+  "traceability": {
+    "business_objectives": {
+      "BO1": {
+        "summary": "Control data-volume growth and operational impact of execution logs.",
+        "collections": [
+          "execution_requests",
+          "execution_steps",
+          "deployment_configs"
+        ],
+        "query_patterns": [
+          "QP11",
+          "QP12"
+        ],
+        "api_endpoints": [
+          "getDeploymentConfig",
+          "upsertDeploymentConfig",
+          "getLoggingCoverage"
+        ],
+        "frontend_pages": [
+          "deployment_configuration",
+          "global_logging_coverage_analytics"
+        ]
+      },
+      "BO2": {
+        "summary": "Enable richer analytics on rule execution data.",
+        "collections": [
+          "execution_requests",
+          "execution_steps"
+        ],
+        "query_patterns": [
+          "QP7",
+          "QP8",
+          "QP9",
+          "QP10"
+        ],
+        "api_endpoints": [
+          "getOutcomeTrends",
+          "comparePolicyDefinitionVersions",
+          "getSegmentedOutcomeAnalytics",
+          "getRulePerformanceAnalysis"
+        ],
+        "frontend_pages": [
+          "outcome_trends_analytics",
+          "policy_version_comparison_analytics",
+          "segment_outcome_analytics",
+          "rule_performance_analytics"
+        ]
+      },
+      "BO3": {
+        "summary": "Improve search/filtering across logs and variable content.",
+        "collections": [
+          "execution_requests",
+          "execution_steps"
+        ],
+        "query_patterns": [
+          "QP4",
+          "QP5",
+          "QP6"
+        ],
+        "api_endpoints": [
+          "searchExecutionRequests",
+          "searchExecutionSteps",
+          "findRequestsByRuleOrDecision"
+        ],
+        "frontend_pages": [
+          "execution_request_search",
+          "execution_step_search",
+          "request_impact_search"
+        ]
+      },
+      "BO4": {
+        "summary": "Support eventual productization.",
+        "collections": [
+          "execution_requests",
+          "execution_steps",
+          "deployment_configs"
+        ],
+        "query_patterns": [
+          "QP1",
+          "QP3",
+          "QP4",
+          "QP5",
+          "QP7",
+          "QP8",
+          "QP9",
+          "QP10",
+          "QP11",
+          "QP12"
+        ],
+        "api_endpoints": [
+          "getExecutionRequest",
+          "getCompleteExecutionTrace",
+          "searchExecutionRequests",
+          "searchExecutionSteps",
+          "getOutcomeTrends",
+          "comparePolicyDefinitionVersions",
+          "getSegmentedOutcomeAnalytics",
+          "getRulePerformanceAnalysis",
+          "getDeploymentConfig",
+          "upsertDeploymentConfig",
+          "getLoggingCoverage"
+        ],
+        "frontend_pages": [
+          "execution_request_search",
+          "execution_step_search",
+          "execution_trace_detail",
+          "outcome_trends_analytics",
+          "policy_version_comparison_analytics",
+          "segment_outcome_analytics",
+          "rule_performance_analytics",
+          "deployment_configuration",
+          "global_logging_coverage_analytics"
+        ]
+      },
+      "BO5": {
+        "summary": "Demonstrate value internally to product leadership.",
+        "collections": [
+          "execution_requests",
+          "execution_steps",
+          "deployment_configs"
+        ],
+        "query_patterns": [
+          "QP3",
+          "QP7",
+          "QP8",
+          "QP9",
+          "QP10",
+          "QP12"
+        ],
+        "api_endpoints": [
+          "getCompleteExecutionTrace",
+          "getOutcomeTrends",
+          "comparePolicyDefinitionVersions",
+          "getSegmentedOutcomeAnalytics",
+          "getRulePerformanceAnalysis",
+          "getLoggingCoverage"
+        ],
+        "frontend_pages": [
+          "execution_trace_detail",
+          "outcome_trends_analytics",
+          "policy_version_comparison_analytics",
+          "segment_outcome_analytics",
+          "rule_performance_analytics",
+          "global_logging_coverage_analytics"
+        ]
+      }
+    },
+    "functional_requirements": {
+      "FR1": {
+        "summary": "Capture detailed request-level and rule/stage-level execution logs.",
+        "collections": [
+          "execution_requests",
+          "execution_steps"
+        ],
+        "query_patterns": [
+          "QP1",
+          "QP2",
+          "QP3"
+        ],
+        "api_endpoints": [
+          "getExecutionRequest",
+          "getExecutionStepsForRequest",
+          "getCompleteExecutionTrace"
+        ],
+        "frontend_pages": [
+          "execution_request_summary_detail",
+          "execution_steps_detail",
+          "execution_trace_detail"
+        ]
+      },
+      "FR2": {
+        "summary": "Store input JSON and output JSON.",
+        "collections": [
+          "execution_requests"
+        ],
+        "query_patterns": [
+          "QP1",
+          "QP3"
+        ],
+        "api_endpoints": [
+          "getExecutionRequest",
+          "getCompleteExecutionTrace"
+        ],
+        "frontend_pages": [
+          "execution_request_summary_detail",
+          "execution_trace_detail"
+        ]
+      },
+      "FR3": {
+        "summary": "Support complex nested JSON payloads.",
+        "collections": [
+          "execution_requests",
+          "execution_steps"
+        ],
+        "query_patterns": [
+          "QP1",
+          "QP2",
+          "QP3"
+        ],
+        "api_endpoints": [
+          "getExecutionRequest",
+          "getExecutionStepsForRequest",
+          "getCompleteExecutionTrace"
+        ],
+        "frontend_pages": [
+          "execution_request_summary_detail",
+          "execution_steps_detail",
+          "execution_trace_detail"
+        ]
+      },
+      "FR4": {
+        "summary": "Support many step records per request.",
+        "collections": [
+          "execution_steps",
+          "execution_requests"
+        ],
+        "query_patterns": [
+          "QP2",
+          "QP3"
+        ],
+        "api_endpoints": [
+          "getExecutionStepsForRequest",
+          "getCompleteExecutionTrace"
+        ],
+        "frontend_pages": [
+          "execution_steps_detail",
+          "execution_trace_detail"
+        ]
+      },
+      "FR5": {
+        "summary": "Write logs asynchronously so execution is not blocked.",
+        "collections": [
+          "execution_requests",
+          "execution_steps"
+        ],
+        "query_patterns": [],
+        "api_endpoints": [],
+        "frontend_pages": [],
+        "notes": "Represented architecturally by asynchronous ingestion via Kafka/queueing; no public write API is defined in the authoritative API contract."
+      },
+      "FR6": {
+        "summary": "Handle concurrent requests while logging.",
+        "collections": [
+          "execution_requests",
+          "execution_steps"
+        ],
+        "query_patterns": [],
+        "api_endpoints": [],
+        "frontend_pages": [],
+        "notes": "Addressed by the asynchronous ingestion architecture and scalable MongoDB persistence model; no dedicated UI/API artifact expresses concurrency control."
+      },
+      "FR7": {
+        "summary": "Provide product UI to view execution logs.",
+        "collections": [
+          "execution_requests",
+          "execution_steps"
+        ],
+        "query_patterns": [
+          "QP1",
+          "QP2",
+          "QP3",
+          "QP4",
+          "QP5"
+        ],
+        "api_endpoints": [
+          "getExecutionRequest",
+          "getExecutionStepsForRequest",
+          "getCompleteExecutionTrace",
+          "searchExecutionRequests",
+          "searchExecutionSteps"
+        ],
+        "frontend_pages": [
+          "execution_request_search",
+          "execution_step_search",
+          "execution_request_summary_detail",
+          "execution_steps_detail",
+          "execution_trace_detail"
+        ]
+      },
+      "FR8": {
+        "summary": "Provide APIs for custom consumption of execution data.",
+        "collections": [
+          "execution_requests",
+          "execution_steps",
+          "deployment_configs"
+        ],
+        "query_patterns": [
+          "QP1",
+          "QP2",
+          "QP3",
+          "QP4",
+          "QP5",
+          "QP6",
+          "QP7",
+          "QP8",
+          "QP9",
+          "QP10",
+          "QP11",
+          "QP12"
+        ],
+        "api_endpoints": [
+          "getExecutionRequest",
+          "getExecutionStepsForRequest",
+          "getCompleteExecutionTrace",
+          "searchExecutionRequests",
+          "searchExecutionSteps",
+          "findRequestsByRuleOrDecision",
+          "getOutcomeTrends",
+          "comparePolicyDefinitionVersions",
+          "getSegmentedOutcomeAnalytics",
+          "getRulePerformanceAnalysis",
+          "getDeploymentConfig",
+          "upsertDeploymentConfig",
+          "getLoggingCoverage"
+        ],
+        "frontend_pages": [
+          "execution_request_search",
+          "execution_step_search",
+          "execution_trace_detail",
+          "execution_request_summary_detail",
+          "execution_steps_detail",
+          "request_impact_search",
+          "outcome_trends_analytics",
+          "policy_version_comparison_analytics",
+          "segment_outcome_analytics",
+          "rule_performance_analytics",
+          "deployment_configuration",
+          "global_logging_coverage_analytics"
+        ]
+      },
+      "FR9": {
+        "summary": "Retrieve all internal rule execution information for a request ID/correlation ID.",
+        "collections": [
+          "execution_requests",
+          "execution_steps"
+        ],
+        "query_patterns": [
+          "QP1",
+          "QP2",
+          "QP3"
+        ],
+        "api_endpoints": [
+          "getExecutionRequest",
+          "getExecutionStepsForRequest",
+          "getCompleteExecutionTrace"
+        ],
+        "frontend_pages": [
+          "execution_request_summary_detail",
+          "execution_steps_detail",
+          "execution_trace_detail"
+        ]
+      },
+      "FR10": {
+        "summary": "Restrict detailed rule data visibility to admins/selected users.",
+        "collections": [
+          "deployment_configs"
+        ],
+        "query_patterns": [
+          "QP11"
+        ],
+        "api_endpoints": [
+          "getDeploymentConfig",
+          "upsertDeploymentConfig"
+        ],
+        "frontend_pages": [
+          "deployment_configuration"
+        ],
+        "notes": "Authorization enforcement is explicitly outside the API contract; deployment config stores access-control metadata."
+      },
+      "FR11": {
+        "summary": "Support filtering/searching across execution logs including variable values/content.",
+        "collections": [
+          "execution_requests",
+          "execution_steps"
+        ],
+        "query_patterns": [
+          "QP4",
+          "QP5",
+          "QP6"
+        ],
+        "api_endpoints": [
+          "searchExecutionRequests",
+          "searchExecutionSteps",
+          "findRequestsByRuleOrDecision"
+        ],
+        "frontend_pages": [
+          "execution_request_search",
+          "execution_step_search",
+          "request_impact_search"
+        ]
+      },
+      "FR12": {
+        "summary": "Support dashboards and reports on execution log data.",
+        "collections": [
+          "execution_requests",
+          "execution_steps"
+        ],
+        "query_patterns": [
+          "QP7",
+          "QP8",
+          "QP9",
+          "QP10",
+          "QP12"
+        ],
+        "api_endpoints": [
+          "getOutcomeTrends",
+          "comparePolicyDefinitionVersions",
+          "getSegmentedOutcomeAnalytics",
+          "getRulePerformanceAnalysis",
+          "getLoggingCoverage"
+        ],
+        "frontend_pages": [
+          "outcome_trends_analytics",
+          "policy_version_comparison_analytics",
+          "segment_outcome_analytics",
+          "rule_performance_analytics",
+          "global_logging_coverage_analytics"
+        ]
+      },
+      "FR13": {
+        "summary": "Support optional disabling of execution logging.",
+        "collections": [
+          "deployment_configs",
+          "execution_requests"
+        ],
+        "query_patterns": [
+          "QP11",
+          "QP12"
+        ],
+        "api_endpoints": [
+          "getDeploymentConfig",
+          "upsertDeploymentConfig",
+          "getLoggingCoverage"
+        ],
+        "frontend_pages": [
+          "deployment_configuration",
+          "global_logging_coverage_analytics"
+        ]
+      },
+      "FR14": {
+        "summary": "Support retention management and purging based on customer needs.",
+        "collections": [
+          "deployment_configs",
+          "execution_requests"
+        ],
+        "query_patterns": [
+          "QP11"
+        ],
+        "api_endpoints": [
+          "getDeploymentConfig",
+          "upsertDeploymentConfig"
+        ],
+        "frontend_pages": [
+          "deployment_configuration"
+        ],
+        "notes": "Retention metadata is modeled, but no delete/purge API is defined."
+      },
+      "FR15": {
+        "summary": "Support large requests with many variables and high rule counts.",
+        "collections": [
+          "execution_requests",
+          "execution_steps"
+        ],
+        "query_patterns": [
+          "QP1",
+          "QP2",
+          "QP3",
+          "QP4",
+          "QP5",
+          "QP10"
+        ],
+        "api_endpoints": [
+          "getExecutionRequest",
+          "getExecutionStepsForRequest",
+          "getCompleteExecutionTrace",
+          "searchExecutionRequests",
+          "searchExecutionSteps",
+          "getRulePerformanceAnalysis"
+        ],
+        "frontend_pages": [
+          "execution_request_search",
+          "execution_step_search",
+          "execution_request_summary_detail",
+          "execution_steps_detail",
+          "execution_trace_detail",
+          "rule_performance_analytics"
+        ]
+      }
+    },
+    "ai_genai_requirements": {
+      "AI1": {
+        "summary": "Potential future use of LLMs to derive insights from execution logs.",
+        "collections": [
+          "execution_requests",
+          "execution_steps"
+        ],
+        "query_patterns": [
+          "QP3",
+          "QP7",
+          "QP8",
+          "QP9",
+          "QP10"
+        ],
+        "api_endpoints": [
+          "getCompleteExecutionTrace",
+          "getOutcomeTrends",
+          "comparePolicyDefinitionVersions",
+          "getSegmentedOutcomeAnalytics",
+          "getRulePerformanceAnalysis"
+        ],
+        "frontend_pages": [],
+        "notes": "No implemented AI endpoint or page exists in the authoritative contracts."
+      },
+      "AI2": {
+        "summary": "Potential future intelligent recommendations about policy/rule changes based on historical outcomes.",
+        "collections": [
+          "execution_requests",
+          "execution_steps"
+        ],
+        "query_patterns": [
+          "QP6",
+          "QP7",
+          "QP8",
+          "QP9",
+          "QP10"
+        ],
+        "api_endpoints": [
+          "findRequestsByRuleOrDecision",
+          "getOutcomeTrends",
+          "comparePolicyDefinitionVersions",
+          "getSegmentedOutcomeAnalytics",
+          "getRulePerformanceAnalysis"
+        ],
+        "frontend_pages": [],
+        "notes": "Supported only as future analytical foundation, not active functionality."
+      },
+      "AI3": {
+        "summary": "Potential future natural-language or AI-assisted analytics.",
+        "collections": [
+          "execution_requests",
+          "execution_steps"
+        ],
+        "query_patterns": [
+          "QP4",
+          "QP5",
+          "QP7",
+          "QP9"
+        ],
+        "api_endpoints": [
+          "searchExecutionRequests",
+          "searchExecutionSteps",
+          "getOutcomeTrends",
+          "getSegmentedOutcomeAnalytics"
+        ],
+        "frontend_pages": [],
+        "notes": "No implemented natural-language interface exists in the authoritative frontend or API artifacts."
+      }
+    },
+    "use_cases": {
+      "UC1": {
+        "summary": "Audit detailed rule execution for a request.",
+        "collections": [
+          "execution_requests",
+          "execution_steps",
+          "deployment_configs"
+        ],
+        "query_patterns": [
+          "QP1",
+          "QP2",
+          "QP3",
+          "QP11"
+        ],
+        "api_endpoints": [
+          "getExecutionRequest",
+          "getExecutionStepsForRequest",
+          "getCompleteExecutionTrace",
+          "getDeploymentConfig"
+        ],
+        "frontend_pages": [
+          "execution_request_summary_detail",
+          "execution_steps_detail",
+          "execution_trace_detail",
+          "deployment_configuration"
+        ]
+      },
+      "UC2": {
+        "summary": "Retrieve execution details programmatically.",
+        "collections": [
+          "execution_requests",
+          "execution_steps",
+          "deployment_configs"
+        ],
+        "query_patterns": [
+          "QP1",
+          "QP2",
+          "QP3",
+          "QP11"
+        ],
+        "api_endpoints": [
+          "getExecutionRequest",
+          "getExecutionStepsForRequest",
+          "getCompleteExecutionTrace",
+          "getDeploymentConfig"
+        ],
+        "frontend_pages": [
+          "execution_request_search",
+          "execution_trace_detail",
+          "execution_request_summary_detail",
+          "execution_steps_detail"
+        ]
+      },
+      "UC3": {
+        "summary": "Analyze policy-definition changes.",
+        "collections": [
+          "execution_requests",
+          "execution_steps"
+        ],
+        "query_patterns": [
+          "QP7",
+          "QP8",
+          "QP9",
+          "QP10"
+        ],
+        "api_endpoints": [
+          "getOutcomeTrends",
+          "comparePolicyDefinitionVersions",
+          "getSegmentedOutcomeAnalytics",
+          "getRulePerformanceAnalysis"
+        ],
+        "frontend_pages": [
+          "outcome_trends_analytics",
+          "policy_version_comparison_analytics",
+          "segment_outcome_analytics",
+          "rule_performance_analytics"
+        ]
+      },
+      "UC4": {
+        "summary": "Search execution logs by content.",
+        "collections": [
+          "execution_requests",
+          "execution_steps"
+        ],
+        "query_patterns": [
+          "QP4",
+          "QP5",
+          "QP6"
+        ],
+        "api_endpoints": [
+          "searchExecutionRequests",
+          "searchExecutionSteps",
+          "findRequestsByRuleOrDecision"
+        ],
+        "frontend_pages": [
+          "execution_request_search",
+          "execution_step_search",
+          "request_impact_search"
+        ]
+      },
+      "UC5": {
+        "summary": "Generate reports and dashboards from execution data.",
+        "collections": [
+          "execution_requests",
+          "execution_steps",
+          "deployment_configs"
+        ],
+        "query_patterns": [
+          "QP4",
+          "QP6",
+          "QP7",
+          "QP8",
+          "QP9",
+          "QP10",
+          "QP12"
+        ],
+        "api_endpoints": [
+          "searchExecutionRequests",
+          "findRequestsByRuleOrDecision",
+          "getOutcomeTrends",
+          "comparePolicyDefinitionVersions",
+          "getSegmentedOutcomeAnalytics",
+          "getRulePerformanceAnalysis",
+          "getLoggingCoverage"
+        ],
+        "frontend_pages": [
+          "execution_request_search",
+          "request_impact_search",
+          "outcome_trends_analytics",
+          "policy_version_comparison_analytics",
+          "segment_outcome_analytics",
+          "rule_performance_analytics",
+          "global_logging_coverage_analytics"
+        ]
+      },
+      "UC6": {
+        "summary": "Prepare for AI-driven insights.",
+        "collections": [
+          "execution_requests",
+          "execution_steps"
+        ],
+        "query_patterns": [
+          "QP3",
+          "QP7",
+          "QP8",
+          "QP9",
+          "QP10"
+        ],
+        "api_endpoints": [
+          "getCompleteExecutionTrace",
+          "getOutcomeTrends",
+          "comparePolicyDefinitionVersions",
+          "getSegmentedOutcomeAnalytics",
+          "getRulePerformanceAnalysis"
+        ],
+        "frontend_pages": [],
+        "notes": "Foundation only; no implemented AI UI/API."
+      }
+    },
+    "user_journeys": {
+      "J1": {
+        "summary": "Investigate a loan/policy decision.",
+        "collections": [
+          "execution_requests",
+          "execution_steps"
+        ],
+        "query_patterns": [
+          "QP4",
+          "QP3"
+        ],
+        "api_endpoints": [
+          "searchExecutionRequests",
+          "getCompleteExecutionTrace"
+        ],
+        "frontend_pages": [
+          "execution_request_search",
+          "execution_trace_detail"
+        ]
+      },
+      "J2": {
+        "summary": "Build customer-specific analysis from execution data.",
+        "collections": [
+          "execution_requests",
+          "execution_steps"
+        ],
+        "query_patterns": [
+          "QP1",
+          "QP2",
+          "QP3",
+          "QP7",
+          "QP8",
+          "QP9",
+          "QP10"
+        ],
+        "api_endpoints": [
+          "getExecutionRequest",
+          "getExecutionStepsForRequest",
+          "getCompleteExecutionTrace",
+          "getOutcomeTrends",
+          "comparePolicyDefinitionVersions",
+          "getSegmentedOutcomeAnalytics",
+          "getRulePerformanceAnalysis"
+        ],
+        "frontend_pages": [
+          "execution_request_search",
+          "execution_trace_detail",
+          "outcome_trends_analytics",
+          "policy_version_comparison_analytics",
+          "segment_outcome_analytics",
+          "rule_performance_analytics"
+        ]
+      },
+      "J3": {
+        "summary": "Evaluate MongoDB-based product enhancement.",
+        "collections": [
+          "execution_requests",
+          "execution_steps",
+          "deployment_configs"
+        ],
+        "query_patterns": [
+          "QP3",
+          "QP7",
+          "QP8",
+          "QP9",
+          "QP10",
+          "QP12"
+        ],
+        "api_endpoints": [
+          "getCompleteExecutionTrace",
+          "getOutcomeTrends",
+          "comparePolicyDefinitionVersions",
+          "getSegmentedOutcomeAnalytics",
+          "getRulePerformanceAnalysis",
+          "getLoggingCoverage"
+        ],
+        "frontend_pages": [
+          "execution_trace_detail",
+          "outcome_trends_analytics",
+          "policy_version_comparison_analytics",
+          "segment_outcome_analytics",
+          "rule_performance_analytics",
+          "global_logging_coverage_analytics"
+        ]
+      }
+    },
+    "integration_requirements": {
+      "INT1": {
+        "summary": "Kafka or equivalent queue for asynchronous ingestion.",
+        "collections": [
+          "execution_requests",
+          "execution_steps"
+        ],
+        "query_patterns": [],
+        "api_endpoints": [],
+        "frontend_pages": [],
+        "notes": "Architectural integration; not exposed as public API."
+      },
+      "INT2": {
+        "summary": "Support existing relational environments during broader product context.",
+        "collections": [],
+        "query_patterns": [],
+        "api_endpoints": [],
+        "frontend_pages": [],
+        "notes": "Mentioned in source context, but the POV design itself is centered on MongoDB collections and does not define integration APIs against Oracle/SQL Server/Postgres."
+      },
+      "INT3": {
+        "summary": "Rule execution exposed as APIs/web services for customer systems.",
+        "collections": [
+          "execution_requests",
+          "execution_steps"
+        ],
+        "query_patterns": [],
+        "api_endpoints": [],
+        "frontend_pages": [],
+        "notes": "Upstream context that generates execution events; not redesigned in this POV."
+      },
+      "INT4": {
+        "summary": "Invocation from customer apps/portals/banking applications.",
+        "collections": [
+          "execution_requests",
+          "execution_steps"
+        ],
+        "query_patterns": [],
+        "api_endpoints": [],
+        "frontend_pages": [],
+        "notes": "Upstream invoking systems remain external to this POV."
+      },
+      "INT5": {
+        "summary": "Optional runtime lookups to external/master data databases during rule execution.",
+        "collections": [
+          "execution_steps"
+        ],
+        "query_patterns": [
+          "QP10"
+        ],
+        "api_endpoints": [
+          "getRulePerformanceAnalysis"
+        ],
+        "frontend_pages": [
+          "rule_performance_analytics"
+        ],
+        "notes": "The POV does not model external lookup systems directly, but `stage_type`, `performance.lookup_count`, and step records can capture their effects."
+      },
+      "INT6": {
+        "summary": "Deploy across AWS, Azure, on-prem, or other cloud.",
+        "collections": [
+          "deployment_configs"
+        ],
+        "query_patterns": [
+          "QP11",
+          "QP12"
+        ],
+        "api_endpoints": [
+          "getDeploymentConfig",
+          "upsertDeploymentConfig",
+          "getLoggingCoverage"
+        ],
+        "frontend_pages": [
+          "deployment_configuration",
+          "global_logging_coverage_analytics"
+        ]
+      }
+    }
+  },
+  "artifact_index": {
+    "collections": [
+      "execution_requests",
+      "execution_steps",
+      "deployment_configs"
+    ],
+    "query_patterns": [
+      "QP1",
+      "QP2",
+      "QP3",
+      "QP4",
+      "QP5",
+      "QP6",
+      "QP7",
+      "QP8",
+      "QP9",
+      "QP10",
+      "QP11",
+      "QP12"
+    ],
+    "api_endpoints": [
+      "getExecutionRequest",
+      "getExecutionStepsForRequest",
+      "getCompleteExecutionTrace",
+      "searchExecutionRequests",
+      "searchExecutionSteps",
+      "findRequestsByRuleOrDecision",
+      "getOutcomeTrends",
+      "comparePolicyDefinitionVersions",
+      "getSegmentedOutcomeAnalytics",
+      "getRulePerformanceAnalysis",
+      "getDeploymentConfig",
+      "upsertDeploymentConfig",
+      "getLoggingCoverage"
+    ],
+    "frontend_pages": [
+      "execution_request_search",
+      "execution_step_search",
+      "execution_trace_detail",
+      "execution_request_summary_detail",
+      "execution_steps_detail",
+      "request_impact_search",
+      "outcome_trends_analytics",
+      "policy_version_comparison_analytics",
+      "segment_outcome_analytics",
+      "rule_performance_analytics",
+      "deployment_configuration",
+      "global_logging_coverage_analytics"
+    ]
+  }
+}
