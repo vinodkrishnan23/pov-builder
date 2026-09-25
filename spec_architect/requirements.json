@@ -1,911 +1,1979 @@
 {
-  "business_objectives": {
+  "traceability_version": "1.0",
+  "pov_name": "thoughtspot_mongodb_voyage_pov",
+  "summary": {
+    "collections": [
+      "tenants",
+      "documents",
+      "chunks",
+      "ground_truth_sets",
+      "benchmark_runs"
+    ],
+    "query_patterns": [
+      "QP1",
+      "QP2",
+      "QP3",
+      "QP4",
+      "QP5",
+      "QP6",
+      "QP7",
+      "QP8",
+      "QP9",
+      "QP10",
+      "QP11",
+      "QP12",
+      "QP13",
+      "QP14",
+      "QP15",
+      "QP16",
+      "QP17"
+    ],
+    "api_endpoints": [
+      "getTenant",
+      "createTenant",
+      "listDocuments",
+      "createDocument",
+      "getDocumentProcessingStatus",
+      "getDocumentChunks",
+      "compareDocumentChunkingStrategies",
+      "searchDocumentChunks",
+      "searchDocumentChunksWithStructuredFilters",
+      "listAgentMemoryDocuments",
+      "searchAgentMemory",
+      "createGroundTruthSet",
+      "getGroundTruthSetByName",
+      "createBenchmarkRun",
+      "listBenchmarkRuns",
+      "compareBenchmarkRuns",
+      "getBenchmarkRunQuestionAnalysis",
+      "getBenchmarkQuestionHits"
+    ],
+    "frontend_screens": [
+      "TenantLanding",
+      "CreateTenant",
+      "TenantWorkspaceHome",
+      "DocumentLibrary",
+      "RegisterDocument",
+      "DocumentProcessingMonitor",
+      "DocumentChunkingComparison",
+      "DocumentChunkInspector",
+      "DocumentSearchPlayground",
+      "StructuredUnstructuredSearch",
+      "AgentMemoryLibrary",
+      "AgentMemorySearchPlayground",
+      "GroundTruthSetCreator",
+      "GroundTruthSetViewer",
+      "BenchmarkRunsList",
+      "CreateBenchmarkRun",
+      "BenchmarkComparisonDashboard",
+      "BenchmarkQuestionAnalysis",
+      "BenchmarkQuestionHitDetails"
+    ]
+  },
+  "by_requirement": {
     "BO1": {
-      "description": "Evaluate AI capabilities for combining structured and unstructured data, with emphasis on unstructured retrieval use cases.",
-      "mapped_collections": [
+      "type": "business_objective",
+      "description": "Assess AI capabilities that can combine structured and unstructured data in one solution.",
+      "collections": [
         "documents",
-        "document_chunks"
+        "chunks"
       ],
-      "mapped_query_patterns": [
+      "query_patterns": [
+        "QP17"
+      ],
+      "api_endpoints": [
+        "searchDocumentChunksWithStructuredFilters"
+      ],
+      "frontend_screens": [
+        "StructuredUnstructuredSearch"
+      ]
+    },
+    "BO2": {
+      "type": "business_objective",
+      "description": "Find a scalable lower-cost approach for unstructured or mixed structured/unstructured workloads.",
+      "collections": [
+        "documents",
+        "chunks",
+        "benchmark_runs"
+      ],
+      "query_patterns": [
+        "QP5",
+        "QP6",
+        "QP7",
+        "QP14"
+      ],
+      "api_endpoints": [
+        "searchDocumentChunks",
+        "compareBenchmarkRuns"
+      ],
+      "frontend_screens": [
+        "DocumentSearchPlayground",
+        "BenchmarkComparisonDashboard"
+      ]
+    },
+    "BO3": {
+      "type": "business_objective",
+      "description": "Reduce storage and indexing cost for unstructured document embeddings/search.",
+      "collections": [
+        "chunks",
+        "benchmark_runs"
+      ],
+      "query_patterns": [
+        "QP5",
+        "QP14"
+      ],
+      "api_endpoints": [
+        "searchDocumentChunks",
+        "compareBenchmarkRuns"
+      ],
+      "frontend_screens": [
+        "DocumentSearchPlayground",
+        "BenchmarkComparisonDashboard"
+      ]
+    },
+    "BO4": {
+      "type": "business_objective",
+      "description": "Achieve very low-latency retrieval on large document collections.",
+      "collections": [
+        "chunks",
+        "benchmark_runs"
+      ],
+      "query_patterns": [
+        "QP5",
+        "QP6",
+        "QP7",
+        "QP14",
+        "QP15"
+      ],
+      "api_endpoints": [
+        "searchDocumentChunks",
+        "compareBenchmarkRuns",
+        "getBenchmarkRunQuestionAnalysis"
+      ],
+      "frontend_screens": [
+        "DocumentSearchPlayground",
+        "BenchmarkComparisonDashboard",
+        "BenchmarkQuestionAnalysis"
+      ]
+    },
+    "BO5": {
+      "type": "business_objective",
+      "description": "Validate whether MongoDB/Voyage performs better than current and alternative vector-store options before making decisions.",
+      "collections": [
+        "benchmark_runs",
+        "ground_truth_sets"
+      ],
+      "query_patterns": [
+        "QP12",
+        "QP13",
+        "QP14",
+        "QP15",
+        "QP16"
+      ],
+      "api_endpoints": [
+        "createGroundTruthSet",
+        "getGroundTruthSetByName",
+        "createBenchmarkRun",
+        "listBenchmarkRuns",
+        "compareBenchmarkRuns",
+        "getBenchmarkRunQuestionAnalysis",
+        "getBenchmarkQuestionHits"
+      ],
+      "frontend_screens": [
+        "GroundTruthSetCreator",
+        "GroundTruthSetViewer",
+        "CreateBenchmarkRun",
+        "BenchmarkRunsList",
+        "BenchmarkComparisonDashboard",
+        "BenchmarkQuestionAnalysis",
+        "BenchmarkQuestionHitDetails"
+      ]
+    },
+    "FR1": {
+      "type": "functional_requirement",
+      "description": "Support unstructured document search as a prime use case.",
+      "collections": [
+        "documents",
+        "chunks"
+      ],
+      "query_patterns": [
+        "QP2",
         "QP4",
         "QP5",
         "QP6",
         "QP7"
       ],
-      "mapped_endpoints": [
-        "runDocumentKeywordSearch",
-        "runDocumentVectorSearch",
-        "runHybridSearch",
-        "runAgentMemoryVectorRetrieval"
+      "api_endpoints": [
+        "listDocuments",
+        "getDocumentProcessingStatus",
+        "searchDocumentChunks"
       ],
-      "mapped_pages": [
-        "document_search_playground",
-        "agent_memory_playground"
-      ],
-      "notes": "Authoritative artifacts primarily implement unstructured retrieval and agent memory. Any structured-data combination remains application-side and is not separately modeled."
-    },
-    "BO2": {
-      "description": "Find a solution that can scale at lower cost for unstructured and combined retrieval workloads.",
-      "mapped_collections": [
-        "benchmark_runs"
-      ],
-      "mapped_query_patterns": [
-        "QP10",
-        "QP11",
-        "QP12"
-      ],
-      "mapped_endpoints": [
-        "recordBenchmarkRun",
-        "compareBenchmarkRuns",
-        "summarizeBenchmarkPerformance"
-      ],
-      "mapped_pages": [
-        "document_search_playground",
-        "agent_memory_playground",
-        "benchmark_comparison_dashboard"
-      ],
-      "notes": "Artifacts support evidence capture for performance comparison; direct cost-analysis APIs are not defined."
-    },
-    "BO3": {
-      "description": "Reduce cost spikes associated with document indexing, embeddings, and search in the current Elastic-based approach.",
-      "mapped_collections": [
-        "benchmark_runs"
-      ],
-      "mapped_query_patterns": [
-        "QP10",
-        "QP11",
-        "QP12"
-      ],
-      "mapped_endpoints": [
-        "recordBenchmarkRun",
-        "compareBenchmarkRuns",
-        "summarizeBenchmarkPerformance"
-      ],
-      "mapped_pages": [
-        "benchmark_comparison_dashboard"
-      ],
-      "notes": "Baseline systems can be represented in benchmark_runs.system_under_test, but cost ingestion/computation is outside scope."
-    },
-    "BO4": {
-      "description": "Improve retrieval latency and relevance for large-scale embedding search.",
-      "mapped_collections": [
-        "document_chunks",
-        "benchmark_runs"
-      ],
-      "mapped_query_patterns": [
-        "QP5",
-        "QP6",
-        "QP7",
-        "QP10",
-        "QP11",
-        "QP12"
-      ],
-      "mapped_endpoints": [
-        "runDocumentVectorSearch",
-        "runHybridSearch",
-        "runAgentMemoryVectorRetrieval",
-        "recordBenchmarkRun",
-        "compareBenchmarkRuns",
-        "summarizeBenchmarkPerformance"
-      ],
-      "mapped_pages": [
-        "document_search_playground",
-        "agent_memory_playground",
-        "benchmark_comparison_dashboard"
-      ],
-      "notes": "Latency and relevance are captured through retrieval endpoints plus persisted benchmark metrics."
-    },
-    "BO5": {
-      "description": "Validate value through benchmarks, demo evidence, and practical use cases before making decisions.",
-      "mapped_collections": [
-        "benchmark_ground_truths",
-        "benchmark_runs"
-      ],
-      "mapped_query_patterns": [
-        "QP8",
-        "QP9",
-        "QP10",
-        "QP11",
-        "QP12",
-        "QP13"
-      ],
-      "mapped_endpoints": [
-        "createBenchmarkGroundTruth",
-        "listBenchmarkGroundTruths",
-        "getBenchmarkGroundTruthDetail",
-        "recordBenchmarkRun",
-        "compareBenchmarkRuns",
-        "summarizeBenchmarkPerformance",
-        "getBenchmarkPromptHistory"
-      ],
-      "mapped_pages": [
-        "benchmark_prompts",
-        "benchmark_prompt_detail",
-        "benchmark_comparison_dashboard"
-      ]
-    }
-  },
-  "functional_requirements": {
-    "FR1": {
-      "description": "Support document-search use cases over uploaded unstructured content such as PDFs and other documents.",
-      "mapped_collections": [
-        "documents",
-        "document_chunks"
-      ],
-      "mapped_query_patterns": [
-        "QP1",
-        "QP3",
-        "QP4",
-        "QP5",
-        "QP6"
-      ],
-      "mapped_endpoints": [
-        "listTenantDocuments",
-        "createDocument",
-        "inspectDocumentChunks",
-        "runDocumentKeywordSearch",
-        "runDocumentVectorSearch",
-        "runHybridSearch"
-      ],
-      "mapped_pages": [
-        "documents_library",
-        "document_chunk_inspector",
-        "document_search_playground"
+      "frontend_screens": [
+        "DocumentLibrary",
+        "DocumentProcessingMonitor",
+        "DocumentSearchPlayground"
       ]
     },
     "FR2": {
-      "description": "Support agent-memory/context retrieval use cases where conversation-derived context becomes searchable documents in the system.",
-      "mapped_collections": [
+      "type": "functional_requirement",
+      "description": "Support agent memory use cases based on context gathered from conversations.",
+      "collections": [
         "documents",
-        "document_chunks"
+        "chunks"
       ],
-      "mapped_query_patterns": [
-        "QP2",
-        "QP7"
+      "query_patterns": [
+        "QP10",
+        "QP11"
       ],
-      "mapped_endpoints": [
-        "listAgentMemoryDocuments",
+      "api_endpoints": [
         "createDocument",
-        "runAgentMemoryVectorRetrieval"
+        "listAgentMemoryDocuments",
+        "searchAgentMemory"
       ],
-      "mapped_pages": [
-        "documents_library",
-        "agent_memory_playground"
+      "frontend_screens": [
+        "RegisterDocument",
+        "AgentMemoryLibrary",
+        "AgentMemorySearchPlayground"
       ]
     },
     "FR3": {
-      "description": "Handle ingestion and retrieval for varied document types, potentially including PDF, CSV, Google Sheets, text files, research papers, business documents, Jira/Slack-style text exports, and similar unstructured inputs.",
-      "mapped_collections": [
-        "documents",
-        "document_chunks"
+      "type": "functional_requirement",
+      "description": "Handle ingestion and retrieval for various customer-provided document types such as PDFs, CSVs, Google Sheets, text files, and similar connector outputs.",
+      "collections": [
+        "documents"
       ],
-      "mapped_query_patterns": [
-        "QP1",
-        "QP4",
-        "QP5",
-        "QP6"
+      "query_patterns": [
+        "QP2",
+        "QP4"
       ],
-      "mapped_endpoints": [
-        "listTenantDocuments",
+      "api_endpoints": [
         "createDocument",
-        "runDocumentKeywordSearch",
-        "runDocumentVectorSearch",
-        "runHybridSearch"
+        "listDocuments",
+        "getDocumentProcessingStatus"
       ],
-      "mapped_pages": [
-        "documents_library",
-        "document_search_playground"
+      "frontend_screens": [
+        "RegisterDocument",
+        "DocumentLibrary",
+        "DocumentProcessingMonitor"
       ]
     },
     "FR4": {
-      "description": "Demonstrate the solution live using documents and ground-truth prompts provided by the customer during the session rather than relying only on pre-prepared training material.",
-      "mapped_collections": [
-        "documents",
-        "benchmark_ground_truths",
-        "benchmark_runs"
+      "type": "functional_requirement",
+      "description": "Support retrieval over very large indexes, potentially around one million documents in a single index.",
+      "collections": [
+        "chunks"
       ],
-      "mapped_query_patterns": [
-        "QP1",
-        "QP8",
-        "QP9",
+      "query_patterns": [
+        "QP5",
+        "QP6",
+        "QP7",
         "QP10"
       ],
-      "mapped_endpoints": [
-        "createDocument",
-        "listTenantDocuments",
-        "createBenchmarkGroundTruth",
-        "listBenchmarkGroundTruths",
-        "getBenchmarkGroundTruthDetail",
-        "recordBenchmarkRun"
+      "api_endpoints": [
+        "searchDocumentChunks",
+        "searchAgentMemory"
       ],
-      "mapped_pages": [
-        "documents_library",
-        "benchmark_prompts",
-        "benchmark_prompt_detail",
-        "document_search_playground",
-        "agent_memory_playground"
+      "frontend_screens": [
+        "DocumentSearchPlayground",
+        "AgentMemorySearchPlayground"
       ]
     },
     "FR5": {
-      "description": "Provide a practical hands-on way for the customer to test capabilities, such as a playground-style or live interactive evaluation setup.",
-      "mapped_collections": [
-        "documents",
-        "document_chunks",
-        "benchmark_ground_truths",
+      "type": "functional_requirement",
+      "description": "Return retrieved results quickly enough to support downstream re-ranking and surfacing to agents.",
+      "collections": [
+        "chunks",
         "benchmark_runs"
       ],
-      "mapped_query_patterns": [
-        "QP1",
-        "QP3",
-        "QP4",
+      "query_patterns": [
         "QP5",
-        "QP6",
         "QP7",
-        "QP8",
         "QP10",
-        "QP11",
-        "QP12",
-        "QP13"
+        "QP15"
       ],
-      "mapped_endpoints": [
-        "listTenantDocuments",
-        "inspectDocumentChunks",
-        "runDocumentKeywordSearch",
-        "runDocumentVectorSearch",
-        "runHybridSearch",
-        "runAgentMemoryVectorRetrieval",
-        "listBenchmarkGroundTruths",
-        "recordBenchmarkRun",
-        "compareBenchmarkRuns",
-        "summarizeBenchmarkPerformance",
-        "getBenchmarkPromptHistory"
+      "api_endpoints": [
+        "searchDocumentChunks",
+        "searchAgentMemory",
+        "getBenchmarkRunQuestionAnalysis"
       ],
-      "mapped_pages": [
-        "document_search_playground",
-        "agent_memory_playground",
-        "document_chunk_inspector",
-        "benchmark_prompts",
-        "benchmark_prompt_detail",
-        "benchmark_comparison_dashboard"
+      "frontend_screens": [
+        "DocumentSearchPlayground",
+        "AgentMemorySearchPlayground",
+        "BenchmarkQuestionAnalysis"
       ]
     },
     "FR6": {
-      "description": "Compare multiple chunking strategies in the next session and show which approach performs best for the sample documents, rather than assuming a single chunking method.",
-      "mapped_collections": [
-        "document_chunks",
+      "type": "functional_requirement",
+      "description": "Support evaluation of multiple chunking strategies for document/PDF processing rather than assuming a fixed current approach.",
+      "collections": [
+        "chunks",
         "benchmark_runs"
       ],
-      "mapped_query_patterns": [
-        "QP3",
-        "QP4",
-        "QP5",
-        "QP6",
-        "QP10",
-        "QP11",
-        "QP12"
+      "query_patterns": [
+        "QP8",
+        "QP9",
+        "QP13",
+        "QP14"
       ],
-      "mapped_endpoints": [
-        "inspectDocumentChunks",
-        "runDocumentKeywordSearch",
-        "runDocumentVectorSearch",
-        "runHybridSearch",
-        "recordBenchmarkRun",
+      "api_endpoints": [
+        "getDocumentChunks",
+        "compareDocumentChunkingStrategies",
+        "listBenchmarkRuns",
         "compareBenchmarkRuns",
-        "summarizeBenchmarkPerformance"
+        "createBenchmarkRun"
       ],
-      "mapped_pages": [
-        "document_chunk_inspector",
-        "document_search_playground",
-        "benchmark_comparison_dashboard"
+      "frontend_screens": [
+        "DocumentChunkInspector",
+        "DocumentChunkingComparison",
+        "BenchmarkRunsList",
+        "BenchmarkComparisonDashboard",
+        "CreateBenchmarkRun"
       ]
     },
     "FR7": {
-      "description": "Include side-by-side comparison against the customer's current or rudimentary baseline system during the evaluation.",
-      "mapped_collections": [
-        "document_chunks",
-        "benchmark_ground_truths",
-        "benchmark_runs"
+      "type": "functional_requirement",
+      "description": "Provide a system where users can upload files, create embeddings, and ask questions against them.",
+      "collections": [
+        "documents",
+        "chunks"
       ],
-      "mapped_query_patterns": [
+      "query_patterns": [
+        "QP3",
         "QP4",
-        "QP10",
-        "QP11",
-        "QP12"
+        "QP5",
+        "QP6",
+        "QP7"
       ],
-      "mapped_endpoints": [
-        "runDocumentKeywordSearch",
-        "recordBenchmarkRun",
-        "compareBenchmarkRuns",
-        "summarizeBenchmarkPerformance"
+      "api_endpoints": [
+        "createDocument",
+        "getDocumentProcessingStatus",
+        "searchDocumentChunks"
       ],
-      "mapped_pages": [
-        "document_search_playground",
-        "agent_memory_playground",
-        "benchmark_comparison_dashboard"
+      "frontend_screens": [
+        "RegisterDocument",
+        "DocumentProcessingMonitor",
+        "DocumentSearchPlayground"
       ],
-      "notes": "Baseline execution/import is external to the API, but benchmark_runs supports storing baseline results for comparison."
+      "notes": [
+        "Embedding creation is represented in persisted chunk data and assumed asynchronous outside the API contract; no server-side embedding-generation endpoint is defined."
+      ]
     },
     "FR8": {
-      "description": "Focus the initial POV on proving value for retrieval quality and latency at representative scale, while leaving deeper production-scale benchmarking for a later POC if needed.",
-      "mapped_collections": [
+      "type": "functional_requirement",
+      "description": "Support isolation patterns consistent with both multi-tenant services and per-customer isolated SaaS deployments.",
+      "collections": [
+        "tenants",
+        "documents",
+        "chunks",
+        "ground_truth_sets",
         "benchmark_runs"
       ],
-      "mapped_query_patterns": [
-        "QP10",
-        "QP11",
-        "QP12",
-        "QP13"
+      "query_patterns": [
+        "QP1"
       ],
-      "mapped_endpoints": [
-        "recordBenchmarkRun",
-        "compareBenchmarkRuns",
-        "summarizeBenchmarkPerformance",
-        "getBenchmarkPromptHistory"
+      "api_endpoints": [
+        "getTenant",
+        "createTenant"
       ],
-      "mapped_pages": [
-        "benchmark_prompt_detail",
-        "benchmark_comparison_dashboard"
-      ],
-      "notes": "Artifacts focus on observable retrieval and benchmark evidence, not full production-scale load testing."
-    }
-  },
-  "ai_genai_requirements": {
+      "frontend_screens": [
+        "TenantLanding",
+        "CreateTenant",
+        "TenantWorkspaceHome"
+      ]
+    },
     "AI1": {
-      "description": "Support retrieval over unstructured data and combined structured + unstructured data for AI use cases.",
-      "mapped_collections": [
+      "type": "ai_requirement",
+      "description": "Enable combined retrieval across structured and unstructured data.",
+      "collections": [
         "documents",
-        "document_chunks"
+        "chunks"
       ],
-      "mapped_query_patterns": [
-        "QP4",
-        "QP5",
-        "QP6",
-        "QP7"
+      "query_patterns": [
+        "QP17"
       ],
-      "mapped_endpoints": [
-        "runDocumentKeywordSearch",
-        "runDocumentVectorSearch",
-        "runHybridSearch",
-        "runAgentMemoryVectorRetrieval"
+      "api_endpoints": [
+        "searchDocumentChunksWithStructuredFilters"
       ],
-      "mapped_pages": [
-        "document_search_playground",
-        "agent_memory_playground"
-      ],
-      "notes": "Structured + unstructured combination is not separately modeled in the artifacts; implemented support is via retrieval over modeled documents/chunks."
+      "frontend_screens": [
+        "StructuredUnstructuredSearch"
+      ]
     },
     "AI2": {
-      "description": "Support vector-search-based retrieval over large document collections.",
-      "mapped_collections": [
-        "document_chunks"
+      "type": "ai_requirement",
+      "description": "Support embeddings, vector search, and relevance-oriented retrieval for unstructured content.",
+      "collections": [
+        "chunks"
       ],
-      "mapped_query_patterns": [
+      "query_patterns": [
         "QP5",
-        "QP6",
         "QP7"
       ],
-      "mapped_endpoints": [
-        "runDocumentVectorSearch",
-        "runHybridSearch",
-        "runAgentMemoryVectorRetrieval"
+      "api_endpoints": [
+        "searchDocumentChunks"
       ],
-      "mapped_pages": [
-        "document_search_playground",
-        "agent_memory_playground"
+      "frontend_screens": [
+        "DocumentSearchPlayground"
       ]
     },
     "AI3": {
-      "description": "Support document ingestion and retrieval workflows for AI over customer-provided documents whose structure and content may vary significantly.",
-      "mapped_collections": [
+      "type": "ai_requirement",
+      "description": "Support agent memory built from conversational context stored as documents.",
+      "collections": [
         "documents",
-        "document_chunks"
+        "chunks"
       ],
-      "mapped_query_patterns": [
-        "QP1",
-        "QP4",
-        "QP5",
-        "QP6"
+      "query_patterns": [
+        "QP10",
+        "QP11"
       ],
-      "mapped_endpoints": [
+      "api_endpoints": [
         "createDocument",
-        "listTenantDocuments",
-        "runDocumentKeywordSearch",
-        "runDocumentVectorSearch",
-        "runHybridSearch"
+        "listAgentMemoryDocuments",
+        "searchAgentMemory"
       ],
-      "mapped_pages": [
-        "documents_library",
-        "document_search_playground"
+      "frontend_screens": [
+        "RegisterDocument",
+        "AgentMemoryLibrary",
+        "AgentMemorySearchPlayground"
       ]
     },
     "AI4": {
-      "description": "Demonstrate an approach for PDF processing and retrieval that minimizes information loss from naive chunking.",
-      "mapped_collections": [
-        "document_chunks",
-        "benchmark_runs"
+      "type": "ai_requirement",
+      "description": "Potentially support multimodal document understanding for visually rich PDFs containing tables and images.",
+      "collections": [
+        "documents",
+        "chunks"
       ],
-      "mapped_query_patterns": [
-        "QP3",
-        "QP5",
-        "QP6",
-        "QP10",
-        "QP11",
-        "QP12"
+      "query_patterns": [
+        "QP4",
+        "QP8",
+        "QP9"
       ],
-      "mapped_endpoints": [
-        "inspectDocumentChunks",
-        "runDocumentVectorSearch",
-        "runHybridSearch",
-        "recordBenchmarkRun",
-        "compareBenchmarkRuns",
-        "summarizeBenchmarkPerformance"
+      "api_endpoints": [
+        "getDocumentProcessingStatus",
+        "getDocumentChunks",
+        "compareDocumentChunkingStrategies"
       ],
-      "mapped_pages": [
-        "document_chunk_inspector",
-        "document_search_playground",
-        "benchmark_comparison_dashboard"
+      "frontend_screens": [
+        "DocumentProcessingMonitor",
+        "DocumentChunkInspector",
+        "DocumentChunkingComparison"
+      ],
+      "notes": [
+        "No explicit multimodal inference endpoint or model contract is defined; only extracted text/chunk artifacts and metadata are represented."
       ]
     },
     "AI5": {
-      "description": "Evaluate chunking/retrieval strategies for text-only benchmark documents first, while treating multimodal evaluation as a lower-priority future consideration.",
-      "mapped_collections": [
-        "documents",
-        "document_chunks",
+      "type": "ai_requirement",
+      "description": "Allow evaluation of different chunking and contextualization approaches to improve retrieval from PDFs and other complex documents.",
+      "collections": [
+        "chunks",
         "benchmark_runs"
       ],
-      "mapped_query_patterns": [
-        "QP1",
-        "QP3",
+      "query_patterns": [
+        "QP8",
+        "QP9",
+        "QP14"
+      ],
+      "api_endpoints": [
+        "getDocumentChunks",
+        "compareDocumentChunkingStrategies",
+        "compareBenchmarkRuns"
+      ],
+      "frontend_screens": [
+        "DocumentChunkInspector",
+        "DocumentChunkingComparison",
+        "BenchmarkComparisonDashboard"
+      ]
+    },
+    "UC1": {
+      "type": "use_case",
+      "description": "Unstructured document search.",
+      "collections": [
+        "documents",
+        "chunks"
+      ],
+      "query_patterns": [
+        "QP2",
         "QP4",
         "QP5",
         "QP6",
-        "QP10",
-        "QP11",
-        "QP12"
-      ],
-      "mapped_endpoints": [
-        "listTenantDocuments",
-        "inspectDocumentChunks",
-        "runDocumentKeywordSearch",
-        "runDocumentVectorSearch",
-        "runHybridSearch",
-        "recordBenchmarkRun",
-        "compareBenchmarkRuns",
-        "summarizeBenchmarkPerformance"
-      ],
-      "mapped_pages": [
-        "documents_library",
-        "document_chunk_inspector",
-        "document_search_playground",
-        "benchmark_comparison_dashboard"
-      ],
-      "notes": "Current artifacts support text-centric retrieval only; multimodal support is not designed."
-    },
-    "AI6": {
-      "description": "Use customer-provided benchmark prompts/ground truths to evaluate retrieval quality.",
-      "mapped_collections": [
-        "benchmark_ground_truths",
-        "benchmark_runs"
-      ],
-      "mapped_query_patterns": [
+        "QP7",
         "QP8",
-        "QP9",
-        "QP10",
-        "QP11",
-        "QP12",
-        "QP13"
+        "QP17"
       ],
-      "mapped_endpoints": [
-        "createBenchmarkGroundTruth",
-        "listBenchmarkGroundTruths",
-        "getBenchmarkGroundTruthDetail",
-        "recordBenchmarkRun",
-        "compareBenchmarkRuns",
-        "summarizeBenchmarkPerformance",
-        "getBenchmarkPromptHistory"
-      ],
-      "mapped_pages": [
-        "benchmark_prompts",
-        "benchmark_prompt_detail",
-        "benchmark_comparison_dashboard"
-      ]
-    }
-  },
-  "use_cases": {
-    "UC1": {
-      "description": "Document Search over Unstructured Files",
-      "mapped_collections": [
-        "tenants",
-        "documents",
-        "document_chunks"
-      ],
-      "mapped_query_patterns": [
-        "QP1",
-        "QP3",
-        "QP4",
-        "QP5",
-        "QP6"
-      ],
-      "mapped_endpoints": [
-        "createTenant",
-        "listTenantDocuments",
+      "api_endpoints": [
+        "listDocuments",
         "createDocument",
-        "inspectDocumentChunks",
-        "runDocumentKeywordSearch",
-        "runDocumentVectorSearch",
-        "runHybridSearch"
+        "getDocumentProcessingStatus",
+        "getDocumentChunks",
+        "searchDocumentChunks",
+        "searchDocumentChunksWithStructuredFilters"
       ],
-      "mapped_pages": [
-        "tenant_setup",
-        "documents_library",
-        "document_chunk_inspector",
-        "document_search_playground"
+      "frontend_screens": [
+        "DocumentLibrary",
+        "RegisterDocument",
+        "DocumentProcessingMonitor",
+        "DocumentChunkInspector",
+        "DocumentSearchPlayground",
+        "StructuredUnstructuredSearch"
       ]
     },
     "UC2": {
-      "description": "Agent Memory Retrieval",
-      "mapped_collections": [
-        "tenants",
+      "type": "use_case",
+      "description": "Agent memory retrieval.",
+      "collections": [
         "documents",
-        "document_chunks"
+        "chunks"
       ],
-      "mapped_query_patterns": [
-        "QP2",
-        "QP7"
+      "query_patterns": [
+        "QP10",
+        "QP11"
       ],
-      "mapped_endpoints": [
-        "createTenant",
+      "api_endpoints": [
         "createDocument",
         "listAgentMemoryDocuments",
-        "runAgentMemoryVectorRetrieval"
+        "searchAgentMemory"
       ],
-      "mapped_pages": [
-        "tenant_setup",
-        "documents_library",
-        "agent_memory_playground"
+      "frontend_screens": [
+        "RegisterDocument",
+        "AgentMemoryLibrary",
+        "AgentMemorySearchPlayground"
       ]
     },
     "UC3": {
-      "description": "Benchmarking Chunking and Retrieval Strategies",
-      "mapped_collections": [
-        "tenants",
-        "documents",
-        "document_chunks",
-        "benchmark_ground_truths",
-        "benchmark_runs"
+      "type": "use_case",
+      "description": "Benchmark-driven solution comparison.",
+      "collections": [
+        "ground_truth_sets",
+        "benchmark_runs",
+        "chunks",
+        "documents"
       ],
-      "mapped_query_patterns": [
-        "QP1",
-        "QP3",
-        "QP4",
-        "QP5",
-        "QP6",
-        "QP8",
+      "query_patterns": [
         "QP9",
-        "QP10",
-        "QP11",
         "QP12",
-        "QP13"
+        "QP13",
+        "QP14",
+        "QP15",
+        "QP16"
       ],
-      "mapped_endpoints": [
-        "createTenant",
-        "listTenantDocuments",
-        "inspectDocumentChunks",
-        "runDocumentKeywordSearch",
-        "runDocumentVectorSearch",
-        "runHybridSearch",
-        "createBenchmarkGroundTruth",
-        "listBenchmarkGroundTruths",
-        "getBenchmarkGroundTruthDetail",
-        "recordBenchmarkRun",
+      "api_endpoints": [
+        "createGroundTruthSet",
+        "getGroundTruthSetByName",
+        "createBenchmarkRun",
+        "listBenchmarkRuns",
         "compareBenchmarkRuns",
-        "summarizeBenchmarkPerformance",
-        "getBenchmarkPromptHistory"
+        "getBenchmarkRunQuestionAnalysis",
+        "getBenchmarkQuestionHits",
+        "compareDocumentChunkingStrategies"
       ],
-      "mapped_pages": [
-        "tenant_setup",
-        "documents_library",
-        "document_chunk_inspector",
-        "document_search_playground",
-        "benchmark_prompts",
-        "benchmark_prompt_detail",
-        "benchmark_comparison_dashboard"
+      "frontend_screens": [
+        "GroundTruthSetCreator",
+        "GroundTruthSetViewer",
+        "CreateBenchmarkRun",
+        "BenchmarkRunsList",
+        "BenchmarkComparisonDashboard",
+        "BenchmarkQuestionAnalysis",
+        "BenchmarkQuestionHitDetails",
+        "DocumentChunkingComparison"
       ]
-    }
-  },
-  "success_criteria": {
+    },
     "SC1": {
-      "description": "The next POV session demonstrates document-search retrieval on customer-supplied documents and customer-supplied ground-truth prompts during the live session.",
-      "mapped_collections": [
-        "documents",
-        "benchmark_ground_truths",
-        "benchmark_runs"
+      "type": "success_criterion",
+      "description": "A live demo or workshop must show actual benchmarks, comparisons, and concrete use cases rather than only conceptual discussion.",
+      "collections": [
+        "benchmark_runs",
+        "ground_truth_sets"
       ],
-      "mapped_query_patterns": [
-        "QP1",
-        "QP8",
-        "QP10"
+      "query_patterns": [
+        "QP12",
+        "QP13",
+        "QP14",
+        "QP15",
+        "QP16"
       ],
-      "mapped_endpoints": [
-        "createDocument",
-        "listTenantDocuments",
-        "createBenchmarkGroundTruth",
-        "listBenchmarkGroundTruths",
-        "recordBenchmarkRun"
+      "api_endpoints": [
+        "createGroundTruthSet",
+        "createBenchmarkRun",
+        "listBenchmarkRuns",
+        "compareBenchmarkRuns",
+        "getBenchmarkRunQuestionAnalysis",
+        "getBenchmarkQuestionHits"
       ],
-      "mapped_pages": [
-        "documents_library",
-        "benchmark_prompts",
-        "document_search_playground"
+      "frontend_screens": [
+        "GroundTruthSetCreator",
+        "CreateBenchmarkRun",
+        "BenchmarkRunsList",
+        "BenchmarkComparisonDashboard",
+        "BenchmarkQuestionAnalysis",
+        "BenchmarkQuestionHitDetails"
       ]
     },
     "SC2": {
-      "description": "The evaluation includes side-by-side comparison against a baseline system or current rudimentary approach.",
-      "mapped_collections": [
-        "benchmark_runs"
-      ],
-      "mapped_query_patterns": [
-        "QP10",
-        "QP11",
-        "QP12"
-      ],
-      "mapped_endpoints": [
-        "recordBenchmarkRun",
-        "compareBenchmarkRuns",
-        "summarizeBenchmarkPerformance"
-      ],
-      "mapped_pages": [
-        "benchmark_comparison_dashboard"
-      ]
-    },
-    "SC3": {
-      "description": "The evaluation reports retrieval quality using precision and recall, with top-K views including 1, 5, 10, and 20.",
-      "mapped_collections": [
-        "benchmark_ground_truths",
-        "benchmark_runs"
-      ],
-      "mapped_query_patterns": [
-        "QP9",
-        "QP10",
-        "QP11",
-        "QP12",
-        "QP13"
-      ],
-      "mapped_endpoints": [
-        "getBenchmarkGroundTruthDetail",
-        "recordBenchmarkRun",
-        "compareBenchmarkRuns",
-        "summarizeBenchmarkPerformance",
-        "getBenchmarkPromptHistory"
-      ],
-      "mapped_pages": [
-        "benchmark_prompt_detail",
-        "benchmark_comparison_dashboard"
-      ]
-    },
-    "SC4": {
-      "description": "The evaluation reports retrieval latency for the tested setup.",
-      "mapped_collections": [
-        "benchmark_runs"
-      ],
-      "mapped_query_patterns": [
-        "QP10",
-        "QP11",
-        "QP12",
-        "QP13"
-      ],
-      "mapped_endpoints": [
-        "recordBenchmarkRun",
-        "compareBenchmarkRuns",
-        "summarizeBenchmarkPerformance",
-        "getBenchmarkPromptHistory"
-      ],
-      "mapped_pages": [
-        "benchmark_prompt_detail",
-        "benchmark_comparison_dashboard"
-      ]
-    },
-    "SC5": {
-      "description": "The next session compares multiple chunking strategies and shows which performs best for the benchmark set.",
-      "mapped_collections": [
-        "document_chunks",
-        "benchmark_runs"
-      ],
-      "mapped_query_patterns": [
-        "QP3",
-        "QP10",
-        "QP11",
-        "QP12"
-      ],
-      "mapped_endpoints": [
-        "inspectDocumentChunks",
-        "recordBenchmarkRun",
-        "compareBenchmarkRuns",
-        "summarizeBenchmarkPerformance"
-      ],
-      "mapped_pages": [
-        "document_chunk_inspector",
-        "benchmark_comparison_dashboard"
-      ]
-    },
-    "SC6": {
-      "description": "Any claim of better accuracy, speed, or cost should be supported by observable numbers in the demo rather than vendor assertions alone.",
-      "mapped_collections": [
-        "benchmark_runs"
-      ],
-      "mapped_query_patterns": [
-        "QP10",
-        "QP11",
-        "QP12",
-        "QP13"
-      ],
-      "mapped_endpoints": [
-        "recordBenchmarkRun",
-        "compareBenchmarkRuns",
-        "summarizeBenchmarkPerformance",
-        "getBenchmarkPromptHistory"
-      ],
-      "mapped_pages": [
-        "benchmark_prompt_detail",
-        "benchmark_comparison_dashboard"
-      ]
-    },
-    "SC7": {
-      "description": "Aspirational target: retrieval should be fast enough to inspire confidence for customer document-search use cases; exact large-scale SLA thresholds remain to be validated in a later POC.",
-      "mapped_collections": [
-        "benchmark_runs"
-      ],
-      "mapped_query_patterns": [
-        "QP10",
-        "QP11",
-        "QP12"
-      ],
-      "mapped_endpoints": [
-        "recordBenchmarkRun",
-        "compareBenchmarkRuns",
-        "summarizeBenchmarkPerformance"
-      ],
-      "mapped_pages": [
-        "benchmark_comparison_dashboard"
-      ],
-      "notes": "Later-stage production SLA validation is explicitly outside the current authoritative scope."
-    }
-  },
-  "entities_to_collections": {
-    "Tenant": [
-      "tenants"
-    ],
-    "Document": [
-      "documents",
-      "benchmark_ground_truths"
-    ],
-    "Agent Memory": [
-      "documents"
-    ],
-    "Chunk": [
-      "document_chunks",
-      "benchmark_runs"
-    ],
-    "Embedding": [
-      "document_chunks",
-      "benchmark_runs"
-    ]
-  },
-  "frontend_to_backend_traceability": {
-    "tenant_setup": {
-      "endpoints": [
-        "createTenant"
-      ],
-      "collections": [
-        "tenants"
-      ]
-    },
-    "documents_library": {
-      "endpoints": [
-        "listTenantDocuments",
-        "createDocument"
-      ],
-      "query_patterns": [
-        "QP1"
-      ],
-      "collections": [
-        "documents"
-      ]
-    },
-    "document_chunk_inspector": {
-      "endpoints": [
-        "inspectDocumentChunks"
-      ],
-      "query_patterns": [
-        "QP3"
-      ],
-      "collections": [
-        "document_chunks"
-      ]
-    },
-    "document_search_playground": {
-      "endpoints": [
-        "listTenantDocuments",
-        "runDocumentKeywordSearch",
-        "runDocumentVectorSearch",
-        "runHybridSearch",
-        "recordBenchmarkRun"
-      ],
-      "query_patterns": [
-        "QP1",
-        "QP4",
-        "QP5",
-        "QP6",
-        "QP10"
-      ],
+      "type": "success_criterion",
+      "description": "The team needs access to a playground-style environment or hands-on setup to try the capabilities themselves.",
       "collections": [
         "documents",
-        "document_chunks",
+        "chunks",
         "benchmark_runs"
-      ]
-    },
-    "agent_memory_playground": {
-      "endpoints": [
-        "listAgentMemoryDocuments",
-        "createDocument",
-        "runAgentMemoryVectorRetrieval",
-        "recordBenchmarkRun"
       ],
       "query_patterns": [
         "QP2",
+        "QP5",
+        "QP6",
         "QP7",
-        "QP10"
-      ],
-      "collections": [
-        "documents",
-        "document_chunks",
-        "benchmark_runs"
-      ]
-    },
-    "benchmark_prompts": {
-      "endpoints": [
-        "listBenchmarkGroundTruths",
-        "createBenchmarkGroundTruth",
-        "listTenantDocuments"
-      ],
-      "query_patterns": [
-        "QP8",
-        "QP1"
-      ],
-      "collections": [
-        "benchmark_ground_truths",
-        "documents"
-      ]
-    },
-    "benchmark_prompt_detail": {
-      "endpoints": [
-        "getBenchmarkGroundTruthDetail",
-        "getBenchmarkPromptHistory"
-      ],
-      "query_patterns": [
-        "QP9",
+        "QP10",
         "QP13"
       ],
-      "collections": [
-        "benchmark_ground_truths",
-        "documents",
-        "document_chunks",
-        "benchmark_runs"
+      "api_endpoints": [
+        "listDocuments",
+        "searchDocumentChunks",
+        "listAgentMemoryDocuments",
+        "searchAgentMemory",
+        "listBenchmarkRuns"
+      ],
+      "frontend_screens": [
+        "DocumentLibrary",
+        "DocumentSearchPlayground",
+        "AgentMemoryLibrary",
+        "AgentMemorySearchPlayground",
+        "BenchmarkRunsList"
       ]
     },
-    "benchmark_comparison_dashboard": {
-      "endpoints": [
-        "compareBenchmarkRuns",
-        "summarizeBenchmarkPerformance"
+    "SC3": {
+      "type": "success_criterion",
+      "description": "The evaluation should use customer-provided documents shared during the demo rather than pre-trained or pre-shared materials.",
+      "collections": [
+        "documents"
       ],
       "query_patterns": [
-        "QP11",
-        "QP12"
+        "QP3",
+        "QP4"
       ],
+      "api_endpoints": [
+        "createDocument",
+        "getDocumentProcessingStatus"
+      ],
+      "frontend_screens": [
+        "RegisterDocument",
+        "DocumentProcessingMonitor"
+      ]
+    },
+    "SC4": {
+      "type": "success_criterion",
+      "description": "The solution should demonstrate the right retrieval behavior on representative uploaded documents at acceptable latency.",
+      "collections": [
+        "chunks",
+        "benchmark_runs"
+      ],
+      "query_patterns": [
+        "QP5",
+        "QP6",
+        "QP7",
+        "QP15"
+      ],
+      "api_endpoints": [
+        "searchDocumentChunks",
+        "getBenchmarkRunQuestionAnalysis"
+      ],
+      "frontend_screens": [
+        "DocumentSearchPlayground",
+        "BenchmarkQuestionAnalysis"
+      ]
+    },
+    "SC5": {
+      "type": "success_criterion",
+      "description": "The benchmark should compare MongoDB/Voyage against a baseline or current approach side by side.",
       "collections": [
         "benchmark_runs",
-        "benchmark_ground_truths"
+        "ground_truth_sets"
+      ],
+      "query_patterns": [
+        "QP12",
+        "QP14"
+      ],
+      "api_endpoints": [
+        "createGroundTruthSet",
+        "compareBenchmarkRuns",
+        "createBenchmarkRun"
+      ],
+      "frontend_screens": [
+        "GroundTruthSetCreator",
+        "CreateBenchmarkRun",
+        "BenchmarkComparisonDashboard"
+      ]
+    },
+    "SC6": {
+      "type": "success_criterion",
+      "description": "The evaluation should measure raw accuracy and speed across benchmark questions over a set of documents.",
+      "collections": [
+        "benchmark_runs",
+        "ground_truth_sets"
+      ],
+      "query_patterns": [
+        "QP12",
+        "QP14",
+        "QP15"
+      ],
+      "api_endpoints": [
+        "getGroundTruthSetByName",
+        "compareBenchmarkRuns",
+        "getBenchmarkRunQuestionAnalysis"
+      ],
+      "frontend_screens": [
+        "GroundTruthSetViewer",
+        "BenchmarkComparisonDashboard",
+        "BenchmarkQuestionAnalysis"
+      ]
+    },
+    "SC7": {
+      "type": "success_criterion",
+      "description": "The evaluation should include precision, recall, and latency metrics.",
+      "collections": [
+        "benchmark_runs"
+      ],
+      "query_patterns": [
+        "QP14",
+        "QP15"
+      ],
+      "api_endpoints": [
+        "compareBenchmarkRuns",
+        "getBenchmarkRunQuestionAnalysis"
+      ],
+      "frontend_screens": [
+        "BenchmarkComparisonDashboard",
+        "BenchmarkQuestionAnalysis"
+      ]
+    },
+    "SC8": {
+      "type": "success_criterion",
+      "description": "Top-K retrieval quality should be evaluated at 1, 5, 10, and 20.",
+      "collections": [
+        "benchmark_runs"
+      ],
+      "query_patterns": [
+        "QP14",
+        "QP15",
+        "QP16"
+      ],
+      "api_endpoints": [
+        "createBenchmarkRun",
+        "compareBenchmarkRuns",
+        "getBenchmarkRunQuestionAnalysis",
+        "getBenchmarkQuestionHits"
+      ],
+      "frontend_screens": [
+        "CreateBenchmarkRun",
+        "BenchmarkComparisonDashboard",
+        "BenchmarkQuestionAnalysis",
+        "BenchmarkQuestionHitDetails"
+      ]
+    },
+    "SC9": {
+      "type": "success_criterion",
+      "description": "Initial concurrency expectations are modest relative to retrieval-scale concerns, roughly up to 400\u2013500 requests at maximum.",
+      "collections": [
+        "chunks",
+        "benchmark_runs"
+      ],
+      "query_patterns": [
+        "QP5",
+        "QP6",
+        "QP7",
+        "QP10",
+        "QP13"
+      ],
+      "api_endpoints": [
+        "searchDocumentChunks",
+        "searchAgentMemory",
+        "listBenchmarkRuns"
+      ],
+      "frontend_screens": [
+        "DocumentSearchPlayground",
+        "AgentMemorySearchPlayground",
+        "BenchmarkRunsList"
+      ],
+      "notes": [
+        "Concurrency handling is not explicitly modeled in the schema or API contract; relevance here is primarily to expected workload level for the implemented search and polling screens."
+      ]
+    },
+    "SC10": {
+      "type": "success_criterion",
+      "description": "An initial POV should demonstrate value first, with deeper storage/latency benchmarking potentially deferred to a later POC.",
+      "collections": [
+        "documents",
+        "chunks",
+        "benchmark_runs",
+        "ground_truth_sets"
+      ],
+      "query_patterns": [
+        "QP5",
+        "QP10",
+        "QP12",
+        "QP13",
+        "QP14"
+      ],
+      "api_endpoints": [
+        "searchDocumentChunks",
+        "searchAgentMemory",
+        "createGroundTruthSet",
+        "createBenchmarkRun",
+        "listBenchmarkRuns",
+        "compareBenchmarkRuns"
+      ],
+      "frontend_screens": [
+        "DocumentSearchPlayground",
+        "AgentMemorySearchPlayground",
+        "GroundTruthSetCreator",
+        "CreateBenchmarkRun",
+        "BenchmarkRunsList",
+        "BenchmarkComparisonDashboard"
       ]
     }
-  }
+  },
+  "by_artifact": {
+    "collections": {
+      "tenants": {
+        "supports": [
+          "FR8",
+          "UC1",
+          "UC2",
+          "UC3"
+        ],
+        "related_query_patterns": [
+          "QP1"
+        ],
+        "related_api_endpoints": [
+          "getTenant",
+          "createTenant"
+        ],
+        "related_frontend_screens": [
+          "TenantLanding",
+          "CreateTenant",
+          "TenantWorkspaceHome"
+        ]
+      },
+      "documents": {
+        "supports": [
+          "FR1",
+          "FR2",
+          "FR3",
+          "FR7",
+          "AI3",
+          "UC1",
+          "UC2",
+          "SC3"
+        ],
+        "related_query_patterns": [
+          "QP2",
+          "QP3",
+          "QP4",
+          "QP11"
+        ],
+        "related_api_endpoints": [
+          "listDocuments",
+          "createDocument",
+          "getDocumentProcessingStatus",
+          "listAgentMemoryDocuments"
+        ],
+        "related_frontend_screens": [
+          "DocumentLibrary",
+          "RegisterDocument",
+          "DocumentProcessingMonitor",
+          "AgentMemoryLibrary"
+        ]
+      },
+      "chunks": {
+        "supports": [
+          "FR4",
+          "FR5",
+          "FR6",
+          "AI2",
+          "AI5",
+          "UC1",
+          "UC2"
+        ],
+        "related_query_patterns": [
+          "QP5",
+          "QP6",
+          "QP7",
+          "QP8",
+          "QP9",
+          "QP10",
+          "QP17"
+        ],
+        "related_api_endpoints": [
+          "getDocumentChunks",
+          "compareDocumentChunkingStrategies",
+          "searchDocumentChunks",
+          "searchDocumentChunksWithStructuredFilters",
+          "searchAgentMemory"
+        ],
+        "related_frontend_screens": [
+          "DocumentChunkInspector",
+          "DocumentChunkingComparison",
+          "DocumentSearchPlayground",
+          "StructuredUnstructuredSearch",
+          "AgentMemorySearchPlayground"
+        ]
+      },
+      "ground_truth_sets": {
+        "supports": [
+          "UC3",
+          "BO5",
+          "SC1",
+          "SC5",
+          "SC6"
+        ],
+        "related_query_patterns": [
+          "QP12"
+        ],
+        "related_api_endpoints": [
+          "createGroundTruthSet",
+          "getGroundTruthSetByName"
+        ],
+        "related_frontend_screens": [
+          "GroundTruthSetCreator",
+          "GroundTruthSetViewer"
+        ]
+      },
+      "benchmark_runs": {
+        "supports": [
+          "UC3",
+          "BO5",
+          "FR6",
+          "SC1",
+          "SC4",
+          "SC5",
+          "SC6",
+          "SC7",
+          "SC8"
+        ],
+        "related_query_patterns": [
+          "QP13",
+          "QP14",
+          "QP15",
+          "QP16"
+        ],
+        "related_api_endpoints": [
+          "createBenchmarkRun",
+          "listBenchmarkRuns",
+          "compareBenchmarkRuns",
+          "getBenchmarkRunQuestionAnalysis",
+          "getBenchmarkQuestionHits"
+        ],
+        "related_frontend_screens": [
+          "CreateBenchmarkRun",
+          "BenchmarkRunsList",
+          "BenchmarkComparisonDashboard",
+          "BenchmarkQuestionAnalysis",
+          "BenchmarkQuestionHitDetails"
+        ]
+      }
+    },
+    "query_patterns": {
+      "QP1": {
+        "name": "Lookup tenant/workshop namespace by tenant key",
+        "supports": [
+          "FR8",
+          "UC1",
+          "UC2",
+          "UC3"
+        ],
+        "collections": [
+          "tenants"
+        ],
+        "api_endpoints": [
+          "getTenant",
+          "createDocument",
+          "createGroundTruthSet",
+          "createBenchmarkRun"
+        ],
+        "frontend_screens": [
+          "TenantLanding",
+          "TenantWorkspaceHome"
+        ]
+      },
+      "QP2": {
+        "name": "List uploaded or processed documents for a tenant with type/source filters",
+        "supports": [
+          "FR1",
+          "FR3",
+          "UC1",
+          "UC3",
+          "SC2"
+        ],
+        "collections": [
+          "documents"
+        ],
+        "api_endpoints": [
+          "listDocuments"
+        ],
+        "frontend_screens": [
+          "DocumentLibrary"
+        ]
+      },
+      "QP3": {
+        "name": "Check for duplicate upload by checksum within tenant",
+        "supports": [
+          "FR7",
+          "SC3"
+        ],
+        "collections": [
+          "documents"
+        ],
+        "api_endpoints": [
+          "createDocument"
+        ],
+        "frontend_screens": [
+          "RegisterDocument"
+        ]
+      },
+      "QP4": {
+        "name": "Review document extraction/processing status",
+        "supports": [
+          "FR1",
+          "FR3",
+          "FR7",
+          "UC1",
+          "UC3",
+          "AI4",
+          "SC3"
+        ],
+        "collections": [
+          "documents"
+        ],
+        "api_endpoints": [
+          "getDocumentProcessingStatus"
+        ],
+        "frontend_screens": [
+          "DocumentProcessingMonitor"
+        ]
+      },
+      "QP5": {
+        "name": "Tenant-scoped semantic top-K retrieval over document chunks",
+        "supports": [
+          "BO2",
+          "BO3",
+          "BO4",
+          "FR1",
+          "FR4",
+          "FR5",
+          "AI2",
+          "UC1",
+          "SC2",
+          "SC4",
+          "SC10"
+        ],
+        "collections": [
+          "chunks",
+          "documents"
+        ],
+        "api_endpoints": [
+          "searchDocumentChunks"
+        ],
+        "frontend_screens": [
+          "DocumentSearchPlayground"
+        ]
+      },
+      "QP6": {
+        "name": "Lexical/full-text top-K retrieval over chunk text",
+        "supports": [
+          "BO4",
+          "FR1",
+          "UC1",
+          "UC3",
+          "SC2",
+          "SC4"
+        ],
+        "collections": [
+          "chunks",
+          "documents"
+        ],
+        "api_endpoints": [
+          "searchDocumentChunks"
+        ],
+        "frontend_screens": [
+          "DocumentSearchPlayground"
+        ]
+      },
+      "QP7": {
+        "name": "Hybrid retrieval combining vector and lexical scores",
+        "supports": [
+          "BO2",
+          "BO4",
+          "FR1",
+          "FR4",
+          "FR7",
+          "AI2",
+          "UC1",
+          "UC3",
+          "SC2",
+          "SC4"
+        ],
+        "collections": [
+          "chunks",
+          "documents"
+        ],
+        "api_endpoints": [
+          "searchDocumentChunks"
+        ],
+        "frontend_screens": [
+          "DocumentSearchPlayground"
+        ]
+      },
+      "QP8": {
+        "name": "Fetch all chunks for a document under a selected chunking strategy",
+        "supports": [
+          "FR6",
+          "AI4",
+          "AI5",
+          "UC1",
+          "UC3"
+        ],
+        "collections": [
+          "chunks"
+        ],
+        "api_endpoints": [
+          "getDocumentChunks"
+        ],
+        "frontend_screens": [
+          "DocumentChunkInspector"
+        ]
+      },
+      "QP9": {
+        "name": "Summarize chunk counts and sizes by chunking strategy for a document",
+        "supports": [
+          "FR6",
+          "AI4",
+          "AI5",
+          "UC3"
+        ],
+        "collections": [
+          "chunks"
+        ],
+        "api_endpoints": [
+          "compareDocumentChunkingStrategies"
+        ],
+        "frontend_screens": [
+          "DocumentChunkingComparison"
+        ]
+      },
+      "QP10": {
+        "name": "Semantic retrieval over agent memory chunks",
+        "supports": [
+          "FR2",
+          "FR4",
+          "FR5",
+          "AI3",
+          "UC2",
+          "SC2",
+          "SC10"
+        ],
+        "collections": [
+          "chunks",
+          "documents"
+        ],
+        "api_endpoints": [
+          "searchAgentMemory"
+        ],
+        "frontend_screens": [
+          "AgentMemorySearchPlayground"
+        ]
+      },
+      "QP11": {
+        "name": "List stored agent memory documents by tenant/session",
+        "supports": [
+          "FR2",
+          "AI3",
+          "UC2",
+          "SC2"
+        ],
+        "collections": [
+          "documents"
+        ],
+        "api_endpoints": [
+          "listAgentMemoryDocuments"
+        ],
+        "frontend_screens": [
+          "AgentMemoryLibrary"
+        ]
+      },
+      "QP12": {
+        "name": "Load a benchmark question set for a tenant",
+        "supports": [
+          "BO5",
+          "UC3",
+          "SC1",
+          "SC5",
+          "SC6",
+          "SC10"
+        ],
+        "collections": [
+          "ground_truth_sets"
+        ],
+        "api_endpoints": [
+          "getGroundTruthSetByName"
+        ],
+        "frontend_screens": [
+          "GroundTruthSetViewer"
+        ]
+      },
+      "QP13": {
+        "name": "List recent benchmark runs for a tenant",
+        "supports": [
+          "FR6",
+          "UC3",
+          "SC1",
+          "SC2",
+          "SC9",
+          "SC10"
+        ],
+        "collections": [
+          "benchmark_runs"
+        ],
+        "api_endpoints": [
+          "listBenchmarkRuns"
+        ],
+        "frontend_screens": [
+          "BenchmarkRunsList"
+        ]
+      },
+      "QP14": {
+        "name": "Compare aggregate metrics across benchmark runs",
+        "supports": [
+          "BO2",
+          "BO4",
+          "BO5",
+          "FR6",
+          "AI5",
+          "UC3",
+          "SC1",
+          "SC5",
+          "SC6",
+          "SC7",
+          "SC8",
+          "SC10"
+        ],
+        "collections": [
+          "benchmark_runs"
+        ],
+        "api_endpoints": [
+          "compareBenchmarkRuns"
+        ],
+        "frontend_screens": [
+          "BenchmarkComparisonDashboard"
+        ]
+      },
+      "QP15": {
+        "name": "Inspect per-question benchmark results and top-K retrieval outcomes",
+        "supports": [
+          "BO4",
+          "FR5",
+          "UC3",
+          "SC1",
+          "SC4",
+          "SC6",
+          "SC7",
+          "SC8"
+        ],
+        "collections": [
+          "benchmark_runs"
+        ],
+        "api_endpoints": [
+          "getBenchmarkRunQuestionAnalysis"
+        ],
+        "frontend_screens": [
+          "BenchmarkQuestionAnalysis"
+        ]
+      },
+      "QP16": {
+        "name": "Resolve benchmark top-K hits to chunk and document details",
+        "supports": [
+          "BO5",
+          "UC3",
+          "SC1",
+          "SC8"
+        ],
+        "collections": [
+          "benchmark_runs",
+          "chunks",
+          "documents"
+        ],
+        "api_endpoints": [
+          "getBenchmarkQuestionHits"
+        ],
+        "frontend_screens": [
+          "BenchmarkQuestionHitDetails"
+        ]
+      },
+      "QP17": {
+        "name": "Combine structured metadata filters with unstructured retrieval",
+        "supports": [
+          "BO1",
+          "AI1",
+          "UC1"
+        ],
+        "collections": [
+          "chunks",
+          "documents"
+        ],
+        "api_endpoints": [
+          "searchDocumentChunksWithStructuredFilters"
+        ],
+        "frontend_screens": [
+          "StructuredUnstructuredSearch"
+        ]
+      }
+    },
+    "api_endpoints": {
+      "getTenant": {
+        "supports": [
+          "FR8",
+          "UC1",
+          "UC2",
+          "UC3"
+        ],
+        "collections": [
+          "tenants"
+        ],
+        "query_patterns": [
+          "QP1"
+        ],
+        "frontend_screens": [
+          "TenantLanding",
+          "TenantWorkspaceHome"
+        ]
+      },
+      "createTenant": {
+        "supports": [
+          "FR8"
+        ],
+        "collections": [
+          "tenants"
+        ],
+        "query_patterns": [],
+        "frontend_screens": [
+          "CreateTenant"
+        ]
+      },
+      "listDocuments": {
+        "supports": [
+          "FR1",
+          "FR3",
+          "UC1",
+          "UC3",
+          "SC2"
+        ],
+        "collections": [
+          "documents"
+        ],
+        "query_patterns": [
+          "QP2"
+        ],
+        "frontend_screens": [
+          "DocumentLibrary"
+        ]
+      },
+      "createDocument": {
+        "supports": [
+          "FR2",
+          "FR3",
+          "FR7",
+          "AI3",
+          "UC1",
+          "UC2",
+          "SC3"
+        ],
+        "collections": [
+          "documents"
+        ],
+        "query_patterns": [
+          "QP1",
+          "QP3"
+        ],
+        "frontend_screens": [
+          "RegisterDocument"
+        ]
+      },
+      "getDocumentProcessingStatus": {
+        "supports": [
+          "FR1",
+          "FR3",
+          "FR7",
+          "UC1",
+          "UC3",
+          "SC3"
+        ],
+        "collections": [
+          "documents"
+        ],
+        "query_patterns": [
+          "QP4"
+        ],
+        "frontend_screens": [
+          "DocumentProcessingMonitor"
+        ]
+      },
+      "getDocumentChunks": {
+        "supports": [
+          "FR6",
+          "AI5",
+          "UC1"
+        ],
+        "collections": [
+          "chunks"
+        ],
+        "query_patterns": [
+          "QP8"
+        ],
+        "frontend_screens": [
+          "DocumentChunkInspector"
+        ]
+      },
+      "compareDocumentChunkingStrategies": {
+        "supports": [
+          "FR6",
+          "AI5",
+          "UC3"
+        ],
+        "collections": [
+          "chunks"
+        ],
+        "query_patterns": [
+          "QP9"
+        ],
+        "frontend_screens": [
+          "DocumentChunkingComparison"
+        ]
+      },
+      "searchDocumentChunks": {
+        "supports": [
+          "BO2",
+          "BO3",
+          "BO4",
+          "FR1",
+          "FR4",
+          "FR5",
+          "FR7",
+          "AI2",
+          "UC1",
+          "SC2",
+          "SC4",
+          "SC10"
+        ],
+        "collections": [
+          "chunks",
+          "documents"
+        ],
+        "query_patterns": [
+          "QP5",
+          "QP6",
+          "QP7"
+        ],
+        "frontend_screens": [
+          "DocumentSearchPlayground"
+        ]
+      },
+      "searchDocumentChunksWithStructuredFilters": {
+        "supports": [
+          "BO1",
+          "AI1",
+          "UC1"
+        ],
+        "collections": [
+          "chunks",
+          "documents"
+        ],
+        "query_patterns": [
+          "QP17"
+        ],
+        "frontend_screens": [
+          "StructuredUnstructuredSearch"
+        ]
+      },
+      "listAgentMemoryDocuments": {
+        "supports": [
+          "FR2",
+          "AI3",
+          "UC2",
+          "SC2"
+        ],
+        "collections": [
+          "documents"
+        ],
+        "query_patterns": [
+          "QP11"
+        ],
+        "frontend_screens": [
+          "AgentMemoryLibrary"
+        ]
+      },
+      "searchAgentMemory": {
+        "supports": [
+          "FR2",
+          "FR4",
+          "FR5",
+          "AI3",
+          "UC2",
+          "SC2",
+          "SC10"
+        ],
+        "collections": [
+          "chunks",
+          "documents"
+        ],
+        "query_patterns": [
+          "QP10"
+        ],
+        "frontend_screens": [
+          "AgentMemorySearchPlayground"
+        ]
+      },
+      "createGroundTruthSet": {
+        "supports": [
+          "BO5",
+          "UC3",
+          "SC1",
+          "SC5",
+          "SC6",
+          "SC10"
+        ],
+        "collections": [
+          "ground_truth_sets"
+        ],
+        "query_patterns": [
+          "QP1"
+        ],
+        "frontend_screens": [
+          "GroundTruthSetCreator"
+        ]
+      },
+      "getGroundTruthSetByName": {
+        "supports": [
+          "BO5",
+          "UC3",
+          "SC5",
+          "SC6"
+        ],
+        "collections": [
+          "ground_truth_sets"
+        ],
+        "query_patterns": [
+          "QP12"
+        ],
+        "frontend_screens": [
+          "GroundTruthSetViewer"
+        ]
+      },
+      "createBenchmarkRun": {
+        "supports": [
+          "BO5",
+          "FR6",
+          "UC3",
+          "SC1",
+          "SC5",
+          "SC8",
+          "SC10"
+        ],
+        "collections": [
+          "benchmark_runs"
+        ],
+        "query_patterns": [
+          "QP1"
+        ],
+        "frontend_screens": [
+          "CreateBenchmarkRun"
+        ]
+      },
+      "listBenchmarkRuns": {
+        "supports": [
+          "FR6",
+          "UC3",
+          "SC1",
+          "SC2",
+          "SC9",
+          "SC10"
+        ],
+        "collections": [
+          "benchmark_runs"
+        ],
+        "query_patterns": [
+          "QP13"
+        ],
+        "frontend_screens": [
+          "BenchmarkRunsList"
+        ]
+      },
+      "compareBenchmarkRuns": {
+        "supports": [
+          "BO2",
+          "BO3",
+          "BO4",
+          "BO5",
+          "FR6",
+          "AI5",
+          "UC3",
+          "SC1",
+          "SC5",
+          "SC6",
+          "SC7",
+          "SC8",
+          "SC10"
+        ],
+        "collections": [
+          "benchmark_runs"
+        ],
+        "query_patterns": [
+          "QP14"
+        ],
+        "frontend_screens": [
+          "BenchmarkComparisonDashboard"
+        ]
+      },
+      "getBenchmarkRunQuestionAnalysis": {
+        "supports": [
+          "BO4",
+          "FR5",
+          "BO5",
+          "UC3",
+          "SC4",
+          "SC6",
+          "SC7",
+          "SC8"
+        ],
+        "collections": [
+          "benchmark_runs"
+        ],
+        "query_patterns": [
+          "QP15"
+        ],
+        "frontend_screens": [
+          "BenchmarkQuestionAnalysis"
+        ]
+      },
+      "getBenchmarkQuestionHits": {
+        "supports": [
+          "BO5",
+          "UC3",
+          "SC1",
+          "SC8"
+        ],
+        "collections": [
+          "benchmark_runs",
+          "chunks",
+          "documents"
+        ],
+        "query_patterns": [
+          "QP16"
+        ],
+        "frontend_screens": [
+          "BenchmarkQuestionHitDetails"
+        ]
+      }
+    },
+    "frontend_screens": {
+      "TenantLanding": {
+        "supports": [
+          "FR8"
+        ],
+        "api_endpoints": [
+          "getTenant"
+        ],
+        "collections": [
+          "tenants"
+        ]
+      },
+      "CreateTenant": {
+        "supports": [
+          "FR8"
+        ],
+        "api_endpoints": [
+          "createTenant"
+        ],
+        "collections": [
+          "tenants"
+        ]
+      },
+      "TenantWorkspaceHome": {
+        "supports": [
+          "FR8"
+        ],
+        "api_endpoints": [
+          "getTenant"
+        ],
+        "collections": [
+          "tenants"
+        ]
+      },
+      "DocumentLibrary": {
+        "supports": [
+          "FR1",
+          "FR3",
+          "UC1",
+          "SC2"
+        ],
+        "api_endpoints": [
+          "listDocuments"
+        ],
+        "collections": [
+          "documents"
+        ]
+      },
+      "RegisterDocument": {
+        "supports": [
+          "FR2",
+          "FR3",
+          "FR7",
+          "AI3",
+          "UC1",
+          "UC2",
+          "SC3"
+        ],
+        "api_endpoints": [
+          "createDocument"
+        ],
+        "collections": [
+          "documents"
+        ]
+      },
+      "DocumentProcessingMonitor": {
+        "supports": [
+          "FR1",
+          "FR3",
+          "FR7",
+          "UC1",
+          "SC3"
+        ],
+        "api_endpoints": [
+          "getDocumentProcessingStatus"
+        ],
+        "collections": [
+          "documents"
+        ]
+      },
+      "DocumentChunkingComparison": {
+        "supports": [
+          "FR6",
+          "AI5",
+          "UC3"
+        ],
+        "api_endpoints": [
+          "compareDocumentChunkingStrategies"
+        ],
+        "collections": [
+          "chunks"
+        ]
+      },
+      "DocumentChunkInspector": {
+        "supports": [
+          "FR6",
+          "AI5",
+          "UC1"
+        ],
+        "api_endpoints": [
+          "getDocumentChunks"
+        ],
+        "collections": [
+          "chunks"
+        ]
+      },
+      "DocumentSearchPlayground": {
+        "supports": [
+          "BO2",
+          "BO3",
+          "BO4",
+          "FR1",
+          "FR4",
+          "FR5",
+          "FR7",
+          "AI2",
+          "UC1",
+          "SC2",
+          "SC4",
+          "SC10"
+        ],
+        "api_endpoints": [
+          "searchDocumentChunks"
+        ],
+        "collections": [
+          "chunks",
+          "documents"
+        ]
+      },
+      "StructuredUnstructuredSearch": {
+        "supports": [
+          "BO1",
+          "AI1",
+          "UC1"
+        ],
+        "api_endpoints": [
+          "searchDocumentChunksWithStructuredFilters"
+        ],
+        "collections": [
+          "chunks",
+          "documents"
+        ]
+      },
+      "AgentMemoryLibrary": {
+        "supports": [
+          "FR2",
+          "AI3",
+          "UC2",
+          "SC2"
+        ],
+        "api_endpoints": [
+          "listAgentMemoryDocuments"
+        ],
+        "collections": [
+          "documents"
+        ]
+      },
+      "AgentMemorySearchPlayground": {
+        "supports": [
+          "FR2",
+          "FR4",
+          "FR5",
+          "AI3",
+          "UC2",
+          "SC2",
+          "SC10"
+        ],
+        "api_endpoints": [
+          "searchAgentMemory"
+        ],
+        "collections": [
+          "chunks",
+          "documents"
+        ]
+      },
+      "GroundTruthSetCreator": {
+        "supports": [
+          "BO5",
+          "UC3",
+          "SC1",
+          "SC5",
+          "SC6",
+          "SC10"
+        ],
+        "api_endpoints": [
+          "createGroundTruthSet"
+        ],
+        "collections": [
+          "ground_truth_sets"
+        ]
+      },
+      "GroundTruthSetViewer": {
+        "supports": [
+          "BO5",
+          "UC3",
+          "SC5",
+          "SC6"
+        ],
+        "api_endpoints": [
+          "getGroundTruthSetByName"
+        ],
+        "collections": [
+          "ground_truth_sets"
+        ]
+      },
+      "BenchmarkRunsList": {
+        "supports": [
+          "FR6",
+          "UC3",
+          "SC1",
+          "SC2",
+          "SC9",
+          "SC10"
+        ],
+        "api_endpoints": [
+          "listBenchmarkRuns"
+        ],
+        "collections": [
+          "benchmark_runs"
+        ]
+      },
+      "CreateBenchmarkRun": {
+        "supports": [
+          "BO5",
+          "FR6",
+          "UC3",
+          "SC1",
+          "SC5",
+          "SC8",
+          "SC10"
+        ],
+        "api_endpoints": [
+          "createBenchmarkRun"
+        ],
+        "collections": [
+          "benchmark_runs"
+        ]
+      },
+      "BenchmarkComparisonDashboard": {
+        "supports": [
+          "BO2",
+          "BO3",
+          "BO4",
+          "BO5",
+          "FR6",
+          "AI5",
+          "UC3",
+          "SC1",
+          "SC5",
+          "SC6",
+          "SC7",
+          "SC8",
+          "SC10"
+        ],
+        "api_endpoints": [
+          "compareBenchmarkRuns"
+        ],
+        "collections": [
+          "benchmark_runs"
+        ]
+      },
+      "BenchmarkQuestionAnalysis": {
+        "supports": [
+          "BO4",
+          "FR5",
+          "BO5",
+          "UC3",
+          "SC4",
+          "SC6",
+          "SC7",
+          "SC8"
+        ],
+        "api_endpoints": [
+          "getBenchmarkRunQuestionAnalysis"
+        ],
+        "collections": [
+          "benchmark_runs"
+        ]
+      },
+      "BenchmarkQuestionHitDetails": {
+        "supports": [
+          "BO5",
+          "UC3",
+          "SC1",
+          "SC8"
+        ],
+        "api_endpoints": [
+          "getBenchmarkQuestionHits"
+        ],
+        "collections": [
+          "benchmark_runs",
+          "chunks",
+          "documents"
+        ]
+      }
+    }
+  },
+  "implementation_notes": [
+    "The data model, query patterns, API contract, and frontend contract are treated as authoritative; this traceability does not add or alter design behavior.",
+    "Where the InitialPOVSpec mentions upload/create embeddings/ask questions, the authoritative contracts only define metadata registration plus persisted chunk/query retrieval. Embedding generation and chunk materialization are external application-layer workflows reflected in stored data.",
+    "Ground truth sets have create and get-by-name endpoints, but no list endpoint; this is a known frontend/API limitation already captured in the frontend contract.",
+    "Binary file transport and server-side embedding generation are outside the current API contract and therefore appear only as environment/integration dependencies, not as first-class endpoints."
+  ]
 }
