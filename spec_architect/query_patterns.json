@@ -1,0 +1,40 @@
+{
+  "qp1_list_reports_needing_recheck": {
+    "id": "qp1",
+    "name": "List reported stuck UI cases needing recheck",
+    "serves": [
+      "use_cases.uc1",
+      "user_journeys.uj1"
+    ],
+    "collections": [
+      "user_reports"
+    ],
+    "query": {
+      "collection": "user_reports",
+      "operation": "find",
+      "filter": {
+        "status": {
+          "$in": [
+            "reported",
+            "under_recheck"
+          ]
+        }
+      },
+      "projection": {
+        "summary": 1,
+        "description": 1,
+        "reported_at": 1,
+        "application_area": 1,
+        "ui_screen": 1,
+        "status": 1,
+        "incident_id": 1,
+        "latest_recheck_at": 1
+      },
+      "sort": {
+        "reported_at": -1
+      },
+      "limit": "<pageSize>"
+    }
+  },
+  "for": "Shows support/operations the backlog of user-reported stuck UI cases that still need investigation or are currently being rechecked."
+}
