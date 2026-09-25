@@ -1,0 +1,507 @@
+{
+  "summary": {
+    "pov_scope": "Validate fix stability under timeout margin and support AI-assisted internal ticket triage with similar-ticket lookup.",
+    "authoritative_note": "Data model, query patterns, API contract, and frontend contract are authoritative. Runtime support is narrower than modeled scope because only GET /tickets is currently exposed by the API contract."
+  },
+  "requirement_traceability": [
+    {
+      "requirement_id": "fr1",
+      "requirement_type": "functional",
+      "description": "The solution should support confirmation that a fix holds under a generous timeout margin.",
+      "use_cases": [
+        "uc1"
+      ],
+      "business_objectives": [
+        "bo1"
+      ],
+      "data_model": {
+        "collections": [
+          "fixes",
+          "fix_validations"
+        ],
+        "fields": [
+          "fixes.fix_key",
+          "fixes.title",
+          "fixes.description",
+          "fixes.system_area",
+          "fixes.status",
+          "fixes.implemented_at",
+          "fixes.owner_name",
+          "fixes.related_ticket_ids",
+          "fix_validations.fix_id",
+          "fix_validations.validation_name",
+          "fix_validations.validator_name",
+          "fix_validations.timeout_threshold_ms",
+          "fix_validations.observed_duration_ms",
+          "fix_validations.result",
+          "fix_validations.holds_under_margin",
+          "fix_validations.notes",
+          "fix_validations.validated_at",
+          "fix_validations.evidence"
+        ],
+        "indexes": [
+          "fixes.uniq_fix_key",
+          "fixes.status_updated_at",
+          "fix_validations.fix_validated_at",
+          "fix_validations.fix_result_validated_at"
+        ]
+      },
+      "query_patterns": [
+        "qp5",
+        "qp6",
+        "qp7",
+        "qp8"
+      ],
+      "api": {
+        "implemented_endpoints": [],
+        "gaps": [
+          "No fixes endpoint exists in current API contract.",
+          "No fix_validations endpoint exists in current API contract."
+        ]
+      },
+      "frontend": {
+        "pages": [
+          "fix-validation-page"
+        ],
+        "routes": [
+          "/fix-validations"
+        ],
+        "support_status": "represented_but_not_implementable",
+        "notes": "Frontend explicitly communicates missing backend support for fixes, validations, and timeout margin configuration."
+      }
+    },
+    {
+      "requirement_id": "fr2",
+      "requirement_type": "functional",
+      "description": "The solution should support internal ticket triage workflows.",
+      "use_cases": [
+        "uc2"
+      ],
+      "business_objectives": [
+        "bo2"
+      ],
+      "data_model": {
+        "collections": [
+          "tickets"
+        ],
+        "fields": [
+          "tickets.ticket_number",
+          "tickets.title",
+          "tickets.description",
+          "tickets.status",
+          "tickets.priority",
+          "tickets.category",
+          "tickets.tags",
+          "tickets.reporter_name",
+          "tickets.assignee_name",
+          "tickets.created_at",
+          "tickets.updated_at",
+          "tickets.triage_notes",
+          "tickets.ai_guidance",
+          "tickets.similar_ticket_ids",
+          "tickets.resolution_summary",
+          "tickets.closed_at"
+        ],
+        "indexes": [
+          "tickets.uniq_ticket_number",
+          "tickets.status_updated_at"
+        ]
+      },
+      "query_patterns": [
+        "qp1",
+        "qp2",
+        "qp4"
+      ],
+      "api": {
+        "implemented_endpoints": [
+          "listTriageQueueTickets"
+        ],
+        "gaps": [
+          "No ticket detail endpoint exists in current API contract.",
+          "No triage note update endpoint exists in current API contract."
+        ]
+      },
+      "frontend": {
+        "pages": [
+          "triage-queue-page",
+          "ticket-triage-page"
+        ],
+        "routes": [
+          "/",
+          "/tickets/:ticketNumber"
+        ],
+        "support_status": "partially_implemented",
+        "notes": "Queue listing is implemented; ticket detail workflow is represented but unsupported due to missing API."
+      }
+    },
+    {
+      "requirement_id": "fr3",
+      "requirement_type": "functional",
+      "description": "The solution should provide AI guidance during ticket triage.",
+      "use_cases": [
+        "uc2"
+      ],
+      "business_objectives": [
+        "bo2"
+      ],
+      "ai_requirements": [
+        "ai1"
+      ],
+      "data_model": {
+        "collections": [
+          "tickets"
+        ],
+        "fields": [
+          "tickets.ai_guidance.summary",
+          "tickets.ai_guidance.suggested_diagnosis",
+          "tickets.ai_guidance.suggested_route",
+          "tickets.ai_guidance.recommended_actions",
+          "tickets.ai_guidance.generated_at",
+          "tickets.ai_guidance.model_name"
+        ]
+      },
+      "query_patterns": [
+        "qp1"
+      ],
+      "api": {
+        "implemented_endpoints": [],
+        "gaps": [
+          "No endpoint exposes ticket AI guidance in current API contract."
+        ]
+      },
+      "frontend": {
+        "pages": [
+          "ticket-triage-page"
+        ],
+        "routes": [
+          "/tickets/:ticketNumber"
+        ],
+        "support_status": "in_scope_not_exposed",
+        "notes": "Frontend must show unsupported-feature messaging because no backend endpoint exposes AI guidance."
+      }
+    },
+    {
+      "requirement_id": "fr4",
+      "requirement_type": "functional",
+      "description": "The solution should allow lookup of similar tickets during triage.",
+      "use_cases": [
+        "uc2"
+      ],
+      "business_objectives": [
+        "bo2"
+      ],
+      "ai_requirements": [
+        "ai2"
+      ],
+      "mongodb_atlas_opportunities": [
+        "mo1"
+      ],
+      "data_model": {
+        "collections": [
+          "tickets"
+        ],
+        "fields": [
+          "tickets.similar_ticket_ids",
+          "tickets.title",
+          "tickets.description",
+          "tickets.resolution_summary",
+          "tickets.tags"
+        ],
+        "indexes": [
+          "tickets.textual_ticket_lookup"
+        ]
+      },
+      "query_patterns": [
+        "qp3",
+        "qp4"
+      ],
+      "api": {
+        "implemented_endpoints": [],
+        "gaps": [
+          "No endpoint exposes similar-ticket search or pre-linked similar tickets in current API contract."
+        ]
+      },
+      "frontend": {
+        "pages": [
+          "ticket-triage-page"
+        ],
+        "routes": [
+          "/tickets/:ticketNumber"
+        ],
+        "support_status": "in_scope_not_exposed",
+        "notes": "Frontend acknowledges similar-ticket lookup is in POV scope but unavailable from current API."
+      }
+    },
+    {
+      "requirement_id": "ai1",
+      "requirement_type": "ai_genai",
+      "description": "Use AI to provide guidance for internal ticket triage.",
+      "related_functional_requirements": [
+        "fr3"
+      ],
+      "data_model": {
+        "collections": [
+          "tickets"
+        ],
+        "fields": [
+          "tickets.ai_guidance"
+        ]
+      },
+      "query_patterns": [
+        "qp1"
+      ],
+      "api": {
+        "implemented_endpoints": [],
+        "gaps": [
+          "No API exposure for AI guidance retrieval or generation."
+        ]
+      },
+      "frontend": {
+        "pages": [
+          "ticket-triage-page"
+        ],
+        "support_status": "in_scope_not_exposed"
+      }
+    },
+    {
+      "requirement_id": "ai2",
+      "requirement_type": "ai_genai",
+      "description": "Use AI or intelligent retrieval to surface similar tickets relevant to the current ticket.",
+      "related_functional_requirements": [
+        "fr4"
+      ],
+      "data_model": {
+        "collections": [
+          "tickets"
+        ],
+        "fields": [
+          "tickets.similar_ticket_ids",
+          "tickets.title",
+          "tickets.description",
+          "tickets.resolution_summary",
+          "tickets.tags"
+        ],
+        "indexes": [
+          "tickets.textual_ticket_lookup"
+        ]
+      },
+      "query_patterns": [
+        "qp3",
+        "qp4"
+      ],
+      "api": {
+        "implemented_endpoints": [],
+        "gaps": [
+          "No API exposure for similar-ticket retrieval."
+        ]
+      },
+      "frontend": {
+        "pages": [
+          "ticket-triage-page"
+        ],
+        "support_status": "in_scope_not_exposed"
+      }
+    },
+    {
+      "requirement_id": "sc1",
+      "requirement_type": "success_criteria",
+      "description": "Users can verify that the fix continues to hold when tested with a generous timeout margin.",
+      "supported_by": {
+        "functional_requirements": [
+          "fr1"
+        ],
+        "query_patterns": [
+          "qp6",
+          "qp7",
+          "qp8"
+        ],
+        "data_model": [
+          "fixes",
+          "fix_validations"
+        ],
+        "frontend_pages": [
+          "fix-validation-page"
+        ]
+      },
+      "delivery_status": "modeled_but_not_runtime_exposed"
+    },
+    {
+      "requirement_id": "sc2",
+      "requirement_type": "success_criteria",
+      "description": "Internal teams can triage tickets with AI guidance and access similar-ticket lookup.",
+      "supported_by": {
+        "functional_requirements": [
+          "fr2",
+          "fr3",
+          "fr4"
+        ],
+        "query_patterns": [
+          "qp1",
+          "qp2",
+          "qp3",
+          "qp4"
+        ],
+        "data_model": [
+          "tickets"
+        ],
+        "frontend_pages": [
+          "triage-queue-page",
+          "ticket-triage-page"
+        ]
+      },
+      "delivery_status": "partially_runtime_exposed",
+      "notes": "Queue access is exposed; AI guidance and similar-ticket lookup are not exposed through current API."
+    }
+  ],
+  "artifacts": {
+    "collections": {
+      "tickets": {
+        "supports": [
+          "fr2",
+          "fr3",
+          "fr4",
+          "ai1",
+          "ai2",
+          "sc2"
+        ]
+      },
+      "fixes": {
+        "supports": [
+          "fr1",
+          "sc1"
+        ]
+      },
+      "fix_validations": {
+        "supports": [
+          "fr1",
+          "sc1"
+        ]
+      }
+    },
+    "query_patterns": {
+      "qp1": {
+        "supports": [
+          "fr2",
+          "fr3",
+          "sc2"
+        ]
+      },
+      "qp2": {
+        "supports": [
+          "fr2",
+          "sc2"
+        ]
+      },
+      "qp3": {
+        "supports": [
+          "fr4",
+          "ai2",
+          "sc2"
+        ]
+      },
+      "qp4": {
+        "supports": [
+          "fr2",
+          "fr4",
+          "ai2",
+          "sc2"
+        ]
+      },
+      "qp5": {
+        "supports": [
+          "fr1",
+          "sc1"
+        ]
+      },
+      "qp6": {
+        "supports": [
+          "fr1",
+          "sc1"
+        ]
+      },
+      "qp7": {
+        "supports": [
+          "fr1",
+          "sc1"
+        ]
+      },
+      "qp8": {
+        "supports": [
+          "fr1",
+          "sc1"
+        ]
+      }
+    },
+    "api_endpoints": {
+      "listTriageQueueTickets": {
+        "supports": [
+          "fr2"
+        ],
+        "query_pattern": "qp2",
+        "frontend_pages": [
+          "triage-queue-page"
+        ]
+      }
+    },
+    "frontend_pages": {
+      "triage-queue-page": {
+        "supports": [
+          "fr2"
+        ],
+        "api_dependencies": [
+          "listTriageQueueTickets"
+        ]
+      },
+      "ticket-triage-page": {
+        "supports": [
+          "fr2",
+          "fr3",
+          "fr4",
+          "ai1",
+          "ai2"
+        ],
+        "api_dependencies": [],
+        "status": "scope_gap_explicit"
+      },
+      "fix-validation-page": {
+        "supports": [
+          "fr1",
+          "sc1"
+        ],
+        "api_dependencies": [],
+        "status": "scope_gap_explicit"
+      }
+    }
+  },
+  "gaps": [
+    {
+      "gap_id": "gap1",
+      "description": "Ticket detail retrieval is designed in query pattern qp1 but not exposed by API.",
+      "affects_requirements": [
+        "fr2",
+        "fr3",
+        "fr4",
+        "ai1",
+        "ai2",
+        "sc2"
+      ]
+    },
+    {
+      "gap_id": "gap2",
+      "description": "Similar-ticket search and linked similar-ticket resolution are designed in qp3 and qp4 but not exposed by API.",
+      "affects_requirements": [
+        "fr4",
+        "ai2",
+        "sc2"
+      ]
+    },
+    {
+      "gap_id": "gap3",
+      "description": "Fix retrieval and validation review are designed in qp5-qp8 but not exposed by API.",
+      "affects_requirements": [
+        "fr1",
+        "sc1"
+      ]
+    }
+  ]
+}
