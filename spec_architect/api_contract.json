@@ -1,0 +1,1190 @@
+{
+  "service_name": "brms_execution_log_api",
+  "version": "1.0.0",
+  "base_path": "/api/v1",
+  "content_type": "application/json",
+  "authentication": {
+    "note": "Authentication/authorization mechanism is out of scope of the provided data model and query patterns. Endpoints assume caller is already authenticated and authorized for the given customer_id; detailed execution-log endpoints should be restricted to authorized/admin users per FR10."
+  },
+  "endpoints": [
+    {
+      "operation_id": "getRequestExecution",
+      "method": "GET",
+      "path": "/customers/{customerId}/executions/{requestOrCorrelationId}",
+      "purpose": "Get a single execution request summary together with its full ordered execution trail for audit and troubleshooting.",
+      "path_params": {
+        "customerId": "string",
+        "requestOrCorrelationId": "string"
+      },
+      "query_params": {
+        "lookupBy": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "request_id",
+            "correlation_id"
+          ],
+          "required": false,
+          "default": "auto",
+          "description": "Hint for identifier interpretation. Contract uses the same backend query either way; auto attempts request_id/correlation_id match as defined in QP3."
+        }
+      },
+      "request_body": null,
+      "response": {
+        "status": 200,
+        "body": {
+          "request_id": "string",
+          "correlation_id": "string",
+          "customer_id": "string",
+          "policy_id": "string",
+          "policy_version_id": "string|null",
+          "requested_at": "date-time",
+          "completed_at": "date-time|null",
+          "final_outcome": "approved|rejected|error|unknown|null",
+          "outcome_reason_codes": [
+            "string"
+          ],
+          "request_payload": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "response_payload": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "search_attributes": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "metrics": {
+            "rule_count": "number|null",
+            "stage_count": "number|null",
+            "duration_ms": "number|null"
+          },
+          "execution_trail": [
+            {
+              "event_time": "date-time",
+              "record_type": "request_start|request_end|rule_execution|stage_execution|system_event",
+              "sequence_no": "number",
+              "rule_id": "string|null",
+              "rule_name": "string|null",
+              "stage_name": "string|null",
+              "stage_sequence": "number|null",
+              "execution_status": "started|completed|passed|failed|skipped|error|null",
+              "condition_results": [
+                {
+                  "condition_name": "string|null",
+                  "expression": "string|null",
+                  "result": "boolean|null"
+                }
+              ],
+              "input_payload": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "output_payload": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "changed_values": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "message": "string|null",
+              "outcome": "approved|rejected|error|none|null",
+              "duration_ms": "number|null"
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_PATH_PARAMETER",
+          "message": "customerId or requestOrCorrelationId is invalid or empty."
+        },
+        {
+          "status": 404,
+          "code": "EXECUTION_NOT_FOUND",
+          "message": "No execution found for the supplied identifier and customer."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "Caller is not authorized to view this customer's execution details."
+        },
+        {
+          "status": 500,
+          "code": "INTERNAL_ERROR",
+          "message": "Unexpected server error."
+        }
+      ],
+      "backend_binding": {
+        "type": "named_query_pattern",
+        "id": "QP3",
+        "mongodb_operation": "aggregate on execution_requests with $lookup to execution_log_records"
+      }
+    },
+    {
+      "operation_id": "getRequestSummary",
+      "method": "GET",
+      "path": "/customers/{customerId}/executions/{requestOrCorrelationId}/summary",
+      "purpose": "Get only the request-level execution summary for a request or correlation ID.",
+      "path_params": {
+        "customerId": "string",
+        "requestOrCorrelationId": "string"
+      },
+      "query_params": {
+        "lookupBy": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "request_id",
+            "correlation_id"
+          ],
+          "required": false,
+          "default": "auto"
+        }
+      },
+      "request_body": null,
+      "response": {
+        "status": 200,
+        "body": {
+          "request_id": "string",
+          "correlation_id": "string",
+          "customer_id": "string",
+          "policy_id": "string",
+          "policy_version_id": "string|null",
+          "source_channel": "string|null",
+          "requested_at": "date-time",
+          "completed_at": "date-time|null",
+          "final_outcome": "approved|rejected|error|unknown|null",
+          "outcome_reason_codes": [
+            "string"
+          ],
+          "request_payload": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "response_payload": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "search_attributes": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "metrics": {
+            "rule_count": "number|null",
+            "stage_count": "number|null",
+            "duration_ms": "number|null"
+          },
+          "logging_enabled_at_execution": "boolean|null"
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_PATH_PARAMETER",
+          "message": "customerId or requestOrCorrelationId is invalid or empty."
+        },
+        {
+          "status": 404,
+          "code": "EXECUTION_NOT_FOUND",
+          "message": "No execution found for the supplied identifier and customer."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "Caller is not authorized to view this customer's execution details."
+        },
+        {
+          "status": 500,
+          "code": "INTERNAL_ERROR",
+          "message": "Unexpected server error."
+        }
+      ],
+      "backend_binding": {
+        "type": "named_query_pattern",
+        "id": "QP1",
+        "mongodb_operation": "findOne on execution_requests"
+      }
+    },
+    {
+      "operation_id": "getExecutionTrail",
+      "method": "GET",
+      "path": "/customers/{customerId}/executions/{requestId}/trail",
+      "purpose": "Get the ordered rule/stage execution events for a specific request ID.",
+      "path_params": {
+        "customerId": "string",
+        "requestId": "string"
+      },
+      "query_params": {},
+      "request_body": null,
+      "response": {
+        "status": 200,
+        "body": {
+          "request_id": "string",
+          "customer_id": "string",
+          "execution_trail": [
+            {
+              "request_id": "string",
+              "correlation_id": "string",
+              "event_time": "date-time",
+              "record_type": "request_start|request_end|rule_execution|stage_execution|system_event",
+              "sequence_no": "number",
+              "rule_id": "string|null",
+              "rule_name": "string|null",
+              "stage_name": "string|null",
+              "stage_sequence": "number|null",
+              "execution_status": "started|completed|passed|failed|skipped|error|null",
+              "condition_results": [
+                {
+                  "condition_name": "string|null",
+                  "expression": "string|null",
+                  "result": "boolean|null"
+                }
+              ],
+              "input_payload": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "output_payload": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "changed_values": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "message": "string|null",
+              "outcome": "approved|rejected|error|none|null",
+              "duration_ms": "number|null"
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_PATH_PARAMETER",
+          "message": "customerId or requestId is invalid or empty."
+        },
+        {
+          "status": 404,
+          "code": "TRAIL_NOT_FOUND",
+          "message": "No execution trail found for the supplied request and customer."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "Caller is not authorized to view this customer's execution details."
+        },
+        {
+          "status": 500,
+          "code": "INTERNAL_ERROR",
+          "message": "Unexpected server error."
+        }
+      ],
+      "backend_binding": {
+        "type": "named_query_pattern",
+        "id": "QP2",
+        "mongodb_operation": "find on execution_log_records with sort"
+      }
+    },
+    {
+      "operation_id": "searchExecutionRequests",
+      "method": "POST",
+      "path": "/customers/{customerId}/execution-search/requests",
+      "purpose": "Search execution requests using promoted request attributes, outcome, policy filters, and time range.",
+      "path_params": {
+        "customerId": "string"
+      },
+      "query_params": {},
+      "request_body": {
+        "from_date": "date-time",
+        "to_date": "date-time",
+        "policy_ids": [
+          "string"
+        ],
+        "policy_version_ids": [
+          "string"
+        ],
+        "final_outcomes": [
+          "approved|rejected|error|unknown"
+        ],
+        "search_attributes": {
+          "applicant_age": {
+            "min": "number|null",
+            "max": "number|null"
+          },
+          "product_type": "string|null",
+          "geography": "string|null",
+          "loan_amount": {
+            "min": "number|null",
+            "max": "number|null"
+          }
+        },
+        "page_size": "number",
+        "cursor": "string|null"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "request_id": "string",
+              "correlation_id": "string",
+              "customer_id": "string",
+              "policy_id": "string",
+              "policy_version_id": "string|null",
+              "requested_at": "date-time",
+              "final_outcome": "approved|rejected|error|unknown|null",
+              "outcome_reason_codes": [
+                "string"
+              ],
+              "search_attributes": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "metrics": {
+                "rule_count": "number|null",
+                "stage_count": "number|null",
+                "duration_ms": "number|null"
+              }
+            }
+          ],
+          "page_size": "number",
+          "next_cursor": "string|null",
+          "sort": {
+            "requested_at": "desc"
+          },
+          "notes": [
+            "Cursor-based pagination is an API-layer convention; the underlying query pattern supports limit but does not define skip/cursor semantics. Implementation should translate cursor to an additional requested_at/request_id boundary without changing the underlying business query intent."
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_REQUEST",
+          "message": "Missing or invalid search criteria, including invalid date range or page size."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "Caller is not authorized to search this customer's execution data."
+        },
+        {
+          "status": 500,
+          "code": "INTERNAL_ERROR",
+          "message": "Unexpected server error."
+        }
+      ],
+      "backend_binding": {
+        "type": "named_query_pattern",
+        "id": "QP4",
+        "mongodb_operation": "find on execution_requests with sort and limit"
+      }
+    },
+    {
+      "operation_id": "searchExecutionLogRecords",
+      "method": "POST",
+      "path": "/customers/{customerId}/execution-search/log-records",
+      "purpose": "Search detailed rule/stage execution log records by execution metadata and optionally by values in logged content.",
+      "path_params": {
+        "customerId": "string"
+      },
+      "query_params": {},
+      "request_body": {
+        "from_date": "date-time",
+        "to_date": "date-time",
+        "policy_id": "string|null",
+        "policy_version_id": "string|null",
+        "record_types": [
+          "request_start|request_end|rule_execution|stage_execution|system_event"
+        ],
+        "rule_id": "string|null",
+        "rule_name": "string|null",
+        "stage_name": "string|null",
+        "execution_status": "started|completed|passed|failed|skipped|error|null",
+        "outcome": "approved|rejected|error|none|null",
+        "condition_result": {
+          "condition_name": "string|null",
+          "result": "boolean|null"
+        },
+        "content_filters": [
+          {
+            "location": "input_payload|output_payload|changed_values",
+            "field_path": "string",
+            "value": {
+              "type": "string|number|boolean|object|array|null"
+            }
+          }
+        ],
+        "limit": "number"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "request_id": "string",
+              "correlation_id": "string",
+              "customer_id": "string",
+              "policy_id": "string",
+              "policy_version_id": "string|null",
+              "event_time": "date-time",
+              "record_type": "request_start|request_end|rule_execution|stage_execution|system_event",
+              "sequence_no": "number",
+              "rule_id": "string|null",
+              "rule_name": "string|null",
+              "stage_name": "string|null",
+              "stage_sequence": "number|null",
+              "execution_status": "started|completed|passed|failed|skipped|error|null",
+              "condition_results": [
+                {
+                  "condition_name": "string|null",
+                  "expression": "string|null",
+                  "result": "boolean|null"
+                }
+              ],
+              "input_payload": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "output_payload": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "changed_values": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "message": "string|null",
+              "outcome": "approved|rejected|error|none|null",
+              "duration_ms": "number|null"
+            }
+          ],
+          "limit": "number",
+          "notes": [
+            "QP5 supports a single dynamic field predicate per payload location in the canonical pattern. If multiple content_filters are supplied, implementation may reject the request or support only a constrained subset without inventing a new MongoDB business query pattern."
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_REQUEST",
+          "message": "Missing required time range, invalid filter values, or unsupported combination of dynamic content filters."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "Caller is not authorized to search this customer's execution data."
+        },
+        {
+          "status": 500,
+          "code": "INTERNAL_ERROR",
+          "message": "Unexpected server error."
+        }
+      ],
+      "backend_binding": {
+        "type": "named_query_pattern",
+        "id": "QP5",
+        "mongodb_operation": "find on execution_log_records"
+      }
+    },
+    {
+      "operation_id": "findRequestsImpactedByRule",
+      "method": "POST",
+      "path": "/customers/{customerId}/analytics/rule-impact",
+      "purpose": "Find requests affected by a given rule across one or more policy versions, including statuses and outcomes seen for that rule.",
+      "path_params": {
+        "customerId": "string"
+      },
+      "query_params": {},
+      "request_body": {
+        "policy_id": "string",
+        "version_ids": [
+          "string"
+        ],
+        "rule_id": "string",
+        "from_date": "date-time",
+        "to_date": "date-time",
+        "execution_status": "started|completed|passed|failed|skipped|error|null",
+        "outcome": "approved|rejected|error|none|null"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "request_id": "string",
+              "policy_version_id": "string|null",
+              "latest_event_time": "date-time",
+              "statuses": [
+                "string"
+              ],
+              "outcomes": [
+                "string"
+              ]
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_REQUEST",
+          "message": "Missing required fields such as policy_id, version_ids, rule_id, or date range."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "Caller is not authorized to access this customer's analytics."
+        },
+        {
+          "status": 500,
+          "code": "INTERNAL_ERROR",
+          "message": "Unexpected server error."
+        }
+      ],
+      "backend_binding": {
+        "type": "named_query_pattern",
+        "id": "QP6",
+        "mongodb_operation": "aggregate on execution_log_records"
+      }
+    },
+    {
+      "operation_id": "comparePolicyVersionOutcomes",
+      "method": "POST",
+      "path": "/customers/{customerId}/analytics/policy-version-outcomes",
+      "purpose": "Compare approval and rejection outcome rates across policy versions for a selected policy and date range.",
+      "path_params": {
+        "customerId": "string"
+      },
+      "query_params": {},
+      "request_body": {
+        "policy_id": "string",
+        "version_ids": [
+          "string"
+        ],
+        "from_date": "date-time",
+        "to_date": "date-time"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "policy_version_id": "string|null",
+              "total_requests": "number",
+              "outcome_counts": [
+                {
+                  "outcome": "string",
+                  "count": "number"
+                }
+              ],
+              "approval_count": "number",
+              "rejection_count": "number",
+              "approval_rate": "number"
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_REQUEST",
+          "message": "Missing required policy_id, version_ids, or valid date range."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "Caller is not authorized to access this customer's analytics."
+        },
+        {
+          "status": 500,
+          "code": "INTERNAL_ERROR",
+          "message": "Unexpected server error."
+        }
+      ],
+      "backend_binding": {
+        "type": "named_query_pattern",
+        "id": "QP7",
+        "mongodb_operation": "aggregate on execution_requests"
+      }
+    },
+    {
+      "operation_id": "compareOutcomeRatesBySegmentAcrossVersions",
+      "method": "POST",
+      "path": "/customers/{customerId}/analytics/policy-version-segments",
+      "purpose": "Compare outcome rates by a selected business segment across policy versions.",
+      "path_params": {
+        "customerId": "string"
+      },
+      "query_params": {},
+      "request_body": {
+        "policy_id": "string",
+        "version_ids": [
+          "string"
+        ],
+        "from_date": "date-time",
+        "to_date": "date-time",
+        "segment_field": "string",
+        "allowed_segment_fields": [
+          "applicant_age",
+          "product_type",
+          "geography",
+          "loan_amount"
+        ]
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "policy_version_id": "string|null",
+              "segment_value": {
+                "type": "string|number|null"
+              },
+              "total_requests": "number",
+              "outcomes": [
+                {
+                  "outcome": "string",
+                  "count": "number"
+                }
+              ],
+              "approval_rate": "number"
+            }
+          ],
+          "notes": [
+            "For contract safety, segment_field should be limited to known promoted fields under search_attributes that the implementation supports."
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_REQUEST",
+          "message": "Missing required inputs or unsupported segment_field."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "Caller is not authorized to access this customer's analytics."
+        },
+        {
+          "status": 500,
+          "code": "INTERNAL_ERROR",
+          "message": "Unexpected server error."
+        }
+      ],
+      "backend_binding": {
+        "type": "named_query_pattern",
+        "id": "QP8",
+        "mongodb_operation": "aggregate on execution_requests"
+      }
+    },
+    {
+      "operation_id": "identifyRuleBehaviorChangesBetweenVersions",
+      "method": "POST",
+      "path": "/customers/{customerId}/analytics/rule-behavior-diff",
+      "purpose": "Identify rules whose execution behavior differs between a baseline and comparison policy version.",
+      "path_params": {
+        "customerId": "string"
+      },
+      "query_params": {},
+      "request_body": {
+        "policy_id": "string",
+        "baseline_version_id": "string",
+        "comparison_version_id": "string",
+        "from_date": "date-time",
+        "to_date": "date-time"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "policy_version_id": "string|null",
+              "rule_id": "string|null",
+              "rule_name": "string|null",
+              "status_outcome_breakdown": [
+                {
+                  "execution_status": "string|null",
+                  "outcome": "string|null",
+                  "count": "number",
+                  "avg_duration_ms": "number|null"
+                }
+              ],
+              "total_events": "number"
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_REQUEST",
+          "message": "Missing required policy/version/date inputs."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "Caller is not authorized to access this customer's analytics."
+        },
+        {
+          "status": 500,
+          "code": "INTERNAL_ERROR",
+          "message": "Unexpected server error."
+        }
+      ],
+      "backend_binding": {
+        "type": "named_query_pattern",
+        "id": "QP9",
+        "mongodb_operation": "aggregate on execution_log_records"
+      }
+    },
+    {
+      "operation_id": "getOutcomeTrend",
+      "method": "POST",
+      "path": "/customers/{customerId}/dashboards/outcome-trend",
+      "purpose": "Return request volume and outcome trend buckets over time for dashboard visualizations.",
+      "path_params": {
+        "customerId": "string"
+      },
+      "query_params": {},
+      "request_body": {
+        "from_date": "date-time",
+        "to_date": "date-time",
+        "policy_ids": [
+          "string"
+        ],
+        "policy_version_ids": [
+          "string"
+        ],
+        "bucket_unit": "day|week|month"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "period_start": "date-time",
+              "total_requests": "number",
+              "outcomes": [
+                {
+                  "outcome": "string",
+                  "count": "number"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_REQUEST",
+          "message": "Missing valid date range or unsupported bucket_unit."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "Caller is not authorized to access this customer's dashboard data."
+        },
+        {
+          "status": 500,
+          "code": "INTERNAL_ERROR",
+          "message": "Unexpected server error."
+        }
+      ],
+      "backend_binding": {
+        "type": "named_query_pattern",
+        "id": "QP10",
+        "mongodb_operation": "aggregate on execution_requests"
+      }
+    },
+    {
+      "operation_id": "getSuccessRateBySegment",
+      "method": "POST",
+      "path": "/customers/{customerId}/dashboards/segment-success-rate",
+      "purpose": "Return success/approval rates by a selected business segment for reporting and dashboards.",
+      "path_params": {
+        "customerId": "string"
+      },
+      "query_params": {},
+      "request_body": {
+        "from_date": "date-time",
+        "to_date": "date-time",
+        "policy_ids": [
+          "string"
+        ],
+        "policy_version_ids": [
+          "string"
+        ],
+        "segment_field": "string",
+        "allowed_segment_fields": [
+          "applicant_age",
+          "product_type",
+          "geography",
+          "loan_amount"
+        ]
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "segment_value": {
+                "type": "string|number|null"
+              },
+              "total_requests": "number",
+              "outcomes": [
+                {
+                  "outcome": "string",
+                  "count": "number"
+                }
+              ],
+              "success_rate": "number"
+            }
+          ],
+          "notes": [
+            "Segment field should map to a supported promoted attribute under search_attributes."
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_REQUEST",
+          "message": "Missing required inputs or unsupported segment_field."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "Caller is not authorized to access this customer's dashboard data."
+        },
+        {
+          "status": 500,
+          "code": "INTERNAL_ERROR",
+          "message": "Unexpected server error."
+        }
+      ],
+      "backend_binding": {
+        "type": "named_query_pattern",
+        "id": "QP11",
+        "mongodb_operation": "aggregate on execution_requests"
+      }
+    },
+    {
+      "operation_id": "getRetentionOverview",
+      "method": "GET",
+      "path": "/customers/{customerId}/retention",
+      "purpose": "Get the operational retention view for a customer, including current settings, request stats, and recent purge activity.",
+      "path_params": {
+        "customerId": "string"
+      },
+      "query_params": {},
+      "request_body": null,
+      "response": {
+        "status": 200,
+        "body": {
+          "customer_id": "string",
+          "customer_name": "string",
+          "logging_enabled": "boolean",
+          "retention_policy": {
+            "retention_days": "number|null",
+            "purge_enabled": "boolean|null",
+            "purge_threshold_gb": "number|null",
+            "last_purge_at": "date-time|null"
+          },
+          "request_stats": {
+            "request_count": "number",
+            "oldest_request_at": "date-time|null",
+            "newest_request_at": "date-time|null"
+          },
+          "recent_purge_runs": [
+            {
+              "started_at": "date-time",
+              "completed_at": "date-time|null",
+              "status": "started|completed|failed",
+              "cutoff_time": "date-time",
+              "documents_deleted": "number|null",
+              "notes": "string|null"
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_PATH_PARAMETER",
+          "message": "customerId is invalid or empty."
+        },
+        {
+          "status": 404,
+          "code": "CUSTOMER_NOT_FOUND",
+          "message": "No customer configuration found for the supplied customerId."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "Caller is not authorized to view this customer's retention settings."
+        },
+        {
+          "status": 500,
+          "code": "INTERNAL_ERROR",
+          "message": "Unexpected server error."
+        }
+      ],
+      "backend_binding": {
+        "type": "named_query_pattern",
+        "id": "QP12",
+        "mongodb_operation": "aggregate on customers with lookups to execution_requests and purge_runs"
+      }
+    },
+    {
+      "operation_id": "listPurgeRuns",
+      "method": "POST",
+      "path": "/customers/{customerId}/purge-runs/search",
+      "purpose": "List purge runs for a customer within a time range and optional scope/status filters.",
+      "path_params": {
+        "customerId": "string"
+      },
+      "query_params": {},
+      "request_body": {
+        "from_date": "date-time",
+        "to_date": "date-time",
+        "statuses": [
+          "started|completed|failed"
+        ],
+        "scope": {
+          "policy_id": "string|null",
+          "policy_version_id": "string|null"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "customer_id": "string",
+              "started_at": "date-time",
+              "completed_at": "date-time|null",
+              "status": "started|completed|failed",
+              "cutoff_time": "date-time",
+              "scope": {
+                "policy_id": "string|null",
+                "policy_version_id": "string|null"
+              },
+              "documents_deleted": "number|null",
+              "notes": "string|null"
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_REQUEST",
+          "message": "Missing valid date range or invalid filter values."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "Caller is not authorized to view this customer's purge history."
+        },
+        {
+          "status": 500,
+          "code": "INTERNAL_ERROR",
+          "message": "Unexpected server error."
+        }
+      ],
+      "backend_binding": {
+        "type": "named_query_pattern",
+        "id": "QP13",
+        "mongodb_operation": "find on purge_runs with sort"
+      }
+    },
+    {
+      "operation_id": "getCustomerLoggingConfig",
+      "method": "GET",
+      "path": "/customers/{customerId}/logging-config",
+      "purpose": "Get a customer's execution logging and retention configuration.",
+      "path_params": {
+        "customerId": "string"
+      },
+      "query_params": {},
+      "request_body": null,
+      "response": {
+        "status": 200,
+        "body": {
+          "customer_id": "string",
+          "customer_name": "string",
+          "deployment_type": "on_prem|customer_cloud_aws|customer_cloud_azure|other_customer_managed|null",
+          "logging_enabled": "boolean",
+          "retention_policy": {
+            "retention_days": "number|null",
+            "purge_enabled": "boolean|null",
+            "purge_threshold_gb": "number|null",
+            "last_purge_at": "date-time|null"
+          }
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_PATH_PARAMETER",
+          "message": "customerId is invalid or empty."
+        },
+        {
+          "status": 404,
+          "code": "CUSTOMER_NOT_FOUND",
+          "message": "No customer configuration found for the supplied customerId."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "Caller is not authorized to view this customer's configuration."
+        },
+        {
+          "status": 500,
+          "code": "INTERNAL_ERROR",
+          "message": "Unexpected server error."
+        }
+      ],
+      "backend_binding": {
+        "type": "named_query_pattern",
+        "id": "QP14",
+        "mongodb_operation": "findOne on customers"
+      }
+    },
+    {
+      "operation_id": "updateCustomerLoggingConfig",
+      "method": "PATCH",
+      "path": "/customers/{customerId}/logging-config",
+      "purpose": "Enable or disable execution logging for a customer and update retention settings.",
+      "path_params": {
+        "customerId": "string"
+      },
+      "query_params": {},
+      "request_body": {
+        "logging_enabled": "boolean",
+        "retention_policy": {
+          "retention_days": "number|null",
+          "purge_enabled": "boolean|null",
+          "purge_threshold_gb": "number|null"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "customer_id": "string",
+          "customer_name": "string",
+          "deployment_type": "on_prem|customer_cloud_aws|customer_cloud_azure|other_customer_managed|null",
+          "logging_enabled": "boolean",
+          "retention_policy": {
+            "retention_days": "number|null",
+            "purge_enabled": "boolean|null",
+            "purge_threshold_gb": "number|null",
+            "last_purge_at": "date-time|null"
+          }
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_REQUEST",
+          "message": "Invalid logging or retention values supplied."
+        },
+        {
+          "status": 404,
+          "code": "CUSTOMER_NOT_FOUND",
+          "message": "No customer configuration found for the supplied customerId."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "Caller is not authorized to update this customer's configuration."
+        },
+        {
+          "status": 500,
+          "code": "INTERNAL_ERROR",
+          "message": "Unexpected server error."
+        }
+      ],
+      "backend_binding": {
+        "type": "named_query_pattern",
+        "id": "QP14",
+        "mongodb_operation": "updateOne on customers followed by readback via findOne"
+      }
+    },
+    {
+      "operation_id": "listPolicyVersions",
+      "method": "GET",
+      "path": "/policies/{policyId}/versions",
+      "purpose": "List published or retired policy versions with lightweight metadata for comparison and reporting filter selection.",
+      "path_params": {
+        "policyId": "string"
+      },
+      "query_params": {},
+      "request_body": null,
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "policy_id": "string",
+              "policy_name": "string",
+              "version_id": "string",
+              "version_label": "string|null",
+              "published_at": "date-time|null",
+              "status": "draft|published|retired|null",
+              "rules": [
+                {
+                  "rule_id": "string",
+                  "rule_name": "string|null",
+                  "sequence": "number|null"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_PATH_PARAMETER",
+          "message": "policyId is invalid or empty."
+        },
+        {
+          "status": 500,
+          "code": "INTERNAL_ERROR",
+          "message": "Unexpected server error."
+        }
+      ],
+      "backend_binding": {
+        "type": "named_query_pattern",
+        "id": "QP15",
+        "mongodb_operation": "find on policy_definitions with sort"
+      }
+    }
+  ],
+  "out_of_scope": [
+    {
+      "capability": "Create execution requests or execution log records directly via public API",
+      "reason": "The provided query patterns only cover reads/analytics/admin config. While the data model implies inserts for ingestion, the source system uses asynchronous Kafka-style ingestion (FR5/FR6). A public synchronous ingestion endpoint is not defined by the authoritative query patterns and should not be invented here."
+    },
+    {
+      "capability": "Trigger purge execution via API",
+      "reason": "The data model contains purge_runs audit records, and query patterns support viewing retention and purge history, but no authoritative query pattern or CRUD contract was provided for initiating a purge workflow."
+    },
+    {
+      "capability": "Create or edit policy definitions",
+      "reason": "policy_definitions are only queried for comparison selection in QP15; authoring/version management is outside this POV scope."
+    }
+  ]
+}
