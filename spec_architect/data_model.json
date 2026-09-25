@@ -1,0 +1,553 @@
+{
+  "pov_name": "newgen_brms_execution_logs",
+  "collections": [
+    {
+      "name": "customers",
+      "description": "Customer/environment level configuration for single-tenant current deployments, including whether execution logging is enabled and retention settings.",
+      "traceability": [
+        "FR10",
+        "current_state",
+        "INT4",
+        "BO2"
+      ],
+      "document_shape": {
+        "_id": {
+          "type": "objectId",
+          "required": true
+        },
+        "customer_id": {
+          "type": "string",
+          "required": true,
+          "description": "Stable business identifier for the customer/tenant context."
+        },
+        "customer_name": {
+          "type": "string",
+          "required": true
+        },
+        "deployment_mode": {
+          "type": "string",
+          "required": true,
+          "enum": [
+            "on_prem",
+            "aws",
+            "azure",
+            "gcp",
+            "other_customer_cloud"
+          ]
+        },
+        "logging_enabled": {
+          "type": "boolean",
+          "required": true
+        },
+        "retention_policy": {
+          "type": "document",
+          "required": false,
+          "fields": {
+            "retention_days": {
+              "type": "int",
+              "required": false
+            },
+            "purge_mode": {
+              "type": "string",
+              "required": false,
+              "enum": [
+                "ttl",
+                "scheduled_purge",
+                "manual"
+              ]
+            },
+            "purge_after_field": {
+              "type": "string",
+              "required": false,
+              "enum": [
+                "request_received_at",
+                "completed_at"
+              ]
+            }
+          }
+        },
+        "authorized_log_viewer_roles": {
+          "type": "array<string>",
+          "required": false
+        },
+        "created_at": {
+          "type": "date",
+          "required": true
+        },
+        "updated_at": {
+          "type": "date",
+          "required": true
+        }
+      },
+      "embedding_vs_references": {
+        "embedded": [
+          "retention_policy because it is small, bounded customer configuration read with the customer record",
+          "authorized_log_viewer_roles because it is a short configuration list"
+        ],
+        "references": [
+          "Referenced by execution_requests, rule_execution_logs, and policies via customer_id to support per-customer isolation, logging enablement, and retention rules."
+        ]
+      },
+      "relationships": [
+        {
+          "to_collection": "execution_requests",
+          "type": "one_to_many",
+          "via": "customer_id"
+        },
+        {
+          "to_collection": "rule_execution_logs",
+          "type": "one_to_many",
+          "via": "customer_id"
+        },
+        {
+          "to_collection": "policies",
+          "type": "one_to_many",
+          "via": "customer_id"
+        }
+      ]
+    },
+    {
+      "name": "policies",
+      "description": "Published policy metadata and versions used to interpret and compare execution outcomes over time.",
+      "traceability": [
+        "business_entities:Policy",
+        "UC3",
+        "BO4",
+        "FR12",
+        "ISSUE-4"
+      ],
+      "document_shape": {
+        "_id": {
+          "type": "objectId",
+          "required": true
+        },
+        "customer_id": {
+          "type": "string",
+          "required": true
+        },
+        "policy_id": {
+          "type": "string",
+          "required": true,
+          "description": "Stable policy identifier across versions."
+        },
+        "policy_name": {
+          "type": "string",
+          "required": true
+        },
+        "policy_version": {
+          "type": "string",
+          "required": true,
+          "description": "Version/definition identifier used for comparison analytics."
+        },
+        "status": {
+          "type": "string",
+          "required": true,
+          "enum": [
+            "draft",
+            "published",
+            "retired"
+          ]
+        },
+        "published_at": {
+          "type": "date",
+          "required": false
+        },
+        "rule_count": {
+          "type": "int",
+          "required": false
+        },
+        "tags": {
+          "type": "array<string>",
+          "required": false
+        },
+        "metadata": {
+          "type": "document",
+          "required": false,
+          "description": "Optional policy descriptors from BRMS, kept flexible for demo realism."
+        },
+        "created_at": {
+          "type": "date",
+          "required": true
+        },
+        "updated_at": {
+          "type": "date",
+          "required": true
+        }
+      },
+      "embedding_vs_references": {
+        "embedded": [
+          "metadata because policy descriptors are small and naturally read with the policy"
+        ],
+        "references": [
+          "Referenced from execution_requests and rule_execution_logs using policy_id + policy_version so executions can be analyzed by version without duplicating all policy definition content into every request."
+        ]
+      },
+      "relationships": [
+        {
+          "to_collection": "execution_requests",
+          "type": "one_to_many",
+          "via": "policy_id, policy_version"
+        },
+        {
+          "to_collection": "rule_execution_logs",
+          "type": "one_to_many",
+          "via": "policy_id, policy_version"
+        }
+      ]
+    },
+    {
+      "name": "execution_requests",
+      "description": "Request-level execution log capturing correlation/request ID, request/response JSON, final outcome, timing, and searchable facets for admin audit, APIs, retention, and analytics.",
+      "traceability": [
+        "business_entities:Request",
+        "business_entities:Execution Log",
+        "business_entities:Request ID / Correlation ID",
+        "business_entities:Outcome / Decision",
+        "UC1",
+        "UC2",
+        "UC3",
+        "UC4",
+        "FR1",
+        "FR2",
+        "FR4",
+        "FR7",
+        "FR8",
+        "FR11",
+        "FR12",
+        "FR13",
+        "BO1",
+        "BO2",
+        "BO3",
+        "BO4",
+        "BO5"
+      ],
+      "document_shape": {
+        "_id": {
+          "type": "objectId",
+          "required": true
+        },
+        "customer_id": {
+          "type": "string",
+          "required": true
+        },
+        "request_id": {
+          "type": "string",
+          "required": true,
+          "description": "Primary request/correlation identifier used by UI and APIs."
+        },
+        "correlation_id": {
+          "type": "string",
+          "required": false,
+          "description": "If distinct from request_id in some integrations."
+        },
+        "policy_id": {
+          "type": "string",
+          "required": true
+        },
+        "policy_version": {
+          "type": "string",
+          "required": true
+        },
+        "request_received_at": {
+          "type": "date",
+          "required": true
+        },
+        "completed_at": {
+          "type": "date",
+          "required": false
+        },
+        "duration_ms": {
+          "type": "long",
+          "required": false
+        },
+        "channel": {
+          "type": "string",
+          "required": false,
+          "description": "Originating client/channel such as mobile, portal, operational app."
+        },
+        "request_payload": {
+          "type": "document",
+          "required": true,
+          "description": "Original JSON request body; supports nested/complex JSON."
+        },
+        "response_payload": {
+          "type": "document",
+          "required": false,
+          "description": "Final JSON response body."
+        },
+        "intermediate_summary": {
+          "type": "document",
+          "required": false,
+          "description": "Optional small request-level summary of key intermediate values for quick inspection."
+        },
+        "outcome": {
+          "type": "document",
+          "required": false,
+          "fields": {
+            "decision": {
+              "type": "string",
+              "required": false
+            },
+            "status": {
+              "type": "string",
+              "required": false
+            },
+            "score": {
+              "type": "double",
+              "required": false
+            },
+            "reason_codes": {
+              "type": "array<string>",
+              "required": false
+            }
+          }
+        },
+        "analytics_dimensions": {
+          "type": "document",
+          "required": false,
+          "description": "Flattened customer/business dimensions extracted for reporting, e.g. age, age_band, region, segment."
+        },
+        "executed_rule_names": {
+          "type": "array<string>",
+          "required": false,
+          "description": "Denormalized list to quickly filter requests by rules that fired."
+        },
+        "rule_execution_count": {
+          "type": "int",
+          "required": false
+        },
+        "logging_ingest": {
+          "type": "document",
+          "required": false,
+          "fields": {
+            "ingested_at": {
+              "type": "date",
+              "required": false
+            },
+            "ingest_source": {
+              "type": "string",
+              "required": false,
+              "enum": [
+                "kafka",
+                "queue",
+                "api",
+                "batch"
+              ]
+            },
+            "ingest_status": {
+              "type": "string",
+              "required": false,
+              "enum": [
+                "received",
+                "persisted",
+                "error"
+              ]
+            }
+          }
+        },
+        "expires_at": {
+          "type": "date",
+          "required": false,
+          "description": "Materialized retention cutoff for TTL-based purging when used."
+        }
+      },
+      "embedding_vs_references": {
+        "embedded": [
+          "request_payload and response_payload because FR2 requires storing full nested JSON and the dominant access pattern in UC1/J1 is fetching the whole request audit record",
+          "outcome, intermediate_summary, analytics_dimensions, logging_ingest because these are bounded per-request metadata read with the request"
+        ],
+        "references": [
+          "Rule-level detail is not embedded here because FR3/FR13 imply up to hundreds of rule execution rows per request; separate rule_execution_logs avoids oversized documents and supports independent search/filtering on rule steps. Policies are referenced by policy_id/policy_version."
+        ]
+      },
+      "relationships": [
+        {
+          "to_collection": "customers",
+          "type": "many_to_one",
+          "via": "customer_id"
+        },
+        {
+          "to_collection": "policies",
+          "type": "many_to_one",
+          "via": "policy_id, policy_version"
+        },
+        {
+          "to_collection": "rule_execution_logs",
+          "type": "one_to_many",
+          "via": "request_id"
+        }
+      ]
+    },
+    {
+      "name": "rule_execution_logs",
+      "description": "One document per rule execution step/stage associated to a request, with detailed rule/action data, variable snapshots, and intermediate values.",
+      "traceability": [
+        "business_entities:Rule",
+        "business_entities:Variable",
+        "business_entities:Execution Log",
+        "UC1",
+        "UC2",
+        "UC4",
+        "FR1",
+        "FR3",
+        "FR4",
+        "FR8",
+        "FR11",
+        "FR13",
+        "BO3"
+      ],
+      "document_shape": {
+        "_id": {
+          "type": "objectId",
+          "required": true
+        },
+        "customer_id": {
+          "type": "string",
+          "required": true
+        },
+        "request_id": {
+          "type": "string",
+          "required": true
+        },
+        "correlation_id": {
+          "type": "string",
+          "required": false
+        },
+        "policy_id": {
+          "type": "string",
+          "required": true
+        },
+        "policy_version": {
+          "type": "string",
+          "required": true
+        },
+        "rule_log_seq": {
+          "type": "int",
+          "required": true,
+          "description": "Sequence number of the rule execution event within the request."
+        },
+        "rule_id": {
+          "type": "string",
+          "required": false
+        },
+        "rule_name": {
+          "type": "string",
+          "required": true
+        },
+        "rule_type": {
+          "type": "string",
+          "required": false
+        },
+        "stage_name": {
+          "type": "string",
+          "required": false,
+          "description": "Stage/intermediate processing step within the rule lifecycle."
+        },
+        "executed_at": {
+          "type": "date",
+          "required": true
+        },
+        "duration_ms": {
+          "type": "long",
+          "required": false
+        },
+        "execution_result": {
+          "type": "string",
+          "required": false,
+          "enum": [
+            "matched",
+            "not_matched",
+            "executed",
+            "skipped",
+            "error"
+          ]
+        },
+        "condition_expression": {
+          "type": "string",
+          "required": false
+        },
+        "input_snapshot": {
+          "type": "document",
+          "required": false,
+          "description": "Rule-level input subset or state snapshot."
+        },
+        "output_snapshot": {
+          "type": "document",
+          "required": false,
+          "description": "Rule-level output subset or state snapshot."
+        },
+        "intermediate_values": {
+          "type": "document",
+          "required": false,
+          "description": "Stage-wise variable/value content, possibly nested."
+        },
+        "variables_touched": {
+          "type": "array<document>",
+          "required": false,
+          "fields": {
+            "name": {
+              "type": "string",
+              "required": true
+            },
+            "value": {
+              "type": "mixed",
+              "required": false
+            },
+            "value_type": {
+              "type": "string",
+              "required": false
+            },
+            "path": {
+              "type": "string",
+              "required": false
+            }
+          }
+        },
+        "error": {
+          "type": "document",
+          "required": false,
+          "fields": {
+            "code": {
+              "type": "string",
+              "required": false
+            },
+            "message": {
+              "type": "string",
+              "required": false
+            }
+          }
+        },
+        "expires_at": {
+          "type": "date",
+          "required": false
+        }
+      },
+      "embedding_vs_references": {
+        "embedded": [
+          "variables_touched because it is part of the immutable rule-step audit event and usually retrieved together with the rule execution row in UC1",
+          "input_snapshot/output_snapshot/intermediate_values because these represent the detailed JSON trace for that one rule-step"
+        ],
+        "references": [
+          "Referenced back to execution_requests by request_id for full-request drill-down. Kept as a separate collection due to FR3/FR13 high cardinality per request and the need to search/filter at rule-step granularity."
+        ]
+      },
+      "relationships": [
+        {
+          "to_collection": "execution_requests",
+          "type": "many_to_one",
+          "via": "request_id"
+        },
+        {
+          "to_collection": "customers",
+          "type": "many_to_one",
+          "via": "customer_id"
+        },
+        {
+          "to_collection": "policies",
+          "type": "many_to_one",
+          "via": "policy_id, policy_version"
+        }
+      ]
+    }
+  ]
+}
