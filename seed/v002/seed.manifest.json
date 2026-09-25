@@ -1,0 +1,68 @@
+{
+  "artifacts": [
+    {
+      "bytes": 202,
+      "key": "seed/v002/REPAIR_NOTES.md",
+      "sha256": "a8afe3d2eb436ce5c5cf3b30e663f0d1b3d5d7c7a4b43c301718a86f2fc2a32b"
+    },
+    {
+      "bytes": 1553,
+      "key": "seed/v002/SEED_README.md",
+      "sha256": "3871bfcc62b694ae2db42f20ee1382dee8973d95bbd4d2bb290fbfd185be1b58"
+    },
+    {
+      "bytes": 73,
+      "key": "seed/v002/package.json",
+      "sha256": "e2ed10e0eeb66e5712e1f9abe64f2759f8788f6e255900d7816f2c6b73bb091a"
+    },
+    {
+      "bytes": 10602,
+      "key": "seed/v002/seed.js",
+      "sha256": "92515386e77f49dd6b4f029bfd87d762e9209e950ebccb3e670d23831df00ef4"
+    }
+  ],
+  "code_version": "v002",
+  "correlation": {
+    "poc_id": "1790360041472",
+    "producer": "poc-data-seed",
+    "run_id": "run_01M3D0GEB3VQ84H312G637HXNZ",
+    "task_id": "task_01M3D0GEB3T1BEX1N84YMM63ZN",
+    "trace_id": "trace_01M3D0GEB3VQ84H312G637HXNZ"
+  },
+  "defaults_applied": [
+    "tenants: derived relationship indexes",
+    "tenants: seed count 20",
+    "documents: derived relationship indexes",
+    "documents: seed count 20",
+    "chunk_profiles: derived relationship indexes",
+    "chunk_profiles: seed count 20",
+    "chunks: derived relationship indexes",
+    "chunks: seed count 20",
+    "queries: derived relationship indexes",
+    "queries: seed count 20",
+    "benchmark_runs: derived relationship indexes",
+    "benchmark_runs: seed count 20",
+    "query_results: derived relationship indexes",
+    "query_results: seed count 20"
+  ],
+  "inputs": {
+    "data_model": {
+      "commit_sha": "ba06ad8090011e6fdf6ddfb27e7c01321151f395",
+      "key": "spec_architect/data_model.json",
+      "sha256": "b82452ae7391ab979ea5dc075ab54afbf85d5d16441d79dfe6b41ae8d40f6687"
+    }
+  },
+  "poc_id": "1790360041472",
+  "producer": "poc-data-seed",
+  "repair": {
+    "code": "SEED_SCRIPT_INVALID",
+    "failure_class": "IMPLEMENTATION_FAILURE",
+    "message": "seed.js has invalid JavaScript syntax",
+    "source_code_version": "v001"
+  },
+  "storage": {
+    "branch": "vinod-krishnan-mongodb-com/voyage-harness",
+    "provider": "github",
+    "repository": "vinodkrishnan23/pov-builder"
+  }
+}
