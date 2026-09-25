@@ -1,0 +1,57 @@
+{
+  "artifacts": [
+    {
+      "bytes": 1491,
+      "key": "seed/v001/SEED_README.md",
+      "sha256": "57e7eb93fcc223a38ac4ad457b6b596a1a677b06ab47f1bf891fed98448e583d"
+    },
+    {
+      "bytes": 73,
+      "key": "seed/v001/package.json",
+      "sha256": "e2ed10e0eeb66e5712e1f9abe64f2759f8788f6e255900d7816f2c6b73bb091a"
+    },
+    {
+      "bytes": 10583,
+      "key": "seed/v001/seed.js",
+      "sha256": "d5406412ebc70a63ff64dbf011c038c5bae0b2dfe9fc6764092d5b2cce2e1b43"
+    }
+  ],
+  "code_version": "v001",
+  "correlation": {
+    "poc_id": "1790360041472",
+    "producer": "poc-data-seed",
+    "run_id": "run_01M3D0GEB3VQ84H312G637HXNZ",
+    "task_id": "task_01M3D0GEB3T1BEX1N84YMM63ZN",
+    "trace_id": "trace_01M3D0GEB3VQ84H312G637HXNZ"
+  },
+  "defaults_applied": [
+    "tenants: derived relationship indexes",
+    "tenants: seed count 20",
+    "documents: derived relationship indexes",
+    "documents: seed count 20",
+    "chunk_profiles: derived relationship indexes",
+    "chunk_profiles: seed count 20",
+    "chunks: derived relationship indexes",
+    "chunks: seed count 20",
+    "queries: derived relationship indexes",
+    "queries: seed count 20",
+    "benchmark_runs: derived relationship indexes",
+    "benchmark_runs: seed count 20",
+    "query_results: derived relationship indexes",
+    "query_results: seed count 20"
+  ],
+  "inputs": {
+    "data_model": {
+      "commit_sha": "ba06ad8090011e6fdf6ddfb27e7c01321151f395",
+      "key": "spec_architect/data_model.json",
+      "sha256": "b82452ae7391ab979ea5dc075ab54afbf85d5d16441d79dfe6b41ae8d40f6687"
+    }
+  },
+  "poc_id": "1790360041472",
+  "producer": "poc-data-seed",
+  "storage": {
+    "branch": "vinod-krishnan-mongodb-com/voyage-harness",
+    "provider": "github",
+    "repository": "vinodkrishnan23/pov-builder"
+  }
+}
