@@ -1,0 +1,908 @@
+{
+  "summary": {
+    "pov_scope": "Evaluate MongoDB for BRMS execution logging, JSON search/filtering, analytics, retention visibility, and future intelligent insights using the authoritative data model, query patterns, API, and frontend artifacts.",
+    "authoritative_artifacts": [
+      "data_model",
+      "query_patterns",
+      "api_contract",
+      "frontend_contract"
+    ],
+    "note": "Mappings below consolidate traceability only from the provided authoritative artifacts and the InitialPOVSpec. No new design elements are introduced."
+  },
+  "by_requirement": {
+    "BO1": {
+      "description": "Maintain detailed auditing and traceability for every rule-execution request, including why decisions were made.",
+      "collections": [
+        "execution_requests"
+      ],
+      "query_patterns": [
+        "QP1",
+        "QP2",
+        "QP3"
+      ],
+      "api_endpoints": [
+        "getExecutionAuditByRequestId",
+        "getExecutionAuditByCorrelationId",
+        "getExecutionTimelineByRequestId"
+      ],
+      "frontend_pages": [
+        "request_lookup",
+        "execution_request_detail",
+        "execution_timeline"
+      ]
+    },
+    "BO2": {
+      "description": "Control and reduce the operational impact of rapidly growing execution-log data volumes.",
+      "collections": [
+        "execution_requests"
+      ],
+      "query_patterns": [
+        "QP12",
+        "QP13"
+      ],
+      "api_endpoints": [
+        "listPurgeEligibleRequests",
+        "getRetentionBacklogSummary",
+        "updateExecutionRequestRetention"
+      ],
+      "frontend_pages": [
+        "retention_planning",
+        "execution_request_detail"
+      ]
+    },
+    "BO3": {
+      "description": "Enable richer analytics on execution-log data to understand policy impact and business outcomes.",
+      "collections": [
+        "execution_requests",
+        "analytics_daily_policy_outcomes",
+        "policies"
+      ],
+      "query_patterns": [
+        "QP7",
+        "QP8",
+        "QP9",
+        "QP14"
+      ],
+      "api_endpoints": [
+        "getPolicyVersionTrendMetrics",
+        "compareApprovalRateImpact",
+        "getRejectionReasonBreakdown",
+        "getPolicyWithRules"
+      ],
+      "frontend_pages": [
+        "analytics_dashboard",
+        "policy_context"
+      ]
+    },
+    "BO4": {
+      "description": "Provide business users with insights into how policy changes affect approval rates and outcomes.",
+      "collections": [
+        "execution_requests",
+        "analytics_daily_policy_outcomes",
+        "policies",
+        "rules"
+      ],
+      "query_patterns": [
+        "QP7",
+        "QP8",
+        "QP9",
+        "QP14"
+      ],
+      "api_endpoints": [
+        "getPolicyVersionTrendMetrics",
+        "compareApprovalRateImpact",
+        "getRejectionReasonBreakdown",
+        "getPolicyWithRules"
+      ],
+      "frontend_pages": [
+        "analytics_dashboard",
+        "policy_context"
+      ]
+    },
+    "BO5": {
+      "description": "Package the validated capability into the product for GTM use.",
+      "collections": [
+        "policies",
+        "rules",
+        "execution_requests",
+        "analytics_daily_policy_outcomes"
+      ],
+      "query_patterns": [
+        "QP1",
+        "QP4",
+        "QP7",
+        "QP11",
+        "QP12"
+      ],
+      "api_endpoints": [
+        "createPolicy",
+        "createRule",
+        "createExecutionRequest",
+        "appendRuleStepToExecutionRequest",
+        "getExecutionAuditByRequestId",
+        "searchExecutionLogsByContent",
+        "getPolicyVersionTrendMetrics",
+        "monitorIngestionRequests",
+        "listPurgeEligibleRequests"
+      ],
+      "frontend_pages": [
+        "home_overview",
+        "create_policy",
+        "create_rule",
+        "create_execution_request",
+        "append_rule_step",
+        "request_lookup",
+        "content_search",
+        "analytics_dashboard",
+        "ingestion_monitoring",
+        "retention_planning"
+      ]
+    },
+    "FR1": {
+      "description": "Capture JSON input and JSON output for each rule execution request.",
+      "collections": [
+        "execution_requests"
+      ],
+      "query_patterns": [
+        "QP1",
+        "QP2"
+      ],
+      "api_endpoints": [
+        "createExecutionRequest",
+        "getExecutionAuditByRequestId",
+        "getExecutionAuditByCorrelationId"
+      ],
+      "frontend_pages": [
+        "create_execution_request",
+        "execution_request_detail"
+      ]
+    },
+    "FR2": {
+      "description": "Capture detailed rule-level execution logs, including intermediate stage values for each request.",
+      "collections": [
+        "execution_requests",
+        "rules"
+      ],
+      "query_patterns": [
+        "QP1",
+        "QP3",
+        "QP6"
+      ],
+      "api_endpoints": [
+        "createExecutionRequest",
+        "appendRuleStepToExecutionRequest",
+        "getExecutionAuditByRequestId",
+        "getExecutionTimelineByRequestId",
+        "findRequestsByRuleCondition"
+      ],
+      "frontend_pages": [
+        "create_execution_request",
+        "append_rule_step",
+        "execution_request_detail",
+        "execution_timeline",
+        "rule_condition_search"
+      ]
+    },
+    "FR3": {
+      "description": "Support variable numbers of rule-execution records per request based on policy/rule complexity.",
+      "collections": [
+        "execution_requests"
+      ],
+      "query_patterns": [
+        "QP1",
+        "QP3"
+      ],
+      "api_endpoints": [
+        "createExecutionRequest",
+        "appendRuleStepToExecutionRequest",
+        "getExecutionAuditByRequestId",
+        "getExecutionTimelineByRequestId"
+      ],
+      "frontend_pages": [
+        "create_execution_request",
+        "append_rule_step",
+        "execution_request_detail",
+        "execution_timeline"
+      ]
+    },
+    "FR4": {
+      "description": "Support nested and complex JSON structures, including arrays, in logged request/response data.",
+      "collections": [
+        "execution_requests"
+      ],
+      "query_patterns": [
+        "QP1",
+        "QP2",
+        "QP4"
+      ],
+      "api_endpoints": [
+        "createExecutionRequest",
+        "getExecutionAuditByRequestId",
+        "getExecutionAuditByCorrelationId",
+        "searchExecutionLogsByContent"
+      ],
+      "frontend_pages": [
+        "create_execution_request",
+        "execution_request_detail",
+        "content_search"
+      ]
+    },
+    "FR5": {
+      "description": "Persist execution logs asynchronously so rule execution does not wait for logging completion.",
+      "collections": [
+        "execution_requests"
+      ],
+      "query_patterns": [
+        "QP11"
+      ],
+      "api_endpoints": [
+        "createExecutionRequest",
+        "appendRuleStepToExecutionRequest",
+        "monitorIngestionRequests"
+      ],
+      "frontend_pages": [
+        "create_execution_request",
+        "append_rule_step",
+        "ingestion_monitoring"
+      ]
+    },
+    "FR6": {
+      "description": "Support incremental logging for every rule execution step rather than waiting for the entire request to complete.",
+      "collections": [
+        "execution_requests"
+      ],
+      "query_patterns": [
+        "QP11"
+      ],
+      "api_endpoints": [
+        "appendRuleStepToExecutionRequest",
+        "monitorIngestionRequests"
+      ],
+      "frontend_pages": [
+        "append_rule_step",
+        "ingestion_monitoring",
+        "execution_request_detail"
+      ]
+    },
+    "FR7": {
+      "description": "Support concurrent request processing and logging.",
+      "collections": [
+        "execution_requests"
+      ],
+      "query_patterns": [
+        "QP11"
+      ],
+      "api_endpoints": [
+        "createExecutionRequest",
+        "appendRuleStepToExecutionRequest",
+        "monitorIngestionRequests"
+      ],
+      "frontend_pages": [
+        "create_execution_request",
+        "append_rule_step",
+        "ingestion_monitoring"
+      ]
+    },
+    "FR8": {
+      "description": "Provide a product UI to view execution logs.",
+      "collections": [
+        "execution_requests"
+      ],
+      "query_patterns": [
+        "QP1",
+        "QP2",
+        "QP3"
+      ],
+      "api_endpoints": [
+        "getExecutionAuditByRequestId",
+        "getExecutionAuditByCorrelationId",
+        "getExecutionTimelineByRequestId"
+      ],
+      "frontend_pages": [
+        "request_lookup",
+        "execution_request_detail",
+        "execution_timeline"
+      ]
+    },
+    "FR9": {
+      "description": "Provide APIs so implementation/delivery teams can consume execution-log data for custom analysis and representations.",
+      "collections": [
+        "execution_requests",
+        "analytics_daily_policy_outcomes",
+        "policies",
+        "rules"
+      ],
+      "query_patterns": [
+        "QP1",
+        "QP2",
+        "QP4",
+        "QP5",
+        "QP6",
+        "QP7",
+        "QP8",
+        "QP9",
+        "QP10",
+        "QP14"
+      ],
+      "api_endpoints": [
+        "getExecutionAuditByRequestId",
+        "getExecutionAuditByCorrelationId",
+        "searchExecutionLogsByContent",
+        "filterExecutionRequests",
+        "findRequestsByRuleCondition",
+        "getPolicyVersionTrendMetrics",
+        "compareApprovalRateImpact",
+        "getRejectionReasonBreakdown",
+        "listExternalInvocationOutcomes",
+        "getPolicyWithRules"
+      ],
+      "frontend_pages": [
+        "request_lookup",
+        "content_search",
+        "structured_filter_search",
+        "rule_condition_search",
+        "analytics_dashboard",
+        "external_outcomes",
+        "policy_context"
+      ]
+    },
+    "FR10": {
+      "description": "Support retrieval of all rule executions associated with a request ID/correlation ID.",
+      "collections": [
+        "execution_requests"
+      ],
+      "query_patterns": [
+        "QP1",
+        "QP2"
+      ],
+      "api_endpoints": [
+        "getExecutionAuditByRequestId",
+        "getExecutionAuditByCorrelationId"
+      ],
+      "frontend_pages": [
+        "request_lookup",
+        "execution_request_detail"
+      ]
+    },
+    "FR11": {
+      "description": "Restrict detailed rule/log visibility to admins or a selected small set of users.",
+      "collections": [
+        "execution_requests"
+      ],
+      "query_patterns": [
+        "QP1",
+        "QP2",
+        "QP3",
+        "QP4",
+        "QP5",
+        "QP6",
+        "QP7",
+        "QP8",
+        "QP9",
+        "QP11",
+        "QP12",
+        "QP13",
+        "QP14"
+      ],
+      "api_endpoints": [
+        "getExecutionAuditByRequestId",
+        "getExecutionAuditByCorrelationId",
+        "getExecutionTimelineByRequestId",
+        "searchExecutionLogsByContent",
+        "filterExecutionRequests",
+        "findRequestsByRuleCondition",
+        "getPolicyVersionTrendMetrics",
+        "compareApprovalRateImpact",
+        "getRejectionReasonBreakdown",
+        "monitorIngestionRequests",
+        "listPurgeEligibleRequests",
+        "getRetentionBacklogSummary",
+        "getPolicyWithRules"
+      ],
+      "frontend_pages": [
+        "home_overview",
+        "request_lookup",
+        "execution_request_detail",
+        "execution_timeline",
+        "content_search",
+        "structured_filter_search",
+        "rule_condition_search",
+        "analytics_dashboard",
+        "ingestion_monitoring",
+        "retention_planning",
+        "policy_context"
+      ],
+      "notes": "Enforced as authz/role-aware behavior in API contract and frontend RoleGuard rather than via a dedicated collection."
+    },
+    "FR12": {
+      "description": "Allow external applications to invoke rules and receive only request/response outcomes without exposing detailed rule internals.",
+      "collections": [
+        "execution_requests",
+        "policies"
+      ],
+      "query_patterns": [
+        "QP10"
+      ],
+      "api_endpoints": [
+        "listExternalInvocationOutcomes"
+      ],
+      "frontend_pages": [
+        "external_outcomes"
+      ],
+      "notes": "The authoritative artifacts explicitly exclude a live business rule invocation endpoint; only stored external-safe outcomes are exposed in this POV."
+    },
+    "FR13": {
+      "description": "Support policies composed of multiple rules with shared consolidated input data.",
+      "collections": [
+        "policies",
+        "rules"
+      ],
+      "query_patterns": [
+        "QP14"
+      ],
+      "api_endpoints": [
+        "createPolicy",
+        "createRule",
+        "getPolicyWithRules"
+      ],
+      "frontend_pages": [
+        "create_policy",
+        "create_rule",
+        "policy_context"
+      ]
+    },
+    "FR14": {
+      "description": "Handle large request payloads with many variables in a policy.",
+      "collections": [
+        "execution_requests"
+      ],
+      "query_patterns": [
+        "QP1",
+        "QP4"
+      ],
+      "api_endpoints": [
+        "createExecutionRequest",
+        "getExecutionAuditByRequestId",
+        "searchExecutionLogsByContent"
+      ],
+      "frontend_pages": [
+        "create_execution_request",
+        "execution_request_detail",
+        "content_search"
+      ]
+    },
+    "FR15": {
+      "description": "Support optional runtime database lookups as part of rule execution when configured.",
+      "collections": [
+        "rules",
+        "execution_requests"
+      ],
+      "query_patterns": [
+        "QP3",
+        "QP14"
+      ],
+      "api_endpoints": [
+        "createRule",
+        "createExecutionRequest",
+        "appendRuleStepToExecutionRequest",
+        "getExecutionTimelineByRequestId",
+        "getPolicyWithRules"
+      ],
+      "frontend_pages": [
+        "create_rule",
+        "create_execution_request",
+        "append_rule_step",
+        "execution_timeline",
+        "policy_context"
+      ]
+    },
+    "FR16": {
+      "description": "Support fast searching and filtering on rule execution data, including searches within logged content/variables.",
+      "collections": [
+        "execution_requests"
+      ],
+      "query_patterns": [
+        "QP4",
+        "QP5",
+        "QP6"
+      ],
+      "api_endpoints": [
+        "searchExecutionLogsByContent",
+        "filterExecutionRequests",
+        "findRequestsByRuleCondition"
+      ],
+      "frontend_pages": [
+        "content_search",
+        "structured_filter_search",
+        "rule_condition_search"
+      ]
+    },
+    "FR17": {
+      "description": "Support dashboards and report generation over execution-log datasets.",
+      "collections": [
+        "analytics_daily_policy_outcomes",
+        "execution_requests",
+        "policies"
+      ],
+      "query_patterns": [
+        "QP7",
+        "QP8",
+        "QP9",
+        "QP14"
+      ],
+      "api_endpoints": [
+        "getPolicyVersionTrendMetrics",
+        "compareApprovalRateImpact",
+        "getRejectionReasonBreakdown",
+        "getPolicyWithRules"
+      ],
+      "frontend_pages": [
+        "analytics_dashboard",
+        "policy_context"
+      ]
+    },
+    "FR18": {
+      "description": "Allow execution logging to be enabled or disabled per customer need.",
+      "collections": [
+        "execution_requests"
+      ],
+      "query_patterns": [
+        "QP4",
+        "QP5"
+      ],
+      "api_endpoints": [
+        "createExecutionRequest",
+        "searchExecutionLogsByContent",
+        "filterExecutionRequests"
+      ],
+      "frontend_pages": [
+        "create_execution_request",
+        "content_search",
+        "structured_filter_search"
+      ],
+      "notes": "Represented by the `logging_enabled` field and used in search/filter query logic."
+    },
+    "FR19": {
+      "description": "Support retention management or purging of execution logs based on customer needs and data growth.",
+      "collections": [
+        "execution_requests"
+      ],
+      "query_patterns": [
+        "QP12",
+        "QP13"
+      ],
+      "api_endpoints": [
+        "listPurgeEligibleRequests",
+        "getRetentionBacklogSummary",
+        "updateExecutionRequestRetention"
+      ],
+      "frontend_pages": [
+        "retention_planning",
+        "execution_request_detail"
+      ]
+    },
+    "FR20": {
+      "description": "Scale to high rule counts per request, with current soft limit around 500 and possible higher volumes.",
+      "collections": [
+        "rules",
+        "execution_requests"
+      ],
+      "query_patterns": [
+        "QP1",
+        "QP3"
+      ],
+      "api_endpoints": [
+        "createExecutionRequest",
+        "appendRuleStepToExecutionRequest",
+        "getExecutionAuditByRequestId",
+        "getExecutionTimelineByRequestId"
+      ],
+      "frontend_pages": [
+        "create_execution_request",
+        "append_rule_step",
+        "execution_request_detail",
+        "execution_timeline"
+      ]
+    },
+    "AI1": {
+      "description": "Potentially use LLMs to generate insights from execution-log and analytics data.",
+      "collections": [
+        "execution_requests",
+        "analytics_daily_policy_outcomes",
+        "policies",
+        "rules"
+      ],
+      "query_patterns": [
+        "QP1",
+        "QP3",
+        "QP7",
+        "QP8",
+        "QP9",
+        "QP14"
+      ],
+      "api_endpoints": [
+        "getExecutionAuditByRequestId",
+        "getExecutionTimelineByRequestId",
+        "getPolicyVersionTrendMetrics",
+        "compareApprovalRateImpact",
+        "getRejectionReasonBreakdown",
+        "getPolicyWithRules"
+      ],
+      "frontend_pages": [
+        "analytics_dashboard",
+        "execution_request_detail",
+        "execution_timeline",
+        "policy_context"
+      ],
+      "notes": "No AI endpoint exists in the authoritative API; current POV only provides the data access patterns an AI layer could consume later."
+    },
+    "AI2": {
+      "description": "Use intelligent analysis to suggest beneficial policy/rule changes based on historical execution data.",
+      "collections": [
+        "execution_requests",
+        "analytics_daily_policy_outcomes",
+        "policies",
+        "rules"
+      ],
+      "query_patterns": [
+        "QP7",
+        "QP8",
+        "QP9",
+        "QP14"
+      ],
+      "api_endpoints": [
+        "getPolicyVersionTrendMetrics",
+        "compareApprovalRateImpact",
+        "getRejectionReasonBreakdown",
+        "getPolicyWithRules"
+      ],
+      "frontend_pages": [
+        "analytics_dashboard",
+        "policy_context"
+      ],
+      "notes": "Supported indirectly through analytics data and context retrieval; no implemented recommendation engine or agent API exists."
+    },
+    "UC1": {
+      "description": "Audit rule execution for a request.",
+      "collections": [
+        "execution_requests",
+        "rules",
+        "policies"
+      ],
+      "query_patterns": [
+        "QP1",
+        "QP2",
+        "QP3",
+        "QP14"
+      ],
+      "api_endpoints": [
+        "getExecutionAuditByRequestId",
+        "getExecutionAuditByCorrelationId",
+        "getExecutionTimelineByRequestId",
+        "getPolicyWithRules"
+      ],
+      "frontend_pages": [
+        "request_lookup",
+        "execution_request_detail",
+        "execution_timeline",
+        "policy_context"
+      ]
+    },
+    "UC2": {
+      "description": "Search execution logs by content.",
+      "collections": [
+        "execution_requests"
+      ],
+      "query_patterns": [
+        "QP4",
+        "QP5",
+        "QP6"
+      ],
+      "api_endpoints": [
+        "searchExecutionLogsByContent",
+        "filterExecutionRequests",
+        "findRequestsByRuleCondition"
+      ],
+      "frontend_pages": [
+        "content_search",
+        "structured_filter_search",
+        "rule_condition_search"
+      ]
+    },
+    "UC3": {
+      "description": "Analyze policy version impact.",
+      "collections": [
+        "analytics_daily_policy_outcomes",
+        "execution_requests",
+        "policies",
+        "rules"
+      ],
+      "query_patterns": [
+        "QP7",
+        "QP8",
+        "QP9",
+        "QP14"
+      ],
+      "api_endpoints": [
+        "getPolicyVersionTrendMetrics",
+        "compareApprovalRateImpact",
+        "getRejectionReasonBreakdown",
+        "getPolicyWithRules"
+      ],
+      "frontend_pages": [
+        "analytics_dashboard",
+        "policy_context"
+      ]
+    },
+    "UC4": {
+      "description": "Expose rule outcomes to consuming applications.",
+      "collections": [
+        "execution_requests",
+        "policies"
+      ],
+      "query_patterns": [
+        "QP10"
+      ],
+      "api_endpoints": [
+        "listExternalInvocationOutcomes"
+      ],
+      "frontend_pages": [
+        "external_outcomes"
+      ]
+    },
+    "UC5": {
+      "description": "Manage log growth and retention.",
+      "collections": [
+        "execution_requests"
+      ],
+      "query_patterns": [
+        "QP11",
+        "QP12",
+        "QP13"
+      ],
+      "api_endpoints": [
+        "monitorIngestionRequests",
+        "listPurgeEligibleRequests",
+        "getRetentionBacklogSummary",
+        "updateExecutionRequestRetention"
+      ],
+      "frontend_pages": [
+        "ingestion_monitoring",
+        "retention_planning",
+        "execution_request_detail"
+      ]
+    }
+  },
+  "by_collection": {
+    "policies": {
+      "supports_requirements": [
+        "FR13",
+        "UC3",
+        "UC4",
+        "BO3",
+        "BO4",
+        "AI1",
+        "AI2"
+      ],
+      "primary_endpoints": [
+        "createPolicy",
+        "getPolicyWithRules"
+      ],
+      "primary_pages": [
+        "create_policy",
+        "policy_context"
+      ]
+    },
+    "rules": {
+      "supports_requirements": [
+        "FR2",
+        "FR13",
+        "FR15",
+        "FR20",
+        "UC1",
+        "UC3",
+        "AI1",
+        "AI2"
+      ],
+      "primary_endpoints": [
+        "createRule",
+        "getPolicyWithRules"
+      ],
+      "primary_pages": [
+        "create_rule",
+        "policy_context"
+      ]
+    },
+    "execution_requests": {
+      "supports_requirements": [
+        "BO1",
+        "BO2",
+        "FR1",
+        "FR2",
+        "FR3",
+        "FR4",
+        "FR5",
+        "FR6",
+        "FR7",
+        "FR10",
+        "FR11",
+        "FR12",
+        "FR14",
+        "FR15",
+        "FR16",
+        "FR18",
+        "FR19",
+        "FR20",
+        "UC1",
+        "UC2",
+        "UC4",
+        "UC5",
+        "AI1",
+        "AI2"
+      ],
+      "primary_endpoints": [
+        "createExecutionRequest",
+        "appendRuleStepToExecutionRequest",
+        "updateExecutionRequestRetention",
+        "getExecutionAuditByRequestId",
+        "getExecutionAuditByCorrelationId",
+        "getExecutionTimelineByRequestId",
+        "searchExecutionLogsByContent",
+        "filterExecutionRequests",
+        "findRequestsByRuleCondition",
+        "compareApprovalRateImpact",
+        "getRejectionReasonBreakdown",
+        "listExternalInvocationOutcomes",
+        "monitorIngestionRequests",
+        "listPurgeEligibleRequests",
+        "getRetentionBacklogSummary"
+      ],
+      "primary_pages": [
+        "create_execution_request",
+        "append_rule_step",
+        "execution_request_detail",
+        "execution_timeline",
+        "content_search",
+        "structured_filter_search",
+        "rule_condition_search",
+        "external_outcomes",
+        "ingestion_monitoring",
+        "retention_planning"
+      ]
+    },
+    "analytics_daily_policy_outcomes": {
+      "supports_requirements": [
+        "BO3",
+        "BO4",
+        "FR17",
+        "UC3",
+        "AI1",
+        "AI2"
+      ],
+      "primary_endpoints": [
+        "getPolicyVersionTrendMetrics"
+      ],
+      "primary_pages": [
+        "analytics_dashboard"
+      ]
+    }
+  },
+  "gaps_and_constraints": [
+    {
+      "gap": "No live rule invocation endpoint",
+      "impact": "FR12 is only covered for reviewing stored external-safe outcomes, not triggering new BRMS decisions from this POV."
+    },
+    {
+      "gap": "No AI/LLM endpoint",
+      "impact": "AI1 and AI2 are traceable only to the analytics and audit data access surfaces that a future agent could consume."
+    },
+    {
+      "gap": "No purge/delete endpoint",
+      "impact": "FR19 and UC5 cover retention identification and metadata changes, not destructive deletion execution."
+    },
+    {
+      "gap": "No generic list policies/rules endpoints",
+      "impact": "Frontend setup and analytics criteria rely on manual entry, route context, or seeded identifiers."
+    }
+  ]
+}
