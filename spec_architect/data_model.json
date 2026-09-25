@@ -1,0 +1,1021 @@
+{
+  "collections": [
+    {
+      "name": "tenants",
+      "description": "Tenant/deployment scope for isolating benchmark data and future secondary use cases. Included because the spec references customer-specific SaaS deployments and tenant deployment as a business entity, and benchmark/demo data should be scoped accordingly.",
+      "traceability": [
+        "business_entities:Tenant deployment",
+        "UC1",
+        "UC2",
+        "FR7"
+      ],
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "deployment_model",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "shared_pov",
+            "isolated_saas_deployment"
+          ]
+        },
+        {
+          "name": "cloud_provider",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "aws",
+            "gcp",
+            "azure",
+            "other"
+          ]
+        },
+        {
+          "name": "environment_label",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "embedding_strategy": "N/A",
+      "relationships": [
+        {
+          "type": "one-to-many",
+          "to": "documents",
+          "via": "tenant_id"
+        },
+        {
+          "type": "one-to-many",
+          "to": "benchmark_runs",
+          "via": "tenant_id"
+        },
+        {
+          "type": "one-to-many",
+          "to": "agent_memory_entries",
+          "via": "tenant_id"
+        }
+      ],
+      "embedded_vs_references": {
+        "decision": "top-level collection",
+        "why": "Tenants are a stable scoping entity reused across many documents, benchmark runs, and optional agent-memory records; referencing avoids duplication and supports isolation filters."
+      },
+      "indexes": [
+        {
+          "name": "tenant_name_unique",
+          "kind": "regular",
+          "fields": [
+            "name"
+          ],
+          "reason": "Supports lookup/admin selection of a tenant or demo environment by name."
+        }
+      ]
+    },
+    {
+      "name": "documents",
+      "description": "Uploaded unstructured source documents used in the benchmark-oriented POV. Supports PDFs, business docs, text files, and text exports such as Slack/Jira threads.",
+      "traceability": [
+        "business_entities:Unstructured documents",
+        "UC1",
+        "FR1",
+        "FR2",
+        "FR3",
+        "FR6",
+        "SC2"
+      ],
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "tenant_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "document_type",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "pdf",
+            "business_document",
+            "research_paper",
+            "text_file",
+            "slack_export",
+            "jira_export",
+            "other"
+          ]
+        },
+        {
+          "name": "source_filename",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "mime_type",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "storage",
+          "type": "object",
+          "required": true,
+          "fields": [
+            {
+              "name": "storage_type",
+              "type": "string",
+              "required": true,
+              "enum": [
+                "atlas",
+                "s3",
+                "external_url"
+              ]
+            },
+            {
+              "name": "uri",
+              "type": "string",
+              "required": false
+            },
+            {
+              "name": "bucket",
+              "type": "string",
+              "required": false
+            },
+            {
+              "name": "object_key",
+              "type": "string",
+              "required": false
+            }
+          ]
+        },
+        {
+          "name": "ingestion_status",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "uploaded",
+            "text_extracted",
+            "chunked",
+            "embedded",
+            "failed"
+          ]
+        },
+        {
+          "name": "extracted_text",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "metadata",
+          "type": "object",
+          "required": false,
+          "fields": [
+            {
+              "name": "page_count",
+              "type": "int",
+              "required": false
+            },
+            {
+              "name": "language",
+              "type": "string",
+              "required": false
+            },
+            {
+              "name": "tags",
+              "type": "array<string>",
+              "required": false
+            }
+          ]
+        },
+        {
+          "name": "uploaded_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "uploaded_by",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "relationships": [
+        {
+          "type": "many-to-one",
+          "to": "tenants",
+          "via": "tenant_id"
+        },
+        {
+          "type": "one-to-many",
+          "to": "document_chunks",
+          "via": "document_id"
+        }
+      ],
+      "embedded_vs_references": {
+        "decision": "top-level collection with chunks referenced separately",
+        "why": "Documents can be large and produce many chunks under multiple chunking strategies; separating chunks avoids document growth and supports independent indexing/search at chunk level."
+      },
+      "indexes": [
+        {
+          "name": "documents_tenant_uploadedAt",
+          "kind": "regular",
+          "fields": [
+            "tenant_id",
+            "uploaded_at"
+          ],
+          "reason": "Supports listing recently uploaded files in a tenant during the live demo/workshop flow."
+        },
+        {
+          "name": "documents_tenant_status",
+          "kind": "regular",
+          "fields": [
+            "tenant_id",
+            "ingestion_status"
+          ],
+          "reason": "Supports monitoring upload/embedding progress for on-the-fly document ingestion during the session."
+        }
+      ]
+    },
+    {
+      "name": "chunking_profiles",
+      "description": "Named chunking strategy variants to compare fixed, recursive, semantic, and contextual chunking in the benchmark.",
+      "traceability": [
+        "FR5",
+        "SC6",
+        "POVReviewResult:ISSUE-3"
+      ],
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "strategy_type",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "fixed_length",
+            "recursive",
+            "semantic",
+            "contextual"
+          ]
+        },
+        {
+          "name": "parameters",
+          "type": "object",
+          "required": false
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "relationships": [
+        {
+          "type": "one-to-many",
+          "to": "document_chunks",
+          "via": "chunking_profile_id"
+        },
+        {
+          "type": "one-to-many",
+          "to": "benchmark_runs",
+          "via": "evaluated_chunking_profile_ids"
+        }
+      ],
+      "embedded_vs_references": {
+        "decision": "top-level collection",
+        "why": "Chunking strategy definitions are reused across many documents and benchmark runs; referencing enables side-by-side comparison and provenance."
+      },
+      "indexes": [
+        {
+          "name": "chunking_profiles_name_unique",
+          "kind": "regular",
+          "fields": [
+            "name"
+          ],
+          "reason": "Supports selecting a strategy by name in the benchmark environment and prevents duplicates."
+        }
+      ]
+    },
+    {
+      "name": "document_chunks",
+      "description": "Chunk-level records derived from uploaded documents. Each chunk stores text, chunking provenance, and embedding used for retrieval benchmarking.",
+      "traceability": [
+        "business_entities:Embeddings",
+        "UC1",
+        "FR4",
+        "FR5",
+        "FR6",
+        "AI1",
+        "AI4",
+        "SC3",
+        "SC6"
+      ],
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "tenant_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "document_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "chunking_profile_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "chunk_index",
+          "type": "int",
+          "required": true
+        },
+        {
+          "name": "text",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "page_start",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "page_end",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "token_count",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "embedding_model",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "embedding",
+          "type": "array<float>",
+          "required": true
+        },
+        {
+          "name": "context_window_label",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "relationships": [
+        {
+          "type": "many-to-one",
+          "to": "documents",
+          "via": "document_id"
+        },
+        {
+          "type": "many-to-one",
+          "to": "chunking_profiles",
+          "via": "chunking_profile_id"
+        },
+        {
+          "type": "many-to-one",
+          "to": "tenants",
+          "via": "tenant_id"
+        }
+      ],
+      "embedded_vs_references": {
+        "decision": "top-level collection",
+        "why": "This is the primary retrieval unit for vector search and can scale to very large volumes; separate storage is required for efficient vector and text indexing."
+      },
+      "indexes": [
+        {
+          "name": "chunks_doc_profile_index_unique",
+          "kind": "regular",
+          "fields": [
+            "document_id",
+            "chunking_profile_id",
+            "chunk_index"
+          ],
+          "reason": "Supports deterministic reconstruction of chunk order for a given document and chunking strategy, and avoids duplicate chunk generation."
+        },
+        {
+          "name": "chunks_tenant_doc",
+          "kind": "regular",
+          "fields": [
+            "tenant_id",
+            "document_id"
+          ],
+          "reason": "Supports fetching all chunks for a selected document within a tenant, such as drill-down from search results."
+        },
+        {
+          "name": "chunks_text_search",
+          "kind": "search",
+          "fields": [
+            "text"
+          ],
+          "reason": "Supports lexical/full-text retrieval and fallback comparison during benchmarking, since the customer wants comparison of retrieval quality and may compare approaches beyond pure vector retrieval."
+        },
+        {
+          "name": "chunks_embedding_vector",
+          "kind": "vector",
+          "fields": [
+            "embedding"
+          ],
+          "reason": "Supports embedding-based nearest-neighbor retrieval over document chunks, the core POV access pattern for question-to-document search benchmarking."
+        }
+      ]
+    },
+    {
+      "name": "benchmark_datasets",
+      "description": "Logical grouping of benchmark inputs for a session or experiment, including prompts/questions and expected relevant documents/chunks.",
+      "traceability": [
+        "UC1",
+        "FR7",
+        "SC1",
+        "SC2",
+        "SC7",
+        "POVReviewResult:ISSUE-3"
+      ],
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "tenant_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "created_by",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "relationships": [
+        {
+          "type": "many-to-one",
+          "to": "tenants",
+          "via": "tenant_id"
+        },
+        {
+          "type": "one-to-many",
+          "to": "benchmark_queries",
+          "via": "benchmark_dataset_id"
+        },
+        {
+          "type": "one-to-many",
+          "to": "benchmark_runs",
+          "via": "benchmark_dataset_id"
+        }
+      ],
+      "embedded_vs_references": {
+        "decision": "top-level collection",
+        "why": "The benchmark grouping is reused across multiple runs/configurations and preserves evaluation provenance across side-by-side comparisons."
+      },
+      "indexes": [
+        {
+          "name": "benchmark_datasets_tenant_name",
+          "kind": "regular",
+          "fields": [
+            "tenant_id",
+            "name"
+          ],
+          "reason": "Supports selecting the active benchmark set for a tenant/session by name."
+        }
+      ]
+    },
+    {
+      "name": "benchmark_queries",
+      "description": "Benchmark prompts/questions with ground truth relevance labels used to evaluate retrieval quality at top-k thresholds.",
+      "traceability": [
+        "UC1",
+        "FR6",
+        "AI4",
+        "SC2",
+        "SC3",
+        "SC7",
+        "POVReviewResult:ISSUE-3"
+      ],
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "benchmark_dataset_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "query_text",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "query_embedding",
+          "type": "array<float>",
+          "required": false
+        },
+        {
+          "name": "ground_truth",
+          "type": "array<object>",
+          "required": false,
+          "fields": [
+            {
+              "name": "document_id",
+              "type": "objectId",
+              "required": false
+            },
+            {
+              "name": "chunk_id",
+              "type": "objectId",
+              "required": false
+            },
+            {
+              "name": "relevance_grade",
+              "type": "int",
+              "required": true
+            }
+          ]
+        },
+        {
+          "name": "notes",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "relationships": [
+        {
+          "type": "many-to-one",
+          "to": "benchmark_datasets",
+          "via": "benchmark_dataset_id"
+        },
+        {
+          "type": "one-to-many",
+          "to": "benchmark_results",
+          "via": "benchmark_query_id"
+        }
+      ],
+      "embedded_vs_references": {
+        "decision": "ground truth embedded inside query",
+        "why": "Ground truth labels are tightly coupled to an individual benchmark question and are naturally consumed together during scoring; embedding them avoids extra joins for evaluation."
+      },
+      "indexes": [
+        {
+          "name": "benchmark_queries_dataset",
+          "kind": "regular",
+          "fields": [
+            "benchmark_dataset_id"
+          ],
+          "reason": "Supports loading all questions for a selected benchmark dataset during execution."
+        }
+      ]
+    },
+    {
+      "name": "benchmark_runs",
+      "description": "A single retrieval experiment/run over a benchmark dataset with a specific retrieval configuration, enabling side-by-side comparison of chunking and retrieval approaches.",
+      "traceability": [
+        "J1",
+        "SC1",
+        "SC4",
+        "SC5",
+        "SC6",
+        "POVReviewResult:ISSUE-4"
+      ],
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "tenant_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "benchmark_dataset_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "run_label",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "system_variant",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "mongodb_atlas",
+            "baseline_other"
+          ]
+        },
+        {
+          "name": "baseline_name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "retrieval_mode",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "vector_only",
+            "text_only",
+            "hybrid"
+          ]
+        },
+        {
+          "name": "evaluated_chunking_profile_ids",
+          "type": "array<objectId>",
+          "required": true
+        },
+        {
+          "name": "embedding_model",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "top_k_values",
+          "type": "array<int>",
+          "required": true
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "pending",
+            "running",
+            "completed",
+            "failed"
+          ]
+        },
+        {
+          "name": "started_at",
+          "type": "date",
+          "required": false
+        },
+        {
+          "name": "completed_at",
+          "type": "date",
+          "required": false
+        },
+        {
+          "name": "notes",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "relationships": [
+        {
+          "type": "many-to-one",
+          "to": "tenants",
+          "via": "tenant_id"
+        },
+        {
+          "type": "many-to-one",
+          "to": "benchmark_datasets",
+          "via": "benchmark_dataset_id"
+        },
+        {
+          "type": "one-to-many",
+          "to": "benchmark_results",
+          "via": "benchmark_run_id"
+        }
+      ],
+      "embedded_vs_references": {
+        "decision": "top-level collection",
+        "why": "Runs are reusable experiment records with many result rows; separating them supports comparisons across systems, chunking strategies, and time."
+      },
+      "indexes": [
+        {
+          "name": "benchmark_runs_tenant_dataset_started",
+          "kind": "regular",
+          "fields": [
+            "tenant_id",
+            "benchmark_dataset_id",
+            "started_at"
+          ],
+          "reason": "Supports listing and comparing recent benchmark runs for a tenant and dataset."
+        },
+        {
+          "name": "benchmark_runs_variant_status",
+          "kind": "regular",
+          "fields": [
+            "system_variant",
+            "status"
+          ],
+          "reason": "Supports tracking active/completed Atlas vs baseline runs during side-by-side demo execution."
+        }
+      ]
+    },
+    {
+      "name": "benchmark_results",
+      "description": "Per-query retrieval results and computed metrics for a benchmark run, including latency and top-k precision/recall values.",
+      "traceability": [
+        "BO4",
+        "BO5",
+        "AI4",
+        "SC1",
+        "SC3",
+        "SC4",
+        "SC5"
+      ],
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "benchmark_run_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "benchmark_query_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "latency_ms",
+          "type": "double",
+          "required": true
+        },
+        {
+          "name": "retrieved_results",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            {
+              "name": "rank",
+              "type": "int",
+              "required": true
+            },
+            {
+              "name": "document_id",
+              "type": "objectId",
+              "required": true
+            },
+            {
+              "name": "chunk_id",
+              "type": "objectId",
+              "required": true
+            },
+            {
+              "name": "score",
+              "type": "double",
+              "required": true
+            }
+          ]
+        },
+        {
+          "name": "metrics",
+          "type": "object",
+          "required": true,
+          "fields": [
+            {
+              "name": "precision_at_1",
+              "type": "double",
+              "required": false
+            },
+            {
+              "name": "precision_at_5",
+              "type": "double",
+              "required": false
+            },
+            {
+              "name": "precision_at_10",
+              "type": "double",
+              "required": false
+            },
+            {
+              "name": "precision_at_20",
+              "type": "double",
+              "required": false
+            },
+            {
+              "name": "recall_at_1",
+              "type": "double",
+              "required": false
+            },
+            {
+              "name": "recall_at_5",
+              "type": "double",
+              "required": false
+            },
+            {
+              "name": "recall_at_10",
+              "type": "double",
+              "required": false
+            },
+            {
+              "name": "recall_at_20",
+              "type": "double",
+              "required": false
+            }
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "type": "many-to-one",
+          "to": "benchmark_runs",
+          "via": "benchmark_run_id"
+        },
+        {
+          "type": "many-to-one",
+          "to": "benchmark_queries",
+          "via": "benchmark_query_id"
+        }
+      ],
+      "embedded_vs_references": {
+        "decision": "retrieved_results embedded inside each result document",
+        "why": "Retrieved hits and metrics are consumed together for a given query/run and are bounded by top-k; embedding keeps evaluation reads simple."
+      },
+      "indexes": [
+        {
+          "name": "benchmark_results_run_query_unique",
+          "kind": "regular",
+          "fields": [
+            "benchmark_run_id",
+            "benchmark_query_id"
+          ],
+          "reason": "Supports idempotent storage of one result per query per run and fast lookup while rendering benchmark dashboards."
+        },
+        {
+          "name": "benchmark_results_run_latency",
+          "kind": "regular",
+          "fields": [
+            "benchmark_run_id",
+            "latency_ms"
+          ],
+          "reason": "Supports sorting/filtering results by latency to inspect performance distribution within a run."
+        }
+      ]
+    },
+    {
+      "name": "agent_memory_entries",
+      "description": "Secondary follow-up use case for storing conversational context as retrievable memory documents for agents.",
+      "traceability": [
+        "UC2",
+        "FR9",
+        "AI5"
+      ],
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "tenant_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "session_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "role",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "user",
+            "assistant",
+            "system",
+            "tool",
+            "other"
+          ]
+        },
+        {
+          "name": "content",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "embedding_model",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "embedding",
+          "type": "array<float>",
+          "required": true
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "metadata",
+          "type": "object",
+          "required": false
+        }
+      ],
+      "relationships": [
+        {
+          "type": "many-to-one",
+          "to": "tenants",
+          "via": "tenant_id"
+        }
+      ],
+      "embedded_vs_references": {
+        "decision": "top-level collection",
+        "why": "Agent memory is a secondary but distinct retrieval corpus with different lifecycle and access patterns from benchmark document chunks."
+      },
+      "indexes": [
+        {
+          "name": "agent_memory_session_time",
+          "kind": "regular",
+          "fields": [
+            "tenant_id",
+            "session_id",
+            "created_at"
+          ],
+          "reason": "Supports replay/loading recent conversational context for a session."
+        },
+        {
+          "name": "agent_memory_embedding_vector",
+          "kind": "vector",
+          "fields": [
+            "embedding"
+          ],
+          "reason": "Supports semantic retrieval of prior conversational context for the secondary agent-memory use case."
+        }
+      ]
+    }
+  ]
+}
