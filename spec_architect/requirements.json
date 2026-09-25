@@ -1,0 +1,482 @@
+{
+  "summary": {
+    "pov_scope": "Validate an end-to-end streaming support-ticket triage scenario that includes AI-suggested guidance and accommodates longer timeout behavior.",
+    "authoritative_artifacts": [
+      "InitialPOVSpec",
+      "data_model",
+      "query_patterns",
+      "api_contract",
+      "frontend_contract"
+    ]
+  },
+  "traceability": [
+    {
+      "requirement_id": "bo1",
+      "type": "business_objective",
+      "description": "Validate end-to-end streaming verification for the target use case.",
+      "data_model": {
+        "collections": [
+          "triage_runs",
+          "triage_stream_events"
+        ]
+      },
+      "query_patterns": [
+        "qp2_get_run_event_stream",
+        "qp7_get_verification_summary"
+      ],
+      "api_endpoints": [
+        "getRunEventStream",
+        "getVerificationSummary",
+        "listActiveStreamingRuns"
+      ],
+      "frontend_pages": [
+        "dashboard_active_runs",
+        "active_runs_monitor",
+        "run_detail",
+        "verification_summary"
+      ]
+    },
+    {
+      "requirement_id": "bo2",
+      "type": "business_objective",
+      "description": "Support internal support-ticket triage as the business process under evaluation.",
+      "data_model": {
+        "collections": [
+          "support_tickets",
+          "triage_runs"
+        ]
+      },
+      "query_patterns": [
+        "qp1_get_ticket_triage_workspace",
+        "qp8_list_tickets_needing_triage",
+        "qp3_get_ticket_run_history"
+      ],
+      "api_endpoints": [
+        "listTicketsNeedingTriage",
+        "getTicketTriageWorkspace",
+        "createSupportTicket",
+        "updateSupportTicket",
+        "getTicketRunHistory",
+        "createTriageRun"
+      ],
+      "frontend_pages": [
+        "ticket_queue",
+        "create_ticket",
+        "ticket_workspace",
+        "ticket_run_history"
+      ]
+    },
+    {
+      "requirement_id": "bo3",
+      "type": "business_objective",
+      "description": "Include AI-suggested guidance in the triage workflow.",
+      "data_model": {
+        "collections": [
+          "guidance_suggestions",
+          "triage_runs",
+          "support_tickets"
+        ]
+      },
+      "query_patterns": [
+        "qp1_get_ticket_triage_workspace",
+        "qp4_get_guidance_for_run"
+      ],
+      "api_endpoints": [
+        "getTicketTriageWorkspace",
+        "getGuidanceForRun",
+        "createGuidanceSuggestion",
+        "updateGuidanceSuggestion"
+      ],
+      "frontend_pages": [
+        "ticket_workspace",
+        "run_detail"
+      ]
+    },
+    {
+      "requirement_id": "fr1",
+      "type": "functional_requirement",
+      "description": "The POV should cover an end-to-end streaming workflow.",
+      "data_model": {
+        "collections": [
+          "triage_runs",
+          "triage_stream_events"
+        ]
+      },
+      "query_patterns": [
+        "qp2_get_run_event_stream",
+        "qp5_list_active_streaming_runs",
+        "qp7_get_verification_summary"
+      ],
+      "api_endpoints": [
+        "getRunEventStream",
+        "appendRunEvent",
+        "listActiveStreamingRuns",
+        "getVerificationSummary",
+        "createTriageRun",
+        "updateTriageRun"
+      ],
+      "frontend_pages": [
+        "dashboard_active_runs",
+        "active_runs_monitor",
+        "run_detail",
+        "verification_summary"
+      ]
+    },
+    {
+      "requirement_id": "fr2",
+      "type": "functional_requirement",
+      "description": "The workflow should address internal support-ticket triage.",
+      "data_model": {
+        "collections": [
+          "support_tickets",
+          "triage_runs"
+        ]
+      },
+      "query_patterns": [
+        "qp8_list_tickets_needing_triage",
+        "qp1_get_ticket_triage_workspace",
+        "qp3_get_ticket_run_history"
+      ],
+      "api_endpoints": [
+        "listTicketsNeedingTriage",
+        "getTicketTriageWorkspace",
+        "createSupportTicket",
+        "updateSupportTicket",
+        "getTicketRunHistory",
+        "createTriageRun"
+      ],
+      "frontend_pages": [
+        "ticket_queue",
+        "create_ticket",
+        "ticket_workspace",
+        "ticket_run_history"
+      ]
+    },
+    {
+      "requirement_id": "fr3",
+      "type": "functional_requirement",
+      "description": "The workflow should provide AI-suggested guidance as part of triage.",
+      "data_model": {
+        "collections": [
+          "guidance_suggestions"
+        ]
+      },
+      "query_patterns": [
+        "qp1_get_ticket_triage_workspace",
+        "qp4_get_guidance_for_run"
+      ],
+      "api_endpoints": [
+        "getTicketTriageWorkspace",
+        "getGuidanceForRun",
+        "createGuidanceSuggestion",
+        "updateGuidanceSuggestion"
+      ],
+      "frontend_pages": [
+        "ticket_workspace",
+        "run_detail"
+      ]
+    },
+    {
+      "requirement_id": "fr4",
+      "type": "functional_requirement",
+      "description": "The verification should allow a longer timeout to complete the scenario.",
+      "data_model": {
+        "collections": [
+          "triage_runs",
+          "triage_stream_events"
+        ]
+      },
+      "query_patterns": [
+        "qp2_get_run_event_stream",
+        "qp6_find_runs_near_or_over_timeout",
+        "qp7_get_verification_summary"
+      ],
+      "api_endpoints": [
+        "listRunsNearOrOverTimeout",
+        "getVerificationSummary",
+        "createTriageRun",
+        "updateTriageRun",
+        "getRunEventStream"
+      ],
+      "frontend_pages": [
+        "dashboard_active_runs",
+        "timeout_watch",
+        "run_detail",
+        "verification_summary",
+        "ticket_workspace"
+      ]
+    },
+    {
+      "requirement_id": "ai1",
+      "type": "ai_genai_requirement",
+      "description": "Use AI to suggest guidance during support-ticket triage.",
+      "data_model": {
+        "collections": [
+          "guidance_suggestions"
+        ]
+      },
+      "query_patterns": [
+        "qp4_get_guidance_for_run",
+        "qp1_get_ticket_triage_workspace"
+      ],
+      "api_endpoints": [
+        "createGuidanceSuggestion",
+        "getGuidanceForRun",
+        "updateGuidanceSuggestion",
+        "getTicketTriageWorkspace"
+      ],
+      "frontend_pages": [
+        "ticket_workspace",
+        "run_detail"
+      ]
+    },
+    {
+      "requirement_id": "sc1",
+      "type": "success_criterion",
+      "description": "Successfully complete the end-to-end streaming verification for the support-ticket triage use case.",
+      "data_model": {
+        "collections": [
+          "triage_runs",
+          "triage_stream_events"
+        ]
+      },
+      "query_patterns": [
+        "qp2_get_run_event_stream",
+        "qp3_get_ticket_run_history",
+        "qp7_get_verification_summary"
+      ],
+      "api_endpoints": [
+        "getRunEventStream",
+        "getTicketRunHistory",
+        "getVerificationSummary"
+      ],
+      "frontend_pages": [
+        "ticket_run_history",
+        "run_detail",
+        "verification_summary"
+      ]
+    },
+    {
+      "requirement_id": "sc2",
+      "type": "success_criterion",
+      "description": "Demonstrate that AI-suggested guidance is produced during internal support-ticket triage.",
+      "data_model": {
+        "collections": [
+          "guidance_suggestions"
+        ]
+      },
+      "query_patterns": [
+        "qp4_get_guidance_for_run",
+        "qp1_get_ticket_triage_workspace"
+      ],
+      "api_endpoints": [
+        "getGuidanceForRun",
+        "createGuidanceSuggestion",
+        "getTicketTriageWorkspace"
+      ],
+      "frontend_pages": [
+        "ticket_workspace",
+        "run_detail"
+      ]
+    },
+    {
+      "requirement_id": "sc3",
+      "type": "success_criterion",
+      "description": "Demonstrate that the scenario can complete under a longer timeout setting.",
+      "data_model": {
+        "collections": [
+          "triage_runs",
+          "triage_stream_events"
+        ]
+      },
+      "query_patterns": [
+        "qp6_find_runs_near_or_over_timeout",
+        "qp7_get_verification_summary",
+        "qp3_get_ticket_run_history"
+      ],
+      "api_endpoints": [
+        "listRunsNearOrOverTimeout",
+        "getVerificationSummary",
+        "getTicketRunHistory",
+        "updateTriageRun"
+      ],
+      "frontend_pages": [
+        "dashboard_active_runs",
+        "timeout_watch",
+        "ticket_run_history",
+        "verification_summary",
+        "run_detail"
+      ]
+    }
+  ],
+  "entities": {
+    "Support Ticket": {
+      "collections": [
+        "support_tickets"
+      ],
+      "api_endpoints": [
+        "createSupportTicket",
+        "updateSupportTicket",
+        "listTicketsNeedingTriage",
+        "getTicketTriageWorkspace"
+      ],
+      "frontend_pages": [
+        "create_ticket",
+        "ticket_queue",
+        "ticket_workspace"
+      ]
+    },
+    "Guidance Suggestion": {
+      "collections": [
+        "guidance_suggestions"
+      ],
+      "api_endpoints": [
+        "createGuidanceSuggestion",
+        "getGuidanceForRun",
+        "updateGuidanceSuggestion"
+      ],
+      "frontend_pages": [
+        "ticket_workspace",
+        "run_detail"
+      ]
+    }
+  },
+  "user_journeys": [
+    {
+      "journey_id": "uj1",
+      "title": "Triage Ticket with AI Guidance",
+      "mapping": {
+        "step_1_receive_internal_support_ticket": {
+          "collections": [
+            "support_tickets"
+          ],
+          "query_patterns": [
+            "qp8_list_tickets_needing_triage"
+          ],
+          "api_endpoints": [
+            "createSupportTicket",
+            "listTicketsNeedingTriage"
+          ],
+          "frontend_pages": [
+            "create_ticket",
+            "ticket_queue"
+          ]
+        },
+        "step_2_run_end_to_end_streaming_triage_flow": {
+          "collections": [
+            "triage_runs",
+            "triage_stream_events"
+          ],
+          "query_patterns": [
+            "qp2_get_run_event_stream",
+            "qp5_list_active_streaming_runs"
+          ],
+          "api_endpoints": [
+            "createTriageRun",
+            "appendRunEvent",
+            "updateTriageRun",
+            "getRunEventStream",
+            "listActiveStreamingRuns"
+          ],
+          "frontend_pages": [
+            "ticket_workspace",
+            "run_detail",
+            "dashboard_active_runs",
+            "active_runs_monitor"
+          ]
+        },
+        "step_3_review_ai_suggested_guidance": {
+          "collections": [
+            "guidance_suggestions"
+          ],
+          "query_patterns": [
+            "qp1_get_ticket_triage_workspace",
+            "qp4_get_guidance_for_run"
+          ],
+          "api_endpoints": [
+            "getTicketTriageWorkspace",
+            "getGuidanceForRun",
+            "createGuidanceSuggestion",
+            "updateGuidanceSuggestion"
+          ],
+          "frontend_pages": [
+            "ticket_workspace",
+            "run_detail"
+          ]
+        },
+        "step_4_complete_verification_within_longer_timeout_window": {
+          "collections": [
+            "triage_runs",
+            "triage_stream_events",
+            "guidance_suggestions"
+          ],
+          "query_patterns": [
+            "qp6_find_runs_near_or_over_timeout",
+            "qp7_get_verification_summary"
+          ],
+          "api_endpoints": [
+            "listRunsNearOrOverTimeout",
+            "getVerificationSummary",
+            "updateTriageRun"
+          ],
+          "frontend_pages": [
+            "timeout_watch",
+            "verification_summary",
+            "dashboard_active_runs",
+            "run_detail"
+          ]
+        }
+      }
+    }
+  ],
+  "use_cases": [
+    {
+      "use_case_id": "uc1",
+      "title": "Internal Support-Ticket Triage with AI Guidance",
+      "collections": [
+        "support_tickets",
+        "triage_runs",
+        "guidance_suggestions",
+        "triage_stream_events"
+      ],
+      "query_patterns": [
+        "qp1_get_ticket_triage_workspace",
+        "qp2_get_run_event_stream",
+        "qp3_get_ticket_run_history",
+        "qp4_get_guidance_for_run",
+        "qp5_list_active_streaming_runs",
+        "qp8_list_tickets_needing_triage"
+      ],
+      "api_endpoints": [
+        "listTicketsNeedingTriage",
+        "getTicketTriageWorkspace",
+        "createSupportTicket",
+        "updateSupportTicket",
+        "getTicketRunHistory",
+        "createTriageRun",
+        "updateTriageRun",
+        "getRunEventStream",
+        "appendRunEvent",
+        "getGuidanceForRun",
+        "createGuidanceSuggestion",
+        "updateGuidanceSuggestion",
+        "listActiveStreamingRuns"
+      ],
+      "frontend_pages": [
+        "ticket_queue",
+        "create_ticket",
+        "ticket_workspace",
+        "ticket_run_history",
+        "run_detail",
+        "active_runs_monitor",
+        "dashboard_active_runs"
+      ]
+    }
+  ],
+  "coverage_notes": [
+    "The authoritative design demonstrates streaming verification through persisted run state and ordered event logs, not through a push transport such as websockets or server-sent events.",
+    "The frontend must use polling for live updates because no push-stream endpoint exists in the API contract.",
+    "The timeout watch threshold is fixed by the authoritative query pattern at the default behavior; UI customization beyond that is out of scope for this POV.",
+    "No standalone execution-orchestration endpoint exists; creating or updating runs represents POV simulation/tracking of workflow execution state."
+  ]
+}
