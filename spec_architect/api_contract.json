@@ -1,0 +1,190 @@
+{
+  "version": "1.0.0",
+  "context": {
+    "pov_scope": "Validate polling architecture reviews and optionally evaluate Atlas Vector Search support using linked knowledge chunks.",
+    "authoritative_inputs": [
+      "InitialPOVSpec",
+      "data_model.json",
+      "query_patterns.json"
+    ]
+  },
+  "endpoints": [
+    {
+      "operationId": "createReview",
+      "method": "POST",
+      "path": "/reviews",
+      "purpose": "Create a new polling architecture review record.",
+      "request": {
+        "contentType": "application/json",
+        "body": {
+          "type": "object",
+          "required": [
+            "title",
+            "status"
+          ],
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "architecture_type": {
+              "type": "string",
+              "nullable": true
+            },
+            "status": {
+              "type": "string",
+              "description": "Lifecycle state such as proposed, in_review, validated, rejected."
+            },
+            "summary": {
+              "type": "string",
+              "nullable": true
+            },
+            "validation_notes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "noted_at",
+                  "note"
+                ],
+                "properties": {
+                  "noted_at": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "author": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "vector_search_recommendation": {
+              "type": "object",
+              "nullable": true,
+              "required": [
+                "suggested"
+              ],
+              "properties": {
+                "suggested": {
+                  "type": "boolean"
+                },
+                "rationale": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "fit_status": {
+                  "type": "string",
+                  "nullable": true
+                }
+              }
+            },
+            "open_questions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "response": {
+        "statusCodes": {
+          "201": {
+            "description": "Review created.",
+            "body": {
+              "type": "object",
+              "properties": {
+                "_id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "architecture_type": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "status": {
+                  "type": "string"
+                },
+                "summary": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "validation_notes": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "noted_at": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "author": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "note": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "vector_search_recommendation": {
+                  "type": "object",
+                  "nullable": true,
+                  "properties": {
+                    "suggested": {
+                      "type": "boolean"
+                    },
+                    "rationale": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "fit_status": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  }
+                },
+                "open_questions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updated_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          }
+        },
+        "errors": [
+          {
+            "status": 400,
+            "code": "INVALID_REQUEST",
+            "description": "Missing required fields or invalid field shapes."
+          }
+        ],
+        "backing": {
+          "type": "mongodb_operation",
+          "collection": "polling_architecture_reviews",
+          "operation": "insertOne"
+        },
+        "notes": [
+          "Straightforward CRUD implied by the authoritative data model. created_at and updated_at are server-managed."
+        ]
+      },
+      ":{": "INVALID"
+    }
+  ]
+}
