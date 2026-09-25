@@ -1,0 +1,981 @@
+{
+  "version": "1.0.0",
+  "pov_scope": "Assess or validate the fixed streaming progress endpoint through end-to-end testing.",
+  "resources": [
+    {
+      "name": "test_runs",
+      "description": "End-to-end validation runs for the streaming progress endpoint.",
+      "endpoints": [
+        {
+          "operationId": "createTestRun",
+          "method": "POST",
+          "path": "/test-runs",
+          "purpose": "Create a new end-to-end validation run record before or at test start.",
+          "request": {
+            "headers": {
+              "Content-Type": "application/json"
+            },
+            "body": {
+              "type": "object",
+              "required": [
+                "status",
+                "started_at",
+                "endpoint_path",
+                "endpoint_method"
+              ],
+              "properties": {
+                "run_name": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "queued"
+                  ],
+                  "description": "Must be queued on creation, per qp-1."
+                },
+                "started_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "endpoint_path": {
+                  "type": "string"
+                },
+                "endpoint_method": {
+                  "type": "string",
+                  "enum": [
+                    "GET",
+                    "POST",
+                    "PUT",
+                    "PATCH",
+                    "DELETE"
+                  ]
+                },
+                "environment": {
+                  "type": "string"
+                },
+                "initiated_by": {
+                  "type": "string"
+                },
+                "summary": {
+                  "type": "object",
+                  "properties": {
+                    "total_events": {
+                      "type": "integer"
+                    },
+                    "expected_final_state": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "response": {
+            "status": 201,
+            "body": {
+              "type": "object",
+              "properties": {
+                "_id": {
+                  "type": "string",
+                  "description": "MongoDB ObjectId as hex string"
+                },
+                "run_name": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "queued"
+                  ]
+                },
+                "started_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "endpoint_path": {
+                  "type": "string"
+                },
+                "endpoint_method": {
+                  "type": "string",
+                  "enum": [
+                    "GET",
+                    "POST",
+                    "PUT",
+                    "PATCH",
+                    "DELETE"
+                  ]
+                },
+                "environment": {
+                  "type": "string"
+                },
+                "initiated_by": {
+                  "type": "string"
+                },
+                "summary": {
+                  "type": "object",
+                  "properties": {
+                    "total_events": {
+                      "type": "integer"
+                    },
+                    "expected_final_state": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "errors": [
+            {
+              "status": 400,
+              "code": "INVALID_REQUEST",
+              "cases": [
+                "Missing required fields",
+                "status is not 'queued' on create",
+                "endpoint_method is not one of allowed values",
+                "Body contains fields not supported by the data model/query pattern"
+              ]
+            }
+          ],
+          "backing": "qp-1"
+        },
+        {
+          "operationId": "listTestRuns",
+          "method": "GET",
+          "path": "/test-runs",
+          "purpose": "List recent validation runs and their latest outcomes, optionally filtered by endpoint path, environment, status, and start date range.",
+          "request": {
+            "query": {
+              "endpoint_path": {
+                "type": "string",
+                "required": false
+              },
+              "environment": {
+                "type": "string",
+                "required": false
+              },
+              "status": {
+                "type": "string",
+                "required": false,
+                "enum": [
+                  "queued",
+                  "running",
+                  "passed",
+                  "failed",
+                  "cancelled"
+                ]
+              },
+              "started_at_gte": {
+                "type": "string",
+                "format": "date-time",
+                "required": false
+              },
+              "started_at_lte": {
+                "type": "string",
+                "format": "date-time",
+                "required": false
+              },
+              "limit": {
+                "type": "integer",
+                "required": false,
+                "minimum": 1
+              }
+            }
+          },
+          "response": {
+            "status": 200,
+            "body": {
+              "type": "object",
+              "properties": {
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "_id": {
+                        "type": "string"
+                      },
+                      "run_name": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "queued",
+                          "running",
+                          "passed",
+                          "failed",
+                          "cancelled"
+                        ]
+                      },
+                      "started_at": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "completed_at": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "endpoint_path": {
+                        "type": "string"
+                      },
+                      "endpoint_method": {
+                        "type": "string",
+                        "enum": [
+                          "GET",
+                          "POST",
+                          "PUT",
+                          "PATCH",
+                          "DELETE"
+                        ]
+                      },
+                      "environment": {
+                        "type": "string"
+                      },
+                      "initiated_by": {
+                        "type": "string"
+                      },
+                      "summary": {
+                        "type": "object",
+                        "properties": {
+                          "total_events": {
+                            "type": "integer"
+                          },
+                          "expected_final_state": {
+                            "type": "string"
+                          },
+                          "observed_final_state": {
+                            "type": "string"
+                          },
+                          "pass_reason": {
+                            "type": "string"
+                          },
+                          "failure_reason": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "errors": [
+            {
+              "status": 400,
+              "code": "INVALID_QUERY",
+              "cases": [
+                "status is not one of allowed values",
+                "limit is not a positive integer",
+                "Date filters are not valid ISO-8601 timestamps"
+              ]
+            }
+          ],
+          "backing": "qp-4"
+        },
+        {
+          "operationId": "getTestRunById",
+          "method": "GET",
+          "path": "/test-runs/{test_run_id}",
+          "purpose": "Fetch a single validation run's metadata for detailed inspection.",
+          "request": {
+            "path": {
+              "test_run_id": {
+                "type": "string",
+                "required": true,
+                "description": "MongoDB ObjectId as hex string"
+              }
+            }
+          },
+          "response": {
+            "status": 200,
+            "body": {
+              "type": "object",
+              "properties": {
+                "_id": {
+                  "type": "string"
+                },
+                "run_name": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "queued",
+                    "running",
+                    "passed",
+                    "failed",
+                    "cancelled"
+                  ]
+                },
+                "started_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "completed_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "endpoint_path": {
+                  "type": "string"
+                },
+                "endpoint_method": {
+                  "type": "string",
+                  "enum": [
+                    "GET",
+                    "POST",
+                    "PUT",
+                    "PATCH",
+                    "DELETE"
+                  ]
+                },
+                "environment": {
+                  "type": "string"
+                },
+                "initiated_by": {
+                  "type": "string"
+                },
+                "summary": {
+                  "type": "object",
+                  "properties": {
+                    "total_events": {
+                      "type": "integer"
+                    },
+                    "expected_final_state": {
+                      "type": "string"
+                    },
+                    "observed_final_state": {
+                      "type": "string"
+                    },
+                    "pass_reason": {
+                      "type": "string"
+                    },
+                    "failure_reason": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "errors": [
+            {
+              "status": 400,
+              "code": "INVALID_ID",
+              "cases": [
+                "test_run_id is not a valid ObjectId"
+              ]
+            },
+            {
+              "status": 404,
+              "code": "NOT_FOUND",
+              "cases": [
+                "No test run exists for the supplied id"
+              ]
+            }
+          ],
+          "backing": "qp-5"
+        },
+        {
+          "operationId": "updateTestRunStatus",
+          "method": "PATCH",
+          "path": "/test-runs/{test_run_id}/status",
+          "purpose": "Update a validation run lifecycle status and final outcome details.",
+          "request": {
+            "headers": {
+              "Content-Type": "application/json"
+            },
+            "path": {
+              "test_run_id": {
+                "type": "string",
+                "required": true
+              }
+            },
+            "body": {
+              "type": "object",
+              "required": [
+                "status"
+              ],
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "queued",
+                    "running",
+                    "passed",
+                    "failed",
+                    "cancelled"
+                  ]
+                },
+                "completed_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "summary": {
+                  "type": "object",
+                  "properties": {
+                    "observed_final_state": {
+                      "type": "string"
+                    },
+                    "pass_reason": {
+                      "type": "string"
+                    },
+                    "failure_reason": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "response": {
+            "status": 200,
+            "body": {
+              "type": "object",
+              "properties": {
+                "matched": {
+                  "type": "boolean"
+                },
+                "modified": {
+                  "type": "boolean"
+                },
+                "test_run_id": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "errors": [
+            {
+              "status": 400,
+              "code": "INVALID_REQUEST",
+              "cases": [
+                "test_run_id is invalid",
+                "status is not one of allowed values",
+                "Body contains unsupported fields outside qp-2"
+              ]
+            },
+            {
+              "status": 404,
+              "code": "NOT_FOUND",
+              "cases": [
+                "No test run exists for the supplied id"
+              ]
+            }
+          ],
+          "backing": "qp-2"
+        },
+        {
+          "operationId": "getTestRunSummaryFromEvents",
+          "method": "GET",
+          "path": "/test-runs/{test_run_id}/summary",
+          "purpose": "Compute summary metrics for a validation run from its captured progress events.",
+          "request": {
+            "path": {
+              "test_run_id": {
+                "type": "string",
+                "required": true
+              }
+            }
+          },
+          "response": {
+            "status": 200,
+            "body": {
+              "type": "object",
+              "properties": {
+                "test_run_id": {
+                  "type": "string"
+                },
+                "total_events": {
+                  "type": "integer"
+                },
+                "first_event_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "last_event_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "terminal_event": {
+                  "type": "object",
+                  "properties": {
+                    "sequence_number": {
+                      "type": "integer"
+                    },
+                    "event_type": {
+                      "type": "string"
+                    },
+                    "progress_percent": {
+                      "type": "number"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "invalid_payload_count": {
+                  "type": "integer"
+                },
+                "out_of_order_count": {
+                  "type": "integer"
+                },
+                "observed_final_state": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "errors": [
+            {
+              "status": 400,
+              "code": "INVALID_ID",
+              "cases": [
+                "test_run_id is not a valid ObjectId"
+              ]
+            },
+            {
+              "status": 404,
+              "code": "NOT_FOUND",
+              "cases": [
+                "No events found for the supplied test_run_id, so no summary can be computed"
+              ]
+            }
+          ],
+          "backing": "qp-8"
+        },
+        {
+          "operationId": "getTestRunWithEvents",
+          "method": "GET",
+          "path": "/test-runs/{test_run_id}/full",
+          "purpose": "Retrieve a validation run together with its full ordered event stream in one response for detailed inspection.",
+          "request": {
+            "path": {
+              "test_run_id": {
+                "type": "string",
+                "required": true
+              }
+            }
+          },
+          "response": {
+            "status": 200,
+            "body": {
+              "type": "object",
+              "properties": {
+                "_id": {
+                  "type": "string"
+                },
+                "run_name": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "queued",
+                    "running",
+                    "passed",
+                    "failed",
+                    "cancelled"
+                  ]
+                },
+                "started_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "completed_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "endpoint_path": {
+                  "type": "string"
+                },
+                "endpoint_method": {
+                  "type": "string",
+                  "enum": [
+                    "GET",
+                    "POST",
+                    "PUT",
+                    "PATCH",
+                    "DELETE"
+                  ]
+                },
+                "environment": {
+                  "type": "string"
+                },
+                "initiated_by": {
+                  "type": "string"
+                },
+                "summary": {
+                  "type": "object"
+                },
+                "events": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "_id": {
+                        "type": "string"
+                      },
+                      "sequence_number": {
+                        "type": "integer"
+                      },
+                      "event_timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "event_type": {
+                        "type": "string"
+                      },
+                      "progress_percent": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "raw_payload": {
+                        "type": "object"
+                      },
+                      "is_terminal": {
+                        "type": "boolean"
+                      },
+                      "validation": {
+                        "type": "object",
+                        "properties": {
+                          "is_expected_order": {
+                            "type": "boolean"
+                          },
+                          "is_valid_payload": {
+                            "type": "boolean"
+                          },
+                          "notes": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "errors": [
+            {
+              "status": 400,
+              "code": "INVALID_ID",
+              "cases": [
+                "test_run_id is not a valid ObjectId"
+              ]
+            },
+            {
+              "status": 404,
+              "code": "NOT_FOUND",
+              "cases": [
+                "No test run exists for the supplied id"
+              ]
+            }
+          ],
+          "backing": "qp-9"
+        }
+      ]
+    },
+    {
+      "name": "progress_events",
+      "description": "Observed streamed progress events captured during a test run.",
+      "endpoints": [
+        {
+          "operationId": "appendProgressEvent",
+          "method": "POST",
+          "path": "/test-runs/{test_run_id}/events",
+          "purpose": "Append a streamed progress event observed during a validation run.",
+          "request": {
+            "headers": {
+              "Content-Type": "application/json"
+            },
+            "path": {
+              "test_run_id": {
+                "type": "string",
+                "required": true
+              }
+            },
+            "body": {
+              "type": "object",
+              "required": [
+                "sequence_number",
+                "event_timestamp"
+              ],
+              "properties": {
+                "sequence_number": {
+                  "type": "integer"
+                },
+                "event_timestamp": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "event_type": {
+                  "type": "string"
+                },
+                "progress_percent": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "raw_payload": {
+                  "type": "object"
+                },
+                "is_terminal": {
+                  "type": "boolean"
+                },
+                "validation": {
+                  "type": "object",
+                  "properties": {
+                    "is_expected_order": {
+                      "type": "boolean"
+                    },
+                    "is_valid_payload": {
+                      "type": "boolean"
+                    },
+                    "notes": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "response": {
+            "status": 201,
+            "body": {
+              "type": "object",
+              "properties": {
+                "_id": {
+                  "type": "string"
+                },
+                "test_run_id": {
+                  "type": "string"
+                },
+                "sequence_number": {
+                  "type": "integer"
+                },
+                "event_timestamp": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "event_type": {
+                  "type": "string"
+                },
+                "progress_percent": {
+                  "type": "number"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "raw_payload": {
+                  "type": "object"
+                },
+                "is_terminal": {
+                  "type": "boolean"
+                },
+                "validation": {
+                  "type": "object",
+                  "properties": {
+                    "is_expected_order": {
+                      "type": "boolean"
+                    },
+                    "is_valid_payload": {
+                      "type": "boolean"
+                    },
+                    "notes": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "errors": [
+            {
+              "status": 400,
+              "code": "INVALID_REQUEST",
+              "cases": [
+                "test_run_id is invalid",
+                "Missing required event fields",
+                "Body contains fields not supported by the data model/query pattern"
+              ]
+            }
+          ],
+          "backing": "qp-3"
+        },
+        {
+          "operationId": "getOrderedProgressEvents",
+          "method": "GET",
+          "path": "/test-runs/{test_run_id}/events",
+          "purpose": "Retrieve the ordered stream of progress events for a validation run.",
+          "request": {
+            "path": {
+              "test_run_id": {
+                "type": "string",
+                "required": true
+              }
+            }
+          },
+          "response": {
+            "status": 200,
+            "body": {
+              "type": "object",
+              "properties": {
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "_id": {
+                        "type": "string"
+                      },
+                      "sequence_number": {
+                        "type": "integer"
+                      },
+                      "event_timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "event_type": {
+                        "type": "string"
+                      },
+                      "progress_percent": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "raw_payload": {
+                        "type": "object"
+                      },
+                      "is_terminal": {
+                        "type": "boolean"
+                      },
+                      "validation": {
+                        "type": "object",
+                        "properties": {
+                          "is_expected_order": {
+                            "type": "boolean"
+                          },
+                          "is_valid_payload": {
+                            "type": "boolean"
+                          },
+                          "notes": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "errors": [
+            {
+              "status": 400,
+              "code": "INVALID_ID",
+              "cases": [
+                "test_run_id is not a valid ObjectId"
+              ]
+            }
+          ],
+          "backing": "qp-6"
+        },
+        {
+          "operationId": "getTerminalOrAnomalousEvents",
+          "method": "GET",
+          "path": "/test-runs/{test_run_id}/events/anomalies",
+          "purpose": "Retrieve terminal events and validation anomalies for a validation run.",
+          "request": {
+            "path": {
+              "test_run_id": {
+                "type": "string",
+                "required": true
+              }
+            }
+          },
+          "response": {
+            "status": 200,
+            "body": {
+              "type": "object",
+              "properties": {
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "_id": {
+                        "type": "string"
+                      },
+                      "sequence_number": {
+                        "type": "integer"
+                      },
+                      "event_timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "event_type": {
+                        "type": "string"
+                      },
+                      "progress_percent": {
+                        "type": "number"
+                      },
+                      "message": {
+                        "type": "string"
+                      },
+                      "is_terminal": {
+                        "type": "boolean"
+                      },
+                      "validation": {
+                        "type": "object",
+                        "properties": {
+                          "is_expected_order": {
+                            "type": "boolean"
+                          },
+                          "is_valid_payload": {
+                            "type": "boolean"
+                          },
+                          "notes": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "errors": [
+            {
+              "status": 400,
+              "code": "INVALID_ID",
+              "cases": [
+                "test_run_id is not a valid ObjectId"
+              ]
+            }
+          ],
+          "backing": "qp-7"
+        }
+      ]
+    }
+  ],
+  "constraints": [
+    "No delete endpoints are defined because neither the query patterns nor the minimal POV scope require deletion.",
+    "No generic update endpoint for full test run documents is defined; only lifecycle/status updates are supported because qp-2 is the only update query pattern provided.",
+    "No endpoint is defined to edit or delete progress events after insertion because the authoritative query patterns only support append and read operations.",
+    "No separate endpoint is defined for arbitrary cross-run event analytics beyond qp-8, qp-7, and qp-6."
+  ]
+}
