@@ -1,0 +1,1219 @@
+{
+  "version": "1.0.0",
+  "pov_name": "newgen_brms_execution_logging",
+  "base_path": "/api/v1",
+  "authz_note": "Detailed execution-log endpoints are intended for admin/privileged users per FR10. Authorization is enforced outside this contract; APIs accept deployment_id and operate within that scope.",
+  "resource_model": {
+    "primary_resources": [
+      "execution_requests",
+      "execution_steps",
+      "deployment_configs"
+    ],
+    "notes": [
+      "Endpoints are limited to operations directly supported by the authoritative data model and query patterns.",
+      "No API is defined here for AI/LLM insight generation because no supporting data model/query pattern exists yet.",
+      "No write API for raw execution logs is defined because the documented ingestion path is asynchronous via Kafka/queueing (FR5, INT1); an internal ingest endpoint could exist, but it is not required by the current authoritative query patterns."
+    ]
+  },
+  "endpoints": [
+    {
+      "operation_id": "getExecutionRequest",
+      "method": "GET",
+      "path": "/deployments/{deployment_id}/execution-requests/{request_id}",
+      "purpose": "Retrieve the request-level execution log for a specific request or correlation ID, including request/response JSON and summary metadata.",
+      "backing": "QP1",
+      "request": {
+        "path_params": {
+          "deployment_id": "string",
+          "request_id": "string"
+        },
+        "query_params": {
+          "id_type": {
+            "type": "string",
+            "required": false,
+            "enum": [
+              "request_id",
+              "correlation_id",
+              "auto"
+            ],
+            "default": "auto",
+            "description": "Contract hint only; backend still resolves using request_id/correlation_id semantics from QP1."
+          }
+        },
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "deployment_id": "string",
+          "request_id": "string",
+          "correlation_id": "string|null",
+          "policy": {
+            "policy_id": "string",
+            "policy_name": "string",
+            "policy_version": "string|null",
+            "definition_version": "string|null"
+          },
+          "request_timestamp": "date",
+          "completion_timestamp": "date|null",
+          "status": "success|failure|partial|in_progress",
+          "final_outcome": "string|null",
+          "outcome_reason_codes": [
+            "string"
+          ],
+          "request_payload": {
+            "type": "object"
+          },
+          "response_payload": {
+            "type": "object|null"
+          },
+          "search_attributes": {
+            "type": "object|null"
+          },
+          "metrics": {
+            "rule_execution_count": "int|null",
+            "duration_ms": "int|null",
+            "error_count": "int|null"
+          },
+          "logging_enabled": "boolean",
+          "retention": {
+            "expire_at": "date|null",
+            "retention_days": "int|null"
+          },
+          "ingestion": {
+            "source_type": "kafka|queue|api|batch|null",
+            "ingested_at": "date|null",
+            "producer_event_id": "string|null"
+          }
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_PATH_PARAM",
+          "message": "deployment_id or request_id is malformed or blank."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHENTICATED",
+          "message": "Authentication required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "User is not allowed to access execution log data for this deployment."
+        },
+        {
+          "status": 404,
+          "code": "REQUEST_NOT_FOUND",
+          "message": "No execution request found for the given deployment and request/correlation ID."
+        },
+        {
+          "status": 500,
+          "code": "INTERNAL_ERROR",
+          "message": "Unexpected server error."
+        }
+      ]
+    },
+    {
+      "operation_id": "getExecutionStepsForRequest",
+      "method": "GET",
+      "path": "/deployments/{deployment_id}/execution-requests/{request_id}/steps",
+      "purpose": "Retrieve all ordered rule/stage execution steps for a specific request.",
+      "backing": "QP2",
+      "request": {
+        "path_params": {
+          "deployment_id": "string",
+          "request_id": "string"
+        },
+        "query_params": {},
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "request_id": "string",
+          "deployment_id": "string",
+          "steps": [
+            {
+              "step_sequence": "int",
+              "stage_type": "string",
+              "rule": {
+                "rule_id": "string|null",
+                "rule_name": "string|null",
+                "rule_version": "string|null"
+              },
+              "policy": {
+                "policy_id": "string",
+                "policy_name": "string",
+                "policy_version": "string|null",
+                "definition_version": "string|null"
+              },
+              "execution_timestamp": "date",
+              "step_status": "executed|skipped|failed|warning",
+              "condition_expression": "string|null",
+              "input_snapshot": {
+                "type": "object|null"
+              },
+              "output_snapshot": {
+                "type": "object|null"
+              },
+              "variable_observations": [
+                {
+                  "name": "string",
+                  "value": "mixed",
+                  "value_type": "string|null",
+                  "matched": "boolean|null"
+                }
+              ],
+              "decision": {
+                "outcome": "string|null",
+                "reason_code": "string|null",
+                "score": "number|null"
+              },
+              "performance": {
+                "duration_ms": "int|null",
+                "lookup_count": "int|null"
+              },
+              "errors": [
+                {
+                  "code": "string|null",
+                  "message": "string|null"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_PATH_PARAM",
+          "message": "deployment_id or request_id is malformed or blank."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHENTICATED",
+          "message": "Authentication required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "User is not allowed to access execution step data for this deployment."
+        },
+        {
+          "status": 404,
+          "code": "REQUEST_NOT_FOUND",
+          "message": "No execution steps found because the request was not found or has no recorded steps."
+        },
+        {
+          "status": 500,
+          "code": "INTERNAL_ERROR",
+          "message": "Unexpected server error."
+        }
+      ]
+    },
+    {
+      "operation_id": "getCompleteExecutionTrace",
+      "method": "GET",
+      "path": "/deployments/{deployment_id}/execution-traces/{request_id}",
+      "purpose": "Retrieve the complete execution trace for a request in one response: request-level record plus all ordered execution steps.",
+      "backing": "QP3",
+      "request": {
+        "path_params": {
+          "deployment_id": "string",
+          "request_id": "string"
+        },
+        "query_params": {
+          "id_type": {
+            "type": "string",
+            "required": false,
+            "enum": [
+              "request_id",
+              "correlation_id",
+              "auto"
+            ],
+            "default": "auto"
+          }
+        },
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "deployment_id": "string",
+          "request_id": "string",
+          "correlation_id": "string|null",
+          "policy": {
+            "policy_id": "string",
+            "policy_name": "string",
+            "policy_version": "string|null",
+            "definition_version": "string|null"
+          },
+          "request_timestamp": "date",
+          "completion_timestamp": "date|null",
+          "status": "success|failure|partial|in_progress",
+          "final_outcome": "string|null",
+          "outcome_reason_codes": [
+            "string"
+          ],
+          "request_payload": {
+            "type": "object"
+          },
+          "response_payload": {
+            "type": "object|null"
+          },
+          "search_attributes": {
+            "type": "object|null"
+          },
+          "metrics": {
+            "rule_execution_count": "int|null",
+            "duration_ms": "int|null",
+            "error_count": "int|null"
+          },
+          "logging_enabled": "boolean",
+          "retention": {
+            "expire_at": "date|null",
+            "retention_days": "int|null"
+          },
+          "ingestion": {
+            "source_type": "kafka|queue|api|batch|null",
+            "ingested_at": "date|null",
+            "producer_event_id": "string|null"
+          },
+          "execution_steps": [
+            {
+              "step_sequence": "int",
+              "stage_type": "string",
+              "rule": {
+                "rule_id": "string|null",
+                "rule_name": "string|null",
+                "rule_version": "string|null"
+              },
+              "policy": {
+                "policy_id": "string",
+                "policy_name": "string",
+                "policy_version": "string|null",
+                "definition_version": "string|null"
+              },
+              "execution_timestamp": "date",
+              "step_status": "executed|skipped|failed|warning",
+              "condition_expression": "string|null",
+              "input_snapshot": {
+                "type": "object|null"
+              },
+              "output_snapshot": {
+                "type": "object|null"
+              },
+              "variable_observations": [
+                {
+                  "name": "string",
+                  "value": "mixed",
+                  "value_type": "string|null",
+                  "matched": "boolean|null"
+                }
+              ],
+              "decision": {
+                "outcome": "string|null",
+                "reason_code": "string|null",
+                "score": "number|null"
+              },
+              "performance": {
+                "duration_ms": "int|null",
+                "lookup_count": "int|null"
+              },
+              "errors": [
+                {
+                  "code": "string|null",
+                  "message": "string|null"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_PATH_PARAM",
+          "message": "deployment_id or request_id is malformed or blank."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHENTICATED",
+          "message": "Authentication required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "User is not allowed to access execution trace data for this deployment."
+        },
+        {
+          "status": 404,
+          "code": "TRACE_NOT_FOUND",
+          "message": "No execution trace found for the given deployment and request/correlation ID."
+        },
+        {
+          "status": 500,
+          "code": "INTERNAL_ERROR",
+          "message": "Unexpected server error."
+        }
+      ]
+    },
+    {
+      "operation_id": "searchExecutionRequests",
+      "method": "POST",
+      "path": "/deployments/{deployment_id}/execution-requests/search",
+      "purpose": "Search request-level execution logs by date range, policy/version, status, final outcome, and curated search attributes.",
+      "backing": "QP4",
+      "request": {
+        "path_params": {
+          "deployment_id": "string"
+        },
+        "query_params": {},
+        "body": {
+          "date_range": {
+            "start": "date",
+            "end": "date"
+          },
+          "status_in": [
+            "success|failure|partial|in_progress"
+          ],
+          "final_outcome_in": [
+            "string"
+          ],
+          "policy_id": "string|null",
+          "definition_version": "string|null",
+          "search_attributes": {
+            "type": "object",
+            "description": "Exact-match key/value filters mapped to search_attributes.<attribute_name> in QP4."
+          },
+          "page": {
+            "limit": "int",
+            "max_limit": 200
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "request_id": "string",
+              "policy": {
+                "policy_id": "string",
+                "policy_name": "string",
+                "policy_version": "string|null",
+                "definition_version": "string|null"
+              },
+              "request_timestamp": "date",
+              "completion_timestamp": "date|null",
+              "status": "success|failure|partial|in_progress",
+              "final_outcome": "string|null",
+              "outcome_reason_codes": [
+                "string"
+              ],
+              "search_attributes": {
+                "type": "object|null"
+              },
+              "metrics": {
+                "rule_execution_count": "int|null",
+                "duration_ms": "int|null",
+                "error_count": "int|null"
+              }
+            }
+          ],
+          "page": {
+            "limit": "int",
+            "returned": "int"
+          },
+          "applied_filters": {
+            "deployment_id": "string",
+            "date_range": {
+              "start": "date",
+              "end": "date"
+            },
+            "status_in": [
+              "string"
+            ],
+            "final_outcome_in": [
+              "string"
+            ],
+            "policy_id": "string|null",
+            "definition_version": "string|null",
+            "search_attributes": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_SEARCH_REQUEST",
+          "message": "Search request is malformed, date range is invalid, or limit exceeds maximum."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHENTICATED",
+          "message": "Authentication required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "User is not allowed to search execution requests for this deployment."
+        },
+        {
+          "status": 500,
+          "code": "INTERNAL_ERROR",
+          "message": "Unexpected server error."
+        }
+      ]
+    },
+    {
+      "operation_id": "searchExecutionSteps",
+      "method": "POST",
+      "path": "/deployments/{deployment_id}/execution-steps/search",
+      "purpose": "Search step-level execution records by rule, stage, status, or observed variable content.",
+      "backing": "QP5",
+      "request": {
+        "path_params": {
+          "deployment_id": "string"
+        },
+        "query_params": {},
+        "body": {
+          "date_range": {
+            "start": "date",
+            "end": "date"
+          },
+          "stage_type": "string|null",
+          "step_status": "executed|skipped|failed|warning|null",
+          "rule_name": "string|null",
+          "policy_id": "string|null",
+          "variable_match": {
+            "name": "string",
+            "value": "mixed|null",
+            "matched": "boolean|null"
+          },
+          "page": {
+            "limit": "int",
+            "max_limit": 200
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "request_id": "string",
+              "step_sequence": "int",
+              "stage_type": "string",
+              "rule": {
+                "rule_id": "string|null",
+                "rule_name": "string|null",
+                "rule_version": "string|null"
+              },
+              "policy": {
+                "policy_id": "string",
+                "policy_name": "string",
+                "policy_version": "string|null",
+                "definition_version": "string|null"
+              },
+              "execution_timestamp": "date",
+              "step_status": "executed|skipped|failed|warning",
+              "condition_expression": "string|null",
+              "variable_observations": [
+                {
+                  "name": "string",
+                  "value": "mixed",
+                  "value_type": "string|null",
+                  "matched": "boolean|null"
+                }
+              ],
+              "decision": {
+                "outcome": "string|null",
+                "reason_code": "string|null",
+                "score": "number|null"
+              },
+              "performance": {
+                "duration_ms": "int|null",
+                "lookup_count": "int|null"
+              },
+              "errors": [
+                {
+                  "code": "string|null",
+                  "message": "string|null"
+                }
+              ]
+            }
+          ],
+          "page": {
+            "limit": "int",
+            "returned": "int"
+          },
+          "applied_filters": {
+            "deployment_id": "string",
+            "date_range": {
+              "start": "date",
+              "end": "date"
+            },
+            "stage_type": "string|null",
+            "step_status": "string|null",
+            "rule_name": "string|null",
+            "policy_id": "string|null",
+            "variable_match": {
+              "name": "string",
+              "value": "mixed|null",
+              "matched": "boolean|null"
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_SEARCH_REQUEST",
+          "message": "Search request is malformed, date range is invalid, or required variable_match.name is missing when variable_match is supplied."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHENTICATED",
+          "message": "Authentication required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "User is not allowed to search execution steps for this deployment."
+        },
+        {
+          "status": 500,
+          "code": "INTERNAL_ERROR",
+          "message": "Unexpected server error."
+        }
+      ]
+    },
+    {
+      "operation_id": "findRequestsByRuleOrDecision",
+      "method": "POST",
+      "path": "/deployments/{deployment_id}/request-impact/search",
+      "purpose": "Identify requests affected by a rule, rule version, step decision outcome, or reason code, returning the matched steps per request.",
+      "backing": "QP6",
+      "request": {
+        "path_params": {
+          "deployment_id": "string"
+        },
+        "query_params": {},
+        "body": {
+          "date_range": {
+            "start": "date",
+            "end": "date"
+          },
+          "rule_name": "string|null",
+          "rule_version": "string|null",
+          "decision_outcome": "string|null",
+          "reason_code": "string|null",
+          "page": {
+            "limit": "int",
+            "max_limit": 200
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "deployment_id": "string",
+              "request_id": "string",
+              "first_execution_timestamp": "date",
+              "matched_steps": [
+                {
+                  "step_sequence": "int",
+                  "rule": {
+                    "rule_id": "string|null",
+                    "rule_name": "string|null",
+                    "rule_version": "string|null"
+                  },
+                  "step_status": "executed|skipped|failed|warning",
+                  "decision": {
+                    "outcome": "string|null",
+                    "reason_code": "string|null",
+                    "score": "number|null"
+                  },
+                  "execution_timestamp": "date"
+                }
+              ]
+            }
+          ],
+          "page": {
+            "limit": "int",
+            "returned": "int"
+          },
+          "applied_filters": {
+            "deployment_id": "string",
+            "date_range": {
+              "start": "date",
+              "end": "date"
+            },
+            "rule_name": "string|null",
+            "rule_version": "string|null",
+            "decision_outcome": "string|null",
+            "reason_code": "string|null"
+          }
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_SEARCH_REQUEST",
+          "message": "Search request is malformed or date range is invalid."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHENTICATED",
+          "message": "Authentication required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "User is not allowed to run impact search for this deployment."
+        },
+        {
+          "status": 500,
+          "code": "INTERNAL_ERROR",
+          "message": "Unexpected server error."
+        }
+      ]
+    },
+    {
+      "operation_id": "getOutcomeTrends",
+      "method": "POST",
+      "path": "/deployments/{deployment_id}/analytics/outcome-trends",
+      "purpose": "Generate approval/outcome trend metrics over time, optionally segmented by policy definition version or one curated segment attribute.",
+      "backing": "QP7",
+      "request": {
+        "path_params": {
+          "deployment_id": "string"
+        },
+        "query_params": {},
+        "body": {
+          "date_range": {
+            "start": "date",
+            "end": "date"
+          },
+          "period_unit": {
+            "type": "string",
+            "enum": [
+              "day",
+              "week",
+              "month"
+            ]
+          },
+          "policy_id": "string|null",
+          "definition_version": "string|null",
+          "segment_attribute": "string|null",
+          "description": "segment_attribute must correspond to a curated key under search_attributes to align with QP7."
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "period": "date",
+              "definition_version": "string|null",
+              "segment": "string|null",
+              "total_requests": "int",
+              "approved_count": "int",
+              "rejected_count": "int",
+              "approval_rate": "number",
+              "outcomes": [
+                {
+                  "final_outcome": "string|null",
+                  "count": "int"
+                }
+              ]
+            }
+          ],
+          "applied_filters": {
+            "deployment_id": "string",
+            "date_range": {
+              "start": "date",
+              "end": "date"
+            },
+            "period_unit": "day|week|month",
+            "policy_id": "string|null",
+            "definition_version": "string|null",
+            "segment_attribute": "string|null"
+          }
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_ANALYTICS_REQUEST",
+          "message": "Analytics request is malformed, date range is invalid, or period_unit/segment_attribute is unsupported."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHENTICATED",
+          "message": "Authentication required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "User is not allowed to access analytics for this deployment."
+        },
+        {
+          "status": 500,
+          "code": "INTERNAL_ERROR",
+          "message": "Unexpected server error."
+        }
+      ]
+    },
+    {
+      "operation_id": "comparePolicyDefinitionVersions",
+      "method": "POST",
+      "path": "/deployments/{deployment_id}/analytics/policy-version-comparison",
+      "purpose": "Compare two policy definition versions for the same policy using business outcomes and processing metrics.",
+      "backing": "QP8",
+      "request": {
+        "path_params": {
+          "deployment_id": "string"
+        },
+        "query_params": {},
+        "body": {
+          "date_range": {
+            "start": "date",
+            "end": "date"
+          },
+          "policy_id": "string",
+          "definition_versions": [
+            "string",
+            "string"
+          ]
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "definition_version": "string",
+              "total_requests": "int",
+              "approved_count": "int",
+              "rejected_count": "int",
+              "approval_rate": "number",
+              "avg_duration_ms": "number|null",
+              "avg_rule_execution_count": "number|null",
+              "total_errors": "int",
+              "outcome_breakdown": [
+                {
+                  "final_outcome": "string|null",
+                  "status": "success|failure|partial|in_progress",
+                  "count": "int"
+                }
+              ]
+            }
+          ],
+          "applied_filters": {
+            "deployment_id": "string",
+            "date_range": {
+              "start": "date",
+              "end": "date"
+            },
+            "policy_id": "string",
+            "definition_versions": [
+              "string",
+              "string"
+            ]
+          }
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_ANALYTICS_REQUEST",
+          "message": "policy_id is required, exactly two definition_versions must be supplied, or date range is invalid."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHENTICATED",
+          "message": "Authentication required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "User is not allowed to access analytics for this deployment."
+        },
+        {
+          "status": 500,
+          "code": "INTERNAL_ERROR",
+          "message": "Unexpected server error."
+        }
+      ]
+    },
+    {
+      "operation_id": "getSegmentedOutcomeAnalytics",
+      "method": "POST",
+      "path": "/deployments/{deployment_id}/analytics/segment-outcomes",
+      "purpose": "Produce segmented outcome analytics such as approval rates by age band, geography, product, or other curated search attributes.",
+      "backing": "QP9",
+      "request": {
+        "path_params": {
+          "deployment_id": "string"
+        },
+        "query_params": {},
+        "body": {
+          "date_range": {
+            "start": "date",
+            "end": "date"
+          },
+          "segment_attribute": "string",
+          "policy_id": "string|null",
+          "definition_version": "string|null"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "segment": "string|null",
+              "total_requests": "int",
+              "approved_count": "int",
+              "rejected_count": "int",
+              "approval_rate": "number",
+              "outcomes": [
+                {
+                  "final_outcome": "string|null",
+                  "count": "int"
+                }
+              ]
+            }
+          ],
+          "applied_filters": {
+            "deployment_id": "string",
+            "date_range": {
+              "start": "date",
+              "end": "date"
+            },
+            "segment_attribute": "string",
+            "policy_id": "string|null",
+            "definition_version": "string|null"
+          }
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_ANALYTICS_REQUEST",
+          "message": "segment_attribute is required, must map to a curated search_attributes key, or date range is invalid."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHENTICATED",
+          "message": "Authentication required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "User is not allowed to access analytics for this deployment."
+        },
+        {
+          "status": 500,
+          "code": "INTERNAL_ERROR",
+          "message": "Unexpected server error."
+        }
+      ]
+    },
+    {
+      "operation_id": "getRulePerformanceAnalysis",
+      "method": "POST",
+      "path": "/deployments/{deployment_id}/analytics/rule-performance",
+      "purpose": "Analyze step-level performance and failure patterns by rule/stage.",
+      "backing": "QP10",
+      "request": {
+        "path_params": {
+          "deployment_id": "string"
+        },
+        "query_params": {},
+        "body": {
+          "date_range": {
+            "start": "date",
+            "end": "date"
+          },
+          "policy_id": "string|null",
+          "definition_version": "string|null"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "rule_name": "string|null",
+              "rule_version": "string|null",
+              "stage_type": "string",
+              "execution_count": "int",
+              "failed_count": "int",
+              "warning_count": "int",
+              "failure_rate": "number",
+              "avg_duration_ms": "number|null",
+              "max_duration_ms": "number|null",
+              "total_lookup_count": "int",
+              "error_instances": "int"
+            }
+          ],
+          "applied_filters": {
+            "deployment_id": "string",
+            "date_range": {
+              "start": "date",
+              "end": "date"
+            },
+            "policy_id": "string|null",
+            "definition_version": "string|null"
+          }
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_ANALYTICS_REQUEST",
+          "message": "Analytics request is malformed or date range is invalid."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHENTICATED",
+          "message": "Authentication required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "User is not allowed to access analytics for this deployment."
+        },
+        {
+          "status": 500,
+          "code": "INTERNAL_ERROR",
+          "message": "Unexpected server error."
+        }
+      ]
+    },
+    {
+      "operation_id": "getDeploymentConfig",
+      "method": "GET",
+      "path": "/deployments/{deployment_id}/config",
+      "purpose": "Inspect deployment-level logging, retention, and access-control configuration relevant to execution logging.",
+      "backing": "QP11",
+      "request": {
+        "path_params": {
+          "deployment_id": "string"
+        },
+        "query_params": {},
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "deployment_id": "string",
+          "deployment_name": "string",
+          "environment": "dev|test|uat|prod|null",
+          "hosting_model": "on_prem|aws|azure|other_cloud|null",
+          "logging": {
+            "enabled": "boolean",
+            "default_retention_days": "int|null",
+            "purge_mode": "ttl|scheduled_job|manual|null"
+          },
+          "access_control": {
+            "allowed_user_ids": [
+              "string"
+            ],
+            "admin_only": "boolean|null"
+          },
+          "created_at": "date|null",
+          "updated_at": "date|null"
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_PATH_PARAM",
+          "message": "deployment_id is malformed or blank."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHENTICATED",
+          "message": "Authentication required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "User is not allowed to inspect deployment configuration."
+        },
+        {
+          "status": 404,
+          "code": "DEPLOYMENT_NOT_FOUND",
+          "message": "No deployment configuration found for the given deployment_id."
+        },
+        {
+          "status": 500,
+          "code": "INTERNAL_ERROR",
+          "message": "Unexpected server error."
+        }
+      ]
+    },
+    {
+      "operation_id": "upsertDeploymentConfig",
+      "method": "PUT",
+      "path": "/deployments/{deployment_id}/config",
+      "purpose": "Create or replace deployment-level logging, retention, and access-control configuration.",
+      "backing": "Straightforward CRUD on deployment_configs",
+      "request": {
+        "path_params": {
+          "deployment_id": "string"
+        },
+        "query_params": {},
+        "body": {
+          "deployment_name": "string",
+          "environment": "dev|test|uat|prod|null",
+          "hosting_model": "on_prem|aws|azure|other_cloud|null",
+          "logging": {
+            "enabled": "boolean",
+            "default_retention_days": "int|null",
+            "purge_mode": "ttl|scheduled_job|manual|null"
+          },
+          "access_control": {
+            "allowed_user_ids": [
+              "string"
+            ],
+            "admin_only": "boolean|null"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "deployment_id": "string",
+          "deployment_name": "string",
+          "environment": "dev|test|uat|prod|null",
+          "hosting_model": "on_prem|aws|azure|other_cloud|null",
+          "logging": {
+            "enabled": "boolean",
+            "default_retention_days": "int|null",
+            "purge_mode": "ttl|scheduled_job|manual|null"
+          },
+          "access_control": {
+            "allowed_user_ids": [
+              "string"
+            ],
+            "admin_only": "boolean|null"
+          },
+          "created_at": "date|null",
+          "updated_at": "date"
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_CONFIG_REQUEST",
+          "message": "Configuration payload is malformed or contains invalid enum values."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHENTICATED",
+          "message": "Authentication required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "User is not allowed to modify deployment configuration."
+        },
+        {
+          "status": 500,
+          "code": "INTERNAL_ERROR",
+          "message": "Unexpected server error."
+        }
+      ]
+    },
+    {
+      "operation_id": "getLoggingCoverage",
+      "method": "POST",
+      "path": "/analytics/logging-coverage",
+      "purpose": "Provide operational visibility into how many requests were logged with logging enabled versus disabled across deployments/environments.",
+      "backing": "QP12",
+      "request": {
+        "path_params": {},
+        "query_params": {},
+        "body": {
+          "date_range": {
+            "start": "date",
+            "end": "date"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "deployment_id": "string",
+              "logging_enabled": "boolean",
+              "request_count": "int",
+              "deployment_name": "string|null",
+              "environment": "dev|test|uat|prod|null",
+              "hosting_model": "on_prem|aws|azure|other_cloud|null",
+              "default_logging_enabled": "boolean|null"
+            }
+          ],
+          "applied_filters": {
+            "date_range": {
+              "start": "date",
+              "end": "date"
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_ANALYTICS_REQUEST",
+          "message": "Analytics request is malformed or date range is invalid."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHENTICATED",
+          "message": "Authentication required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "User is not allowed to access cross-deployment operational analytics."
+        },
+        {
+          "status": 500,
+          "code": "INTERNAL_ERROR",
+          "message": "Unexpected server error."
+        }
+      ]
+    }
+  ],
+  "not_included": [
+    {
+      "capability": "Create execution request log records via public API",
+      "reason": "Not defined because authoritative scope emphasizes asynchronous ingestion via Kafka/queueing (FR5, INT1), and no specific external write query pattern was provided."
+    },
+    {
+      "capability": "Create execution step records via public API",
+      "reason": "Not defined for the same reason; ingestion is expected to be internal/asynchronous."
+    },
+    {
+      "capability": "Delete/purge execution logs via API",
+      "reason": "Retention/purge behavior is represented in the data model, but no authoritative query pattern or explicit CRUD contract for deleting logs was provided."
+    },
+    {
+      "capability": "Natural-language analytics / LLM insights endpoint",
+      "reason": "Future requirement only (AI1-AI3); no supporting data model or query pattern exists yet."
+    }
+  ]
+}
