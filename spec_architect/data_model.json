@@ -1,0 +1,347 @@
+{
+  "collections": [
+    {
+      "name": "support_tickets",
+      "description": "Primary ticket records that agents look up, review for triage, and mark resolved.",
+      "traceability": {
+        "business_entities": [
+          "Support Ticket",
+          "Resolved Ticket"
+        ],
+        "use_cases": [
+          "uc1",
+          "uc2",
+          "uc3"
+        ],
+        "functional_requirements": [
+          "fr1",
+          "fr2",
+          "fr3",
+          "fr4"
+        ],
+        "ai_genai_requirements": [
+          "ai1",
+          "ai2"
+        ]
+      },
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "ticket_number",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "subject",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "customer_name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "customer_email",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "product_area",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "priority",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "urgent"
+          ]
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "open",
+            "in_progress",
+            "resolved"
+          ]
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "updated_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "resolved_at",
+          "type": "date",
+          "required": false
+        },
+        {
+          "name": "resolution_summary",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "triage_guidance",
+          "type": "embeddedDocument",
+          "required": false,
+          "fields": [
+            {
+              "name": "generated_at",
+              "type": "date",
+              "required": true
+            },
+            {
+              "name": "summary",
+              "type": "string",
+              "required": true
+            },
+            {
+              "name": "suggested_category",
+              "type": "string",
+              "required": false
+            },
+            {
+              "name": "suggested_priority",
+              "type": "string",
+              "required": false
+            },
+            {
+              "name": "recommended_actions",
+              "type": "array<string>",
+              "required": false
+            },
+            {
+              "name": "confidence",
+              "type": "number",
+              "required": false
+            }
+          ],
+          "embedding_reason": "Embedded because the POV only requires viewing current AI-suggested guidance in the ticket triage workflow, and the guidance is naturally fetched with the ticket."
+        },
+        {
+          "name": "similar_resolved_ticket_ids",
+          "type": "array<objectId>",
+          "required": false,
+          "reference": "support_tickets",
+          "reference_filter": {
+            "status": "resolved"
+          }
+        },
+        {
+          "name": "embedding",
+          "type": "array<float>",
+          "required": false,
+          "description": "Vector representation of the ticket text for semantic similarity against resolved tickets."
+        },
+        {
+          "name": "internal_only",
+          "type": "boolean",
+          "required": true,
+          "default": true,
+          "description": "Marks records as used only within the internal POV context, supporting internal-only application scope."
+        }
+      ],
+      "relationships": [
+        {
+          "type": "self_reference",
+          "field": "similar_resolved_ticket_ids",
+          "target_collection": "support_tickets",
+          "cardinality": "many",
+          "description": "Links a ticket to similar resolved tickets surfaced during triage."
+        }
+      ],
+      "modeling_notes": {
+        "embedded_vs_references": [
+          {
+            "field": "triage_guidance",
+            "choice": "embedded",
+            "why": "The UI needs ticket plus current AI guidance together; guidance appears to be a bounded subdocument with 1 current version sufficient for POV."
+          },
+          {
+            "field": "similar_resolved_ticket_ids",
+            "choice": "reference",
+            "why": "Similar tickets are independent ticket records that agents may open and inspect; storing ids avoids duplicating resolved ticket data and supports reuse across many source tickets."
+          }
+        ]
+      }
+    },
+    {
+      "name": "internal_users",
+      "description": "Internal support users allowed to access the POV.",
+      "traceability": {
+        "business_objectives": [
+          "bo2"
+        ],
+        "functional_requirements": [
+          "fr5"
+        ],
+        "personas": [
+          "p1"
+        ],
+        "success_criteria": [
+          "sc2"
+        ]
+      },
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "email",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "role",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "support_agent",
+            "admin"
+          ]
+        },
+        {
+          "name": "is_active",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "last_login_at",
+          "type": "date",
+          "required": false
+        },
+        {
+          "name": "internal_only",
+          "type": "boolean",
+          "required": true,
+          "default": true
+        }
+      ],
+      "relationships": [],
+      "modeling_notes": {
+        "embedded_vs_references": [
+          {
+            "field": "root_document",
+            "choice": "standalone collection",
+            "why": "Internal users are distinct entities used for internal-access enforcement and potential attribution of ticket resolution actions."
+          }
+        ]
+      }
+    },
+    {
+      "name": "ticket_resolution_events",
+      "description": "Audit-style records of support agents marking tickets resolved.",
+      "traceability": {
+        "use_cases": [
+          "uc3"
+        ],
+        "functional_requirements": [
+          "fr4"
+        ],
+        "success_criteria": [
+          "sc1"
+        ]
+      },
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "ticket_id",
+          "type": "objectId",
+          "required": true,
+          "reference": "support_tickets"
+        },
+        {
+          "name": "resolved_by_user_id",
+          "type": "objectId",
+          "required": true,
+          "reference": "internal_users"
+        },
+        {
+          "name": "resolved_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "resolution_summary",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "status_after_action",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "resolved"
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "type": "many_to_one",
+          "field": "ticket_id",
+          "target_collection": "support_tickets",
+          "cardinality": "one",
+          "description": "Each resolution event belongs to a support ticket."
+        },
+        {
+          "type": "many_to_one",
+          "field": "resolved_by_user_id",
+          "target_collection": "internal_users",
+          "cardinality": "one",
+          "description": "Each resolution event is performed by an internal user."
+        }
+      ],
+      "modeling_notes": {
+        "embedded_vs_references": [
+          {
+            "field": "ticket_id",
+            "choice": "reference",
+            "why": "Resolution events are write-once audit records and should not be embedded into the mutable ticket document for this POV if event history needs to be retained independently."
+          },
+          {
+            "field": "resolved_by_user_id",
+            "choice": "reference",
+            "why": "Users are shared across many actions and should not be duplicated."
+          }
+        ]
+      }
+    }
+  ]
+}
