@@ -1,328 +1,172 @@
 {
-  "QP1": {
+  "qp_lookup_tenant_by_key": {
     "id": "QP1",
-    "name": "List tenant documents for live demo and filtering",
-    "serves": [
-      "UC1",
-      "UC3"
-    ],
-    "collections": [
-      "documents"
-    ],
-    "query": {
-      "collection": "documents",
-      "operation": "find",
-      "filter": {
-        "tenant_id": "<tenantId>",
-        "document_type": {
-          "$in": [
-            "uploaded_file",
-            "benchmark_supporting_doc"
-          ]
-        },
-        "source_type": {
-          "$in": [
-            "pdf",
-            "csv",
-            "google_sheet",
-            "text",
-            "research_paper",
-            "business_document",
-            "jira_export",
-            "slack_export",
-            "other"
-          ]
-        },
-        "processing_status": {
-          "$in": [
-            "uploaded",
-            "parsed",
-            "chunked",
-            "embedded",
-            "failed"
-          ]
-        }
-      },
-      "projection": {
-        "title": 1,
-        "original_filename": 1,
-        "document_type": 1,
-        "source_type": 1,
-        "processing_status": 1,
-        "storage_location_type": 1,
-        "ingested_at": 1,
-        "metadata.tags": 1
-      },
-      "sort": {
-        "ingested_at": -1
-      },
-      "limit": 100
-    },
-    "purpose": "Show recently ingested customer documents in the tenant and allow filtering by type/status during the live evaluation."
-  },
-  "QP2": {
-    "id": "QP2",
-    "name": "List agent memory documents by conversation or session",
-    "serves": [
-      "UC2"
-    ],
-    "collections": [
-      "documents"
-    ],
-    "query": {
-      "collection": "documents",
-      "operation": "find",
-      "filter": {
-        "tenant_id": "<tenantId>",
-        "document_type": "agent_memory",
-        "$or": [
-          {
-            "metadata.conversation_id": "<conversationId>"
-          },
-          {
-            "metadata.session_id": "<sessionId>"
-          }
-        ],
-        "processing_status": {
-          "$in": [
-            "parsed",
-            "chunked",
-            "embedded"
-          ]
-        }
-      },
-      "projection": {
-        "title": 1,
-        "source_type": 1,
-        "metadata.conversation_id": 1,
-        "metadata.session_id": 1,
-        "processing_status": 1,
-        "ingested_at": 1,
-        "updated_at": 1
-      },
-      "sort": {
-        "updated_at": -1
-      },
-      "limit": 50
-    },
-    "purpose": "Retrieve conversation-derived memory documents for a given conversation/session before running memory retrieval."
-  },
-  "QP3": {
-    "id": "QP3",
-    "name": "Inspect chunk outputs for a document across chunking strategies",
-    "serves": [
-      "UC1",
-      "UC3"
-    ],
-    "collections": [
-      "document_chunks"
-    ],
-    "query": {
-      "collection": "document_chunks",
-      "operation": "find",
-      "filter": {
-        "tenant_id": "<tenantId>",
-        "document_id": "<documentId>",
-        "chunking_strategy": {
-          "$in": [
-            "fixed_length",
-            "recursive",
-            "semantic",
-            "contextual"
-          ]
-        }
-      },
-      "projection": {
-        "document_id": 1,
-        "chunking_strategy": 1,
-        "strategy_params": 1,
-        "chunk_index": 1,
-        "text": 1,
-        "token_count": 1,
-        "page_span": 1,
-        "embedding_model": 1
-      },
-      "sort": {
-        "chunking_strategy": 1,
-        "chunk_index": 1
-      },
-      "limit": 500
-    },
-    "purpose": "Review how the same document was chunked under each strategy for comparison and troubleshooting."
-  },
-  "QP4": {
-    "id": "QP4",
-    "name": "Keyword chunk retrieval for document search baseline",
-    "serves": [
-      "UC1",
-      "UC3"
-    ],
-    "collections": [
-      "document_chunks",
-      "documents"
-    ],
-    "query": {
-      "collection": "document_chunks",
-      "operation": "aggregate",
-      "pipeline": [
-        {
-          "$search": {
-            "index": "search_chunks_text",
-            "text": {
-              "query": "<queryText>",
-              "path": "text"
-            }
-          }
-        },
-        {
-          "$match": {
-            "tenant_id": "<tenantId>",
-            "chunking_strategy": "<chunkingStrategy>",
-            "document_id": {
-              "$in": "<optionalDocumentIds>"
-            }
-          }
-        },
-        {
-          "$limit": 20
-        },
-        {
-          "$project": {
-            "document_id": 1,
-            "chunk_id": "$_id",
-            "chunking_strategy": 1,
-            "score": {
-              "$meta": "searchScore"
-            },
-            "snippet": {
-              "$substrCP": [
-                "$text",
-                0,
-                300
-              ]
-            }
-          }
-        },
-        {
-          "$lookup": {
-            "from": "documents",
-            "localField": "document_id",
-            "foreignField": "_id",
-            "as": "document"
-          }
-        },
-        {
-          "$unwind": "$document"
-        },
-        {
-          "$project": {
-            "rank_placeholder": 1,
-            "document_id": 1,
-            "chunk_id": 1,
-            "score": 1,
-            "snippet": 1,
-            "document_title": "$document.title",
-            "source_type": "$document.source_type"
-          }
-        }
-      ]
-    },
-    "purpose": "Run lexical retrieval over chunk text as a keyword baseline or hybrid component for document search comparisons."
-  },
-  "QP5": {
-    "id": "QP5",
-    "name": "Vector chunk retrieval for document search",
-    "serves": [
-      "UC1",
-      "UC3"
-    ],
-    "collections": [
-      "document_chunks",
-      "documents"
-    ],
-    "query": {
-      "collection": "document_chunks",
-      "operation": "aggregate",
-      "pipeline": [
-        {
-          "$vectorSearch": {
-            "index": "vector_chunks_embedding",
-            "path": "embedding",
-            "queryVector": "<queryEmbedding>",
-            "numCandidates": 200,
-            "limit": 20,
-            "filter": {
-              "tenant_id": "<tenantId>",
-              "chunking_strategy": "<chunkingStrategy>"
-            }
-          }
-        },
-        {
-          "$match": {
-            "document_id": {
-              "$in": "<optionalDocumentIds>"
-            }
-          }
-        },
-        {
-          "$project": {
-            "document_id": 1,
-            "chunk_id": "$_id",
-            "chunking_strategy": 1,
-            "score": {
-              "$meta": "vectorSearchScore"
-            },
-            "text": 1,
-            "page_span": 1
-          }
-        },
-        {
-          "$lookup": {
-            "from": "documents",
-            "localField": "document_id",
-            "foreignField": "_id",
-            "as": "document"
-          }
-        },
-        {
-          "$unwind": "$document"
-        },
-        {
-          "$project": {
-            "document_id": 1,
-            "chunk_id": 1,
-            "score": 1,
-            "snippet": {
-              "$substrCP": [
-                "$text",
-                0,
-                300
-              ]
-            },
-            "page_span": 1,
-            "document_title": "$document.title",
-            "source_type": "$document.source_type",
-            "document_type": "$document.document_type"
-          }
-        }
-      ]
-    },
-    "purpose": "Retrieve the most semantically relevant chunks for a user query within a tenant and chosen chunking strategy."
-  },
-  "QP6": {
-    "id": "QP6",
-    "name": "Hybrid retrieval combining vector and keyword scores",
+    "name": "Lookup tenant/workshop namespace by tenant key",
     "serves": [
       "UC1",
       "UC2",
       "UC3"
     ],
     "collections": [
-      "document_chunks",
+      "tenants"
+    ],
+    "query": {
+      "collection": "tenants",
+      "operation": "findOne",
+      "filter": {
+        "tenant_key": "<tenant_key>",
+        "status": "active"
+      },
+      "projection": {
+        "_id": 1,
+        "tenant_key": 1,
+        "name": 1,
+        "deployment_mode": 1,
+        "status": 1
+      }
+    },
+    "purpose": "Resolve the tenant boundary before any upload, retrieval, memory, or benchmark operation."
+  },
+  "qp_list_documents_for_tenant": {
+    "id": "QP2",
+    "name": "List uploaded or processed documents for a tenant with type/source filters",
+    "serves": [
+      "UC1",
+      "UC3"
+    ],
+    "collections": [
       "documents"
     ],
     "query": {
-      "collection": "document_chunks",
+      "collection": "documents",
+      "operation": "find",
+      "filter": {
+        "tenant_id": "<tenantId>",
+        "status": {
+          "$in": [
+            "uploaded",
+            "processed"
+          ]
+        },
+        "document_type": {
+          "$in": [
+            "<optional_document_type>"
+          ]
+        },
+        "source_category": {
+          "$in": [
+            "<optional_source_category>"
+          ]
+        }
+      },
+      "projection": {
+        "title": 1,
+        "document_type": 1,
+        "source_category": 1,
+        "status": 1,
+        "mime_type": 1,
+        "file_size_bytes": 1,
+        "checksum": 1,
+        "created_at": 1,
+        "updated_at": 1,
+        "text_extraction.status": 1,
+        "text_extraction.page_count": 1,
+        "structured_metadata": 1,
+        "tags": 1
+      },
+      "sort": {
+        "created_at": -1
+      },
+      "limit": "<page_size>"
+    },
+    "purpose": "Populate the playground/workshop document corpus view and filter by document type or source."
+  },
+  "qp_deduplicate_document_upload": {
+    "id": "QP3",
+    "name": "Check for duplicate upload by checksum within tenant",
+    "serves": [
+      "UC1"
+    ],
+    "collections": [
+      "documents"
+    ],
+    "query": {
+      "collection": "documents",
+      "operation": "findOne",
+      "filter": {
+        "tenant_id": "<tenantId>",
+        "checksum": "<checksum>",
+        "status": {
+          "$ne": "archived"
+        }
+      },
+      "projection": {
+        "_id": 1,
+        "title": 1,
+        "status": 1,
+        "checksum": 1,
+        "created_at": 1
+      }
+    },
+    "purpose": "Detect whether a just-uploaded representative file already exists in the tenant corpus."
+  },
+  "qp_document_processing_status": {
+    "id": "QP4",
+    "name": "Review document extraction/processing status",
+    "serves": [
+      "UC1",
+      "UC3"
+    ],
+    "collections": [
+      "documents"
+    ],
+    "query": {
+      "collection": "documents",
+      "operation": "find",
+      "filter": {
+        "tenant_id": "<tenantId>",
+        "status": {
+          "$in": [
+            "uploaded",
+            "processed",
+            "failed"
+          ]
+        },
+        "text_extraction.status": {
+          "$in": [
+            "pending",
+            "completed",
+            "failed"
+          ]
+        }
+      },
+      "projection": {
+        "title": 1,
+        "document_type": 1,
+        "status": 1,
+        "text_extraction.status": 1,
+        "text_extraction.extracted_at": 1,
+        "text_extraction.error_message": 1,
+        "updated_at": 1
+      },
+      "sort": {
+        "updated_at": -1
+      }
+    },
+    "purpose": "Show whether uploaded files were successfully extracted and are ready for chunking and search."
+  },
+  "qp_vector_search_document_chunks": {
+    "id": "QP5",
+    "name": "Tenant-scoped semantic top-K retrieval over document chunks",
+    "serves": [
+      "UC1"
+    ],
+    "collections": [
+      "chunks",
+      "documents"
+    ],
+    "query": {
+      "collection": "chunks",
       "operation": "aggregate",
       "pipeline": [
         {
@@ -330,8 +174,8 @@
             "index": "vector_chunks_embedding",
             "path": "embedding",
             "queryVector": "<queryEmbedding>",
-            "numCandidates": 200,
-            "limit": 50,
+            "numCandidates": "<numCandidates>",
+            "limit": "<topK>",
             "filter": {
               "tenant_id": "<tenantId>",
               "chunking_strategy": "<chunkingStrategy>"
@@ -339,81 +183,321 @@
           }
         },
         {
-          "$project": {
-            "chunk_id": "$_id",
-            "document_id": 1,
-            "vector_score": {
-              "$meta": "vectorSearchScore"
-            },
-            "text": 1
+          "$lookup": {
+            "from": "documents",
+            "localField": "document_id",
+            "foreignField": "_id",
+            "as": "document"
           }
         },
         {
-          "$unionWith": {
-            "coll": "document_chunks",
-            "pipeline": [
-              {
-                "$search": {
-                  "index": "search_chunks_text",
+          "$unwind": "$document"
+        },
+        {
+          "$match": {
+            "document.source_category": {
+              "$ne": "agent_memory"
+            },
+            "document.status": "processed",
+            "document.document_type": {
+              "$in": [
+                "<optional_document_types>"
+              ]
+            }
+          }
+        },
+        {
+          "$project": {
+            "_id": 1,
+            "document_id": 1,
+            "chunk_index": 1,
+            "chunking_strategy": 1,
+            "text": 1,
+            "contextual_text": 1,
+            "page_range": 1,
+            "section_path": 1,
+            "score": {
+              "$meta": "vectorSearchScore"
+            },
+            "document.title": 1,
+            "document.document_type": 1,
+            "document.source_uri": 1,
+            "document.tags": 1
+          }
+        },
+        {
+          "$limit": "<topK>"
+        }
+      ]
+    },
+    "purpose": "Return the most semantically relevant chunks for an uploaded-document search query, enriched with document metadata for display and downstream reranking."
+  },
+  "qp_lexical_search_document_chunks": {
+    "id": "QP6",
+    "name": "Lexical/full-text top-K retrieval over chunk text",
+    "serves": [
+      "UC1",
+      "UC3"
+    ],
+    "collections": [
+      "chunks",
+      "documents"
+    ],
+    "query": {
+      "collection": "chunks",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$search": {
+            "index": "search_chunks_text",
+            "compound": {
+              "must": [
+                {
                   "text": {
                     "query": "<queryText>",
-                    "path": "text"
+                    "path": [
+                      "text",
+                      "contextual_text",
+                      "section_path"
+                    ]
+                  }
+                }
+              ],
+              "filter": [
+                {
+                  "equals": {
+                    "path": "tenant_id",
+                    "value": "<tenantId>"
+                  }
+                },
+                {
+                  "equals": {
+                    "path": "chunking_strategy",
+                    "value": "<chunkingStrategy>"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "$limit": "<topK>"
+        },
+        {
+          "$lookup": {
+            "from": "documents",
+            "localField": "document_id",
+            "foreignField": "_id",
+            "as": "document"
+          }
+        },
+        {
+          "$unwind": "$document"
+        },
+        {
+          "$match": {
+            "document.source_category": {
+              "$ne": "agent_memory"
+            },
+            "document.status": "processed",
+            "document.document_type": {
+              "$in": [
+                "<optional_document_types>"
+              ]
+            }
+          }
+        },
+        {
+          "$project": {
+            "_id": 1,
+            "document_id": 1,
+            "chunk_index": 1,
+            "text": 1,
+            "contextual_text": 1,
+            "section_path": 1,
+            "score": {
+              "$meta": "searchScore"
+            },
+            "document.title": 1,
+            "document.document_type": 1,
+            "document.source_uri": 1
+          }
+        }
+      ]
+    },
+    "purpose": "Provide a non-vector lexical baseline or fallback retrieval path over chunk text for comparison and hybrid experiments."
+  },
+  "qp_hybrid_search_document_chunks": {
+    "id": "QP7",
+    "name": "Hybrid retrieval combining vector and lexical scores",
+    "serves": [
+      "UC1",
+      "UC3"
+    ],
+    "collections": [
+      "chunks",
+      "documents"
+    ],
+    "query": {
+      "collection": "chunks",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$facet": {
+            "vector": [
+              {
+                "$vectorSearch": {
+                  "index": "vector_chunks_embedding",
+                  "path": "embedding",
+                  "queryVector": "<queryEmbedding>",
+                  "numCandidates": "<numCandidates>",
+                  "limit": "<vectorLimit>",
+                  "filter": {
+                    "tenant_id": "<tenantId>",
+                    "chunking_strategy": "<chunkingStrategy>"
                   }
                 }
               },
               {
-                "$match": {
-                  "tenant_id": "<tenantId>",
-                  "chunking_strategy": "<chunkingStrategy>"
+                "$project": {
+                  "_id": 1,
+                  "document_id": 1,
+                  "chunk_index": 1,
+                  "text": 1,
+                  "contextual_text": 1,
+                  "page_range": 1,
+                  "section_path": 1,
+                  "vectorScore": {
+                    "$meta": "vectorSearchScore"
+                  }
                 }
+              }
+            ],
+            "lexical": [
+              {
+                "$search": {
+                  "index": "search_chunks_text",
+                  "compound": {
+                    "must": [
+                      {
+                        "text": {
+                          "query": "<queryText>",
+                          "path": [
+                            "text",
+                            "contextual_text",
+                            "section_path"
+                          ]
+                        }
+                      }
+                    ],
+                    "filter": [
+                      {
+                        "equals": {
+                          "path": "tenant_id",
+                          "value": "<tenantId>"
+                        }
+                      },
+                      {
+                        "equals": {
+                          "path": "chunking_strategy",
+                          "value": "<chunkingStrategy>"
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "$limit": "<lexicalLimit>"
               },
               {
                 "$project": {
-                  "chunk_id": "$_id",
+                  "_id": 1,
                   "document_id": 1,
-                  "keyword_score": {
+                  "chunk_index": 1,
+                  "text": 1,
+                  "contextual_text": 1,
+                  "page_range": 1,
+                  "section_path": 1,
+                  "lexicalScore": {
                     "$meta": "searchScore"
-                  },
-                  "text": 1
+                  }
                 }
-              },
-              {
-                "$limit": 50
               }
             ]
           }
         },
         {
+          "$project": {
+            "combined": {
+              "$concatArrays": [
+                "$vector",
+                "$lexical"
+              ]
+            }
+          }
+        },
+        {
+          "$unwind": "$combined"
+        },
+        {
+          "$replaceRoot": {
+            "newRoot": "$combined"
+          }
+        },
+        {
           "$group": {
-            "_id": "$chunk_id",
+            "_id": "$_id",
             "document_id": {
               "$first": "$document_id"
+            },
+            "chunk_index": {
+              "$first": "$chunk_index"
             },
             "text": {
               "$first": "$text"
             },
-            "vector_score": {
-              "$max": "$vector_score"
+            "contextual_text": {
+              "$first": "$contextual_text"
             },
-            "keyword_score": {
-              "$max": "$keyword_score"
+            "page_range": {
+              "$first": "$page_range"
+            },
+            "section_path": {
+              "$first": "$section_path"
+            },
+            "vectorScore": {
+              "$max": "$vectorScore"
+            },
+            "lexicalScore": {
+              "$max": "$lexicalScore"
             }
           }
         },
         {
           "$addFields": {
-            "combined_score": {
+            "hybridScore": {
               "$add": [
                 {
-                  "$ifNull": [
-                    "$vector_score",
-                    0
+                  "$multiply": [
+                    {
+                      "$ifNull": [
+                        "$vectorScore",
+                        0
+                      ]
+                    },
+                    "<vectorWeight>"
                   ]
                 },
                 {
-                  "$ifNull": [
-                    "$keyword_score",
-                    0
+                  "$multiply": [
+                    {
+                      "$ifNull": [
+                        "$lexicalScore",
+                        0
+                      ]
+                    },
+                    "<lexicalWeight>"
                   ]
                 }
               ]
@@ -422,11 +506,11 @@
         },
         {
           "$sort": {
-            "combined_score": -1
+            "hybridScore": -1
           }
         },
         {
-          "$limit": 20
+          "$limit": "<topK>"
         },
         {
           "$lookup": {
@@ -440,39 +524,134 @@
           "$unwind": "$document"
         },
         {
-          "$project": {
-            "chunk_id": "$_id",
-            "document_id": 1,
-            "combined_score": 1,
-            "vector_score": 1,
-            "keyword_score": 1,
-            "snippet": {
-              "$substrCP": [
-                "$text",
-                0,
-                300
-              ]
+          "$match": {
+            "document.source_category": {
+              "$ne": "agent_memory"
             },
-            "document_title": "$document.title",
-            "document_type": "$document.document_type"
+            "document.status": "processed"
+          }
+        },
+        {
+          "$project": {
+            "_id": 1,
+            "document_id": 1,
+            "chunk_index": 1,
+            "text": 1,
+            "contextual_text": 1,
+            "page_range": 1,
+            "section_path": 1,
+            "vectorScore": 1,
+            "lexicalScore": 1,
+            "hybridScore": 1,
+            "document.title": 1,
+            "document.document_type": 1,
+            "document.source_uri": 1
           }
         }
       ]
     },
-    "purpose": "Support a hybrid retrieval mode for head-to-head comparison with pure vector or keyword retrieval."
+    "purpose": "Blend semantic and lexical evidence to test whether hybrid retrieval improves relevance on benchmark questions."
   },
-  "QP7": {
-    "id": "QP7",
-    "name": "Vector retrieval for agent memory context",
+  "qp_fetch_document_chunks_by_strategy": {
+    "id": "QP8",
+    "name": "Fetch all chunks for a document under a selected chunking strategy",
+    "serves": [
+      "UC1",
+      "UC3"
+    ],
+    "collections": [
+      "chunks"
+    ],
+    "query": {
+      "collection": "chunks",
+      "operation": "find",
+      "filter": {
+        "tenant_id": "<tenantId>",
+        "document_id": "<documentId>",
+        "chunking_strategy": "<chunkingStrategy>"
+      },
+      "projection": {
+        "chunk_index": 1,
+        "text": 1,
+        "contextual_text": 1,
+        "token_count": 1,
+        "char_count": 1,
+        "page_range": 1,
+        "section_path": 1,
+        "embedding_model": 1,
+        "embedding_dimensions": 1,
+        "metadata": 1
+      },
+      "sort": {
+        "chunk_index": 1
+      }
+    },
+    "purpose": "Inspect how a document was segmented for a specific chunking method during debugging and side-by-side chunking review."
+  },
+  "qp_compare_chunking_strategies_for_document": {
+    "id": "QP9",
+    "name": "Summarize chunk counts and sizes by chunking strategy for a document",
+    "serves": [
+      "UC3"
+    ],
+    "collections": [
+      "chunks"
+    ],
+    "query": {
+      "collection": "chunks",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "tenant_id": "<tenantId>",
+            "document_id": "<documentId>"
+          }
+        },
+        {
+          "$group": {
+            "_id": {
+              "chunking_strategy": "$chunking_strategy",
+              "strategy_version": "$strategy_version"
+            },
+            "chunk_count": {
+              "$sum": 1
+            },
+            "avg_token_count": {
+              "$avg": "$token_count"
+            },
+            "max_token_count": {
+              "$max": "$token_count"
+            },
+            "avg_char_count": {
+              "$avg": "$char_count"
+            },
+            "first_created_at": {
+              "$min": "$created_at"
+            }
+          }
+        },
+        {
+          "$sort": {
+            "_id.chunking_strategy": 1,
+            "_id.strategy_version": 1
+          }
+        }
+      ]
+    },
+    "purpose": "Compare fixed, recursive, semantic, and contextual chunking outputs for the same document."
+  },
+  "qp_vector_search_agent_memory": {
+    "id": "QP10",
+    "name": "Semantic retrieval over agent memory chunks",
     "serves": [
       "UC2"
     ],
     "collections": [
-      "document_chunks",
+      "chunks",
       "documents"
     ],
     "query": {
-      "collection": "document_chunks",
+      "collection": "chunks",
       "operation": "aggregate",
       "pipeline": [
         {
@@ -480,8 +659,8 @@
             "index": "vector_chunks_embedding",
             "path": "embedding",
             "queryVector": "<queryEmbedding>",
-            "numCandidates": 100,
-            "limit": 10,
+            "numCandidates": "<numCandidates>",
+            "limit": "<topK>",
             "filter": {
               "tenant_id": "<tenantId>",
               "chunking_strategy": "<chunkingStrategy>"
@@ -501,146 +680,114 @@
         },
         {
           "$match": {
-            "document.document_type": "agent_memory",
-            "$or": [
-              {
-                "document.metadata.conversation_id": "<conversationId>"
-              },
-              {
-                "document.metadata.session_id": "<sessionId>"
-              }
-            ]
+            "document.source_category": "agent_memory",
+            "document.document_type": "conversation_memory",
+            "document.status": "processed",
+            "document.agent_memory_metadata.session_id": {
+              "$in": [
+                "<optional_session_ids>"
+              ]
+            },
+            "document.agent_memory_metadata.conversation_id": {
+              "$in": [
+                "<optional_conversation_ids>"
+              ]
+            }
           }
         },
         {
           "$project": {
+            "_id": 1,
             "document_id": 1,
-            "chunk_id": "$_id",
+            "chunk_index": 1,
+            "text": 1,
+            "contextual_text": 1,
             "score": {
               "$meta": "vectorSearchScore"
             },
-            "snippet": {
-              "$substrCP": [
-                "$text",
-                0,
-                300
-              ]
-            },
-            "conversation_id": "$document.metadata.conversation_id",
-            "session_id": "$document.metadata.session_id",
-            "updated_at": "$document.updated_at"
+            "document.title": 1,
+            "document.agent_memory_metadata.session_id": 1,
+            "document.agent_memory_metadata.conversation_id": 1,
+            "document.agent_memory_metadata.captured_at": 1,
+            "document.agent_memory_metadata.speaker_ids": 1
           }
         },
         {
           "$sort": {
-            "score": -1
+            "document.agent_memory_metadata.captured_at": -1
           }
-        },
-        {
-          "$limit": 10
         }
       ]
     },
-    "purpose": "Fetch the most relevant memory snippets for an agent from conversation-derived documents in the current conversation/session scope."
+    "purpose": "Retrieve the most relevant memory snippets from conversation-derived documents for an agent query, optionally constrained to sessions or conversations."
   },
-  "QP8": {
-    "id": "QP8",
-    "name": "List customer-provided benchmark prompts and targets",
+  "qp_list_agent_memory_documents": {
+    "id": "QP11",
+    "name": "List stored agent memory documents by tenant/session",
     "serves": [
-      "UC3"
+      "UC2"
     ],
     "collections": [
-      "benchmark_ground_truths"
+      "documents"
     ],
     "query": {
-      "collection": "benchmark_ground_truths",
+      "collection": "documents",
       "operation": "find",
       "filter": {
         "tenant_id": "<tenantId>",
-        "task_type": "<taskType>",
-        "provided_during_session": true
+        "source_category": "agent_memory",
+        "document_type": "conversation_memory",
+        "agent_memory_metadata.session_id": "<optional_session_id>",
+        "agent_memory_metadata.conversation_id": "<optional_conversation_id>",
+        "status": "processed"
       },
       "projection": {
-        "prompt_text": 1,
-        "task_type": 1,
-        "ground_truth_text": 1,
-        "relevant_document_ids": 1,
-        "relevant_chunk_ids": 1,
-        "top_k_targets": 1,
-        "notes": 1,
-        "created_at": 1
+        "title": 1,
+        "agent_memory_metadata": 1,
+        "tags": 1,
+        "created_at": 1,
+        "updated_at": 1
       },
       "sort": {
+        "agent_memory_metadata.captured_at": -1,
         "created_at": -1
       },
-      "limit": 100
+      "limit": "<page_size>"
     },
-    "purpose": "Show the benchmark questions/ground truths supplied during the live session and their expected targets."
+    "purpose": "Review what conversation-derived memory records exist before or after running memory retrieval."
   },
-  "QP9": {
-    "id": "QP9",
-    "name": "Fetch a benchmark prompt with linked relevant documents/chunks",
+  "qp_select_ground_truth_set": {
+    "id": "QP12",
+    "name": "Load a benchmark question set for a tenant",
     "serves": [
       "UC3"
     ],
     "collections": [
-      "benchmark_ground_truths",
-      "documents",
-      "document_chunks"
+      "ground_truth_sets"
     ],
     "query": {
-      "collection": "benchmark_ground_truths",
-      "operation": "aggregate",
-      "pipeline": [
-        {
-          "$match": {
-            "_id": "<groundTruthId>",
-            "tenant_id": "<tenantId>"
-          }
-        },
-        {
-          "$lookup": {
-            "from": "documents",
-            "localField": "relevant_document_ids",
-            "foreignField": "_id",
-            "as": "relevant_documents"
-          }
-        },
-        {
-          "$lookup": {
-            "from": "document_chunks",
-            "localField": "relevant_chunk_ids",
-            "foreignField": "_id",
-            "as": "relevant_chunks"
-          }
-        },
-        {
-          "$project": {
-            "prompt_text": 1,
-            "task_type": 1,
-            "ground_truth_text": 1,
-            "top_k_targets": 1,
-            "relevant_documents": {
-              "_id": 1,
-              "title": 1,
-              "source_type": 1
-            },
-            "relevant_chunks": {
-              "_id": 1,
-              "document_id": 1,
-              "chunking_strategy": 1,
-              "chunk_index": 1,
-              "text": 1
-            }
-          }
-        }
-      ]
+      "collection": "ground_truth_sets",
+      "operation": "findOne",
+      "filter": {
+        "tenant_id": "<tenantId>",
+        "name": "<groundTruthSetName>"
+      },
+      "projection": {
+        "name": 1,
+        "description": 1,
+        "questions.question_id": 1,
+        "questions.query_text": 1,
+        "questions.expected_answer": 1,
+        "questions.relevance_targets": 1,
+        "questions.tags": 1,
+        "created_at": 1
+      }
     },
-    "purpose": "Load a benchmark prompt together with its expected relevant documents/chunks to drive scoring and explanation."
+    "purpose": "Select the benchmark pack of questions and expected relevance targets to drive an evaluation run."
   },
-  "QP10": {
-    "id": "QP10",
-    "name": "Record benchmark run result",
+  "qp_list_benchmark_runs": {
+    "id": "QP13",
+    "name": "List recent benchmark runs for a tenant",
     "serves": [
       "UC3"
     ],
@@ -649,41 +796,185 @@
     ],
     "query": {
       "collection": "benchmark_runs",
-      "operation": "insertOne",
-      "document": {
+      "operation": "find",
+      "filter": {
         "tenant_id": "<tenantId>",
-        "ground_truth_id": "<groundTruthId>",
-        "run_label": "<runLabel>",
-        "system_under_test": "<systemUnderTest>",
-        "retrieval_mode": "<retrievalMode>",
-        "chunking_strategy": "<chunkingStrategy>",
-        "embedding_model": "<embeddingModel>",
-        "candidate_pool_filter": {
-          "document_ids": "<optionalDocumentIds>",
-          "source_types": "<optionalSourceTypes>"
+        "system_under_test": {
+          "$in": [
+            "<optional_systems>"
+          ]
         },
-        "top_k_results": "<topKResultsArray>",
-        "metrics": {
-          "latency_ms": "<latencyMs>",
-          "precision_at_k": "<precisionAtKDocument>",
-          "recall_at_k": "<recallAtKDocument>",
-          "result_count": "<resultCount>"
+        "retrieval_mode": {
+          "$in": [
+            "<optional_modes>"
+          ]
         },
-        "run_timestamp": "<runTimestamp>",
-        "notes": "<notes>"
-      }
+        "chunking_strategy": {
+          "$in": [
+            "<optional_chunking_strategies>"
+          ]
+        },
+        "status": {
+          "$in": [
+            "running",
+            "completed",
+            "failed"
+          ]
+        }
+      },
+      "projection": {
+        "run_name": 1,
+        "system_under_test": 1,
+        "retrieval_mode": 1,
+        "chunking_strategy": 1,
+        "embedding_model": 1,
+        "top_k_values": 1,
+        "aggregate_metrics": 1,
+        "started_at": 1,
+        "completed_at": 1,
+        "status": 1
+      },
+      "sort": {
+        "started_at": -1
+      },
+      "limit": "<page_size>"
     },
-    "purpose": "Persist the measured output of a benchmark execution so results can be compared and reviewed."
+    "purpose": "Populate the evaluation dashboard with recent MongoDB, Elastic-like, and alternative benchmark runs."
   },
-  "QP11": {
-    "id": "QP11",
-    "name": "Compare benchmark runs by system, retrieval mode, and chunking strategy",
+  "qp_compare_benchmark_runs": {
+    "id": "QP14",
+    "name": "Compare aggregate metrics across benchmark runs",
+    "serves": [
+      "UC3"
+    ],
+    "collections": [
+      "benchmark_runs"
+    ],
+    "query": {
+      "collection": "benchmark_runs",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "tenant_id": "<tenantId>",
+            "status": "completed",
+            "system_under_test": {
+              "$in": [
+                "mongodb_voyage",
+                "baseline_elastic_like",
+                "qdrant_like",
+                "other"
+              ]
+            },
+            "retrieval_mode": {
+              "$in": [
+                "vector",
+                "lexical",
+                "hybrid"
+              ]
+            },
+            "chunking_strategy": {
+              "$in": [
+                "fixed_length",
+                "recursive",
+                "semantic",
+                "contextual",
+                null
+              ]
+            }
+          }
+        },
+        {
+          "$project": {
+            "run_name": 1,
+            "system_under_test": 1,
+            "retrieval_mode": 1,
+            "chunking_strategy": 1,
+            "top_k_values": 1,
+            "precision_at_k": "$aggregate_metrics.precision_at_k",
+            "recall_at_k": "$aggregate_metrics.recall_at_k",
+            "avg_latency_ms": "$aggregate_metrics.avg_latency_ms",
+            "p95_latency_ms": "$aggregate_metrics.p95_latency_ms",
+            "query_count": "$aggregate_metrics.query_count",
+            "started_at": 1
+          }
+        },
+        {
+          "$sort": {
+            "system_under_test": 1,
+            "retrieval_mode": 1,
+            "chunking_strategy": 1,
+            "started_at": -1
+          }
+        }
+      ]
+    },
+    "purpose": "Show side-by-side precision, recall, and latency metrics across systems, retrieval modes, and chunking approaches."
+  },
+  "qp_question_level_benchmark_analysis": {
+    "id": "QP15",
+    "name": "Inspect per-question benchmark results and top-K retrieval outcomes",
+    "serves": [
+      "UC3"
+    ],
+    "collections": [
+      "benchmark_runs"
+    ],
+    "query": {
+      "collection": "benchmark_runs",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "_id": "<benchmarkRunId>",
+            "tenant_id": "<tenantId>"
+          }
+        },
+        {
+          "$unwind": "$question_results"
+        },
+        {
+          "$project": {
+            "run_name": 1,
+            "system_under_test": 1,
+            "retrieval_mode": 1,
+            "chunking_strategy": 1,
+            "question_id": "$question_results.question_id",
+            "query_text": "$question_results.query_text",
+            "latency_ms": "$question_results.latency_ms",
+            "top_k": "$question_results.top_k",
+            "precision_at_k": "$question_results.precision_at_k",
+            "recall_at_k": "$question_results.recall_at_k"
+          }
+        },
+        {
+          "$match": {
+            "question_id": {
+              "$in": [
+                "<optional_question_ids>"
+              ]
+            }
+          }
+        },
+        {
+          "$sort": {
+            "question_id": 1
+          }
+        }
+      ]
+    },
+    "purpose": "Drill into how a specific benchmark run performed on each question, including retrieved candidates and relevance flags."
+  },
+  "qp_lookup_benchmark_hits": {
+    "id": "QP16",
+    "name": "Resolve benchmark top-K hits to chunk and document details",
     "serves": [
       "UC3"
     ],
     "collections": [
       "benchmark_runs",
-      "benchmark_ground_truths"
+      "chunks",
+      "documents"
     ],
     "query": {
       "collection": "benchmark_runs",
@@ -691,154 +982,153 @@
       "pipeline": [
         {
           "$match": {
-            "tenant_id": "<tenantId>",
-            "ground_truth_id": {
-              "$in": "<groundTruthIds>"
+            "_id": "<benchmarkRunId>",
+            "tenant_id": "<tenantId>"
+          }
+        },
+        {
+          "$unwind": "$question_results"
+        },
+        {
+          "$match": {
+            "question_results.question_id": "<questionId>"
+          }
+        },
+        {
+          "$unwind": "$question_results.top_k"
+        },
+        {
+          "$lookup": {
+            "from": "chunks",
+            "localField": "question_results.top_k.chunk_id",
+            "foreignField": "_id",
+            "as": "chunk"
+          }
+        },
+        {
+          "$unwind": {
+            "path": "$chunk",
+            "preserveNullAndEmptyArrays": true
+          }
+        },
+        {
+          "$lookup": {
+            "from": "documents",
+            "localField": "question_results.top_k.document_id",
+            "foreignField": "_id",
+            "as": "document"
+          }
+        },
+        {
+          "$unwind": {
+            "path": "$document",
+            "preserveNullAndEmptyArrays": true
+          }
+        },
+        {
+          "$project": {
+            "question_id": "$question_results.question_id",
+            "query_text": "$question_results.query_text",
+            "rank": "$question_results.top_k.rank",
+            "score": "$question_results.top_k.score",
+            "is_relevant": "$question_results.top_k.is_relevant",
+            "chunk._id": 1,
+            "chunk.chunk_index": 1,
+            "chunk.chunking_strategy": 1,
+            "chunk.text": 1,
+            "chunk.contextual_text": 1,
+            "chunk.page_range": 1,
+            "document._id": 1,
+            "document.title": 1,
+            "document.document_type": 1,
+            "document.source_uri": 1
+          }
+        },
+        {
+          "$sort": {
+            "rank": 1
+          }
+        }
+      ]
+    },
+    "purpose": "Explain benchmark results by showing the actual chunk text and source document behind each retrieved hit."
+  },
+  "qp_combined_structured_unstructured_filter_search": {
+    "id": "QP17",
+    "name": "Combine structured metadata filters with unstructured retrieval",
+    "serves": [
+      "UC1"
+    ],
+    "collections": [
+      "chunks",
+      "documents"
+    ],
+    "query": {
+      "collection": "chunks",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$vectorSearch": {
+            "index": "vector_chunks_embedding",
+            "path": "embedding",
+            "queryVector": "<queryEmbedding>",
+            "numCandidates": "<numCandidates>",
+            "limit": "<topK>",
+            "filter": {
+              "tenant_id": "<tenantId>",
+              "chunking_strategy": "<chunkingStrategy>"
             }
           }
         },
         {
           "$lookup": {
-            "from": "benchmark_ground_truths",
-            "localField": "ground_truth_id",
+            "from": "documents",
+            "localField": "document_id",
             "foreignField": "_id",
-            "as": "ground_truth"
+            "as": "document"
           }
         },
         {
-          "$unwind": "$ground_truth"
+          "$unwind": "$document"
+        },
+        {
+          "$match": {
+            "document.status": "processed",
+            "document.document_type": {
+              "$in": [
+                "<optional_document_types>"
+              ]
+            },
+            "document.structured_metadata.author": "<optional_author>",
+            "document.structured_metadata.connector_name": "<optional_connector_name>",
+            "document.tags": {
+              "$all": [
+                "<optional_tags>"
+              ]
+            },
+            "document.structured_metadata.created_source_at": {
+              "$gte": "<optional_start_date>",
+              "$lte": "<optional_end_date>"
+            }
+          }
         },
         {
           "$project": {
-            "ground_truth_id": 1,
-            "prompt_text": "$ground_truth.prompt_text",
-            "system_under_test": 1,
-            "retrieval_mode": 1,
-            "chunking_strategy": 1,
-            "embedding_model": 1,
-            "latency_ms": "$metrics.latency_ms",
-            "precision_at_k": "$metrics.precision_at_k",
-            "recall_at_k": "$metrics.recall_at_k",
-            "result_count": "$metrics.result_count",
-            "top_k_results": 1,
-            "run_timestamp": 1
-          }
-        },
-        {
-          "$sort": {
-            "prompt_text": 1,
-            "system_under_test": 1,
-            "chunking_strategy": 1,
-            "run_timestamp": -1
+            "_id": 1,
+            "document_id": 1,
+            "text": 1,
+            "contextual_text": 1,
+            "score": {
+              "$meta": "vectorSearchScore"
+            },
+            "document.title": 1,
+            "document.document_type": 1,
+            "document.structured_metadata": 1,
+            "document.tags": 1
           }
         }
       ]
     },
-    "purpose": "Provide the side-by-side evidence view across systems and strategies for one or more benchmark prompts."
-  },
-  "QP12": {
-    "id": "QP12",
-    "name": "Summarize benchmark performance across prompts",
-    "serves": [
-      "UC3"
-    ],
-    "collections": [
-      "benchmark_runs"
-    ],
-    "query": {
-      "collection": "benchmark_runs",
-      "operation": "aggregate",
-      "pipeline": [
-        {
-          "$match": {
-            "tenant_id": "<tenantId>",
-            "run_timestamp": {
-              "$gte": "<startTime>",
-              "$lte": "<endTime>"
-            }
-          }
-        },
-        {
-          "$group": {
-            "_id": {
-              "system_under_test": "$system_under_test",
-              "retrieval_mode": "$retrieval_mode",
-              "chunking_strategy": "$chunking_strategy"
-            },
-            "avg_latency_ms": {
-              "$avg": "$metrics.latency_ms"
-            },
-            "avg_precision_at_1": {
-              "$avg": "$metrics.precision_at_k.1"
-            },
-            "avg_precision_at_5": {
-              "$avg": "$metrics.precision_at_k.5"
-            },
-            "avg_precision_at_10": {
-              "$avg": "$metrics.precision_at_k.10"
-            },
-            "avg_precision_at_20": {
-              "$avg": "$metrics.precision_at_k.20"
-            },
-            "avg_recall_at_1": {
-              "$avg": "$metrics.recall_at_k.1"
-            },
-            "avg_recall_at_5": {
-              "$avg": "$metrics.recall_at_k.5"
-            },
-            "avg_recall_at_10": {
-              "$avg": "$metrics.recall_at_k.10"
-            },
-            "avg_recall_at_20": {
-              "$avg": "$metrics.recall_at_k.20"
-            },
-            "run_count": {
-              "$sum": 1
-            }
-          }
-        },
-        {
-          "$sort": {
-            "avg_precision_at_5": -1,
-            "avg_latency_ms": 1
-          }
-        }
-      ]
-    },
-    "purpose": "Produce rolled-up benchmark numbers to identify the best-performing strategy/system combination across the evaluated prompt set."
-  },
-  "QP13": {
-    "id": "QP13",
-    "name": "Retrieve recent benchmark history for a prompt",
-    "serves": [
-      "UC3"
-    ],
-    "collections": [
-      "benchmark_runs"
-    ],
-    "query": {
-      "collection": "benchmark_runs",
-      "operation": "find",
-      "filter": {
-        "tenant_id": "<tenantId>",
-        "ground_truth_id": "<groundTruthId>"
-      },
-      "projection": {
-        "system_under_test": 1,
-        "retrieval_mode": 1,
-        "chunking_strategy": 1,
-        "embedding_model": 1,
-        "metrics": 1,
-        "top_k_results": 1,
-        "run_label": 1,
-        "run_timestamp": 1,
-        "notes": 1
-      },
-      "sort": {
-        "run_timestamp": -1
-      },
-      "limit": 20
-    },
-    "purpose": "Review repeated executions of the same benchmark prompt over time during the demo."
+    "purpose": "Demonstrate the customer\u2019s interest in combining structured filters with semantic retrieval over unstructured content."
   }
 }
