@@ -1,0 +1,486 @@
+{
+  "collections": [
+    {
+      "name": "support_tickets",
+      "description": "Internal support requests being triaged. Traces to business entity 'Support Ticket', use case uc1, requirements fr2/fr3, and user journey uj1.",
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "ticket_number",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "requester",
+          "type": "object",
+          "required": false,
+          "fields": [
+            {
+              "name": "employee_id",
+              "type": "string",
+              "required": false
+            },
+            {
+              "name": "name",
+              "type": "string",
+              "required": false
+            },
+            {
+              "name": "department",
+              "type": "string",
+              "required": false
+            }
+          ]
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "new",
+            "in_triage",
+            "triaged",
+            "closed"
+          ]
+        },
+        {
+          "name": "priority",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "urgent"
+          ]
+        },
+        {
+          "name": "category",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "updated_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "latest_triage_run_id",
+          "type": "objectId",
+          "required": false
+        }
+      ],
+      "embedding_vs_references": {
+        "embedded": [
+          {
+            "field": "requester",
+            "why": "Requester attributes are small, ticket-scoped, and read together with the ticket during triage."
+          }
+        ],
+        "references": [
+          {
+            "field": "latest_triage_run_id",
+            "target_collection": "triage_runs",
+            "why": "Workflow execution data can be large and multi-event; referencing avoids frequent ticket rewrites during streaming progress updates."
+          }
+        ]
+      },
+      "relationships": [
+        {
+          "type": "one_to_many",
+          "to_collection": "triage_runs",
+          "local_field": "_id",
+          "foreign_field": "ticket_id",
+          "why": "A support ticket may be processed by multiple verification/triage executions over time."
+        }
+      ]
+    },
+    {
+      "name": "triage_runs",
+      "description": "Execution/verification artifact for an end-to-end streaming triage workflow. Added because the spec explicitly emphasizes streaming verification and longer timeout behavior; aligns with review warning issue3.",
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "ticket_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "run_type",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "verification",
+            "triage"
+          ]
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "queued",
+            "running",
+            "completed",
+            "failed",
+            "timed_out",
+            "cancelled"
+          ]
+        },
+        {
+          "name": "started_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "completed_at",
+          "type": "date",
+          "required": false
+        },
+        {
+          "name": "timeout_ms",
+          "type": "int",
+          "required": true
+        },
+        {
+          "name": "duration_ms",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "streaming",
+          "type": "object",
+          "required": true,
+          "fields": [
+            {
+              "name": "enabled",
+              "type": "bool",
+              "required": true
+            },
+            {
+              "name": "last_event_at",
+              "type": "date",
+              "required": false
+            },
+            {
+              "name": "event_count",
+              "type": "int",
+              "required": true
+            },
+            {
+              "name": "completion_reason",
+              "type": "string",
+              "required": false,
+              "enum": [
+                "completed",
+                "failed",
+                "timed_out",
+                "cancelled"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "verification_result",
+          "type": "object",
+          "required": false,
+          "fields": [
+            {
+              "name": "success",
+              "type": "bool",
+              "required": false
+            },
+            {
+              "name": "notes",
+              "type": "string",
+              "required": false
+            }
+          ]
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "updated_at",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "embedding_vs_references": {
+        "embedded": [
+          {
+            "field": "streaming",
+            "why": "Streaming state is small, tightly coupled to the run, and updated/read with the run document."
+          },
+          {
+            "field": "verification_result",
+            "why": "Verification outcome is specific to the run and not reused independently."
+          }
+        ],
+        "references": [
+          {
+            "field": "ticket_id",
+            "target_collection": "support_tickets",
+            "why": "Runs belong to tickets but are separately updated throughout execution; separate collection supports append-heavy workflow tracking."
+          }
+        ]
+      },
+      "relationships": [
+        {
+          "type": "many_to_one",
+          "to_collection": "support_tickets",
+          "local_field": "ticket_id",
+          "foreign_field": "_id",
+          "why": "Each run belongs to a single support ticket."
+        },
+        {
+          "type": "one_to_many",
+          "to_collection": "guidance_suggestions",
+          "local_field": "_id",
+          "foreign_field": "triage_run_id",
+          "why": "A run can emit one or more AI guidance suggestions during streaming execution."
+        },
+        {
+          "type": "one_to_many",
+          "to_collection": "triage_stream_events",
+          "local_field": "_id",
+          "foreign_field": "triage_run_id",
+          "why": "A run produces an ordered stream of workflow events for end-to-end verification."
+        }
+      ]
+    },
+    {
+      "name": "guidance_suggestions",
+      "description": "AI-generated guidance associated with support-ticket triage. Traces to business entity 'Guidance Suggestion', fr3, ai1, bo3, sc2.",
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "ticket_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "triage_run_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "generated_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "guidance_text",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "guidance_type",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "resolution_step",
+            "categorization",
+            "prioritization",
+            "routing",
+            "general"
+          ]
+        },
+        {
+          "name": "confidence_score",
+          "type": "double",
+          "required": false
+        },
+        {
+          "name": "model_info",
+          "type": "object",
+          "required": false,
+          "fields": [
+            {
+              "name": "provider",
+              "type": "string",
+              "required": false
+            },
+            {
+              "name": "model_name",
+              "type": "string",
+              "required": false
+            },
+            {
+              "name": "model_version",
+              "type": "string",
+              "required": false
+            }
+          ]
+        },
+        {
+          "name": "applied",
+          "type": "bool",
+          "required": false
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "embedding_vs_references": {
+        "embedded": [
+          {
+            "field": "model_info",
+            "why": "Small metadata about generation is useful for audit/debug and always read with the suggestion."
+          }
+        ],
+        "references": [
+          {
+            "field": "ticket_id",
+            "target_collection": "support_tickets",
+            "why": "Suggestions are queried by ticket during triage review."
+          },
+          {
+            "field": "triage_run_id",
+            "target_collection": "triage_runs",
+            "why": "Suggestions are tied to the specific workflow execution that generated them."
+          }
+        ]
+      },
+      "relationships": [
+        {
+          "type": "many_to_one",
+          "to_collection": "support_tickets",
+          "local_field": "ticket_id",
+          "foreign_field": "_id",
+          "why": "Many suggestions can relate to one ticket across runs."
+        },
+        {
+          "type": "many_to_one",
+          "to_collection": "triage_runs",
+          "local_field": "triage_run_id",
+          "foreign_field": "_id",
+          "why": "Many suggestions can be produced within one run."
+        }
+      ]
+    },
+    {
+      "name": "triage_stream_events",
+      "description": "Append-only event log for streaming workflow progress, used to validate end-to-end streaming behavior and timeout completion. Traces to fr1, fr4, bo1, sc1, sc3.",
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "triage_run_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "ticket_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "sequence",
+          "type": "int",
+          "required": true
+        },
+        {
+          "name": "event_type",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "ticket_received",
+            "triage_started",
+            "guidance_requested",
+            "guidance_generated",
+            "verification_checkpoint",
+            "run_completed",
+            "run_failed",
+            "timeout_warning"
+          ]
+        },
+        {
+          "name": "event_time",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "payload",
+          "type": "object",
+          "required": false
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "embedding_vs_references": {
+        "embedded": [
+          {
+            "field": "payload",
+            "why": "Event-specific details vary by event type and are naturally stored with the event itself."
+          }
+        ],
+        "references": [
+          {
+            "field": "triage_run_id",
+            "target_collection": "triage_runs",
+            "why": "Events are streamed per run and commonly retrieved in sequence for a specific execution."
+          },
+          {
+            "field": "ticket_id",
+            "target_collection": "support_tickets",
+            "why": "Allows filtering events by ticket when reviewing the overall triage history."
+          }
+        ]
+      },
+      "relationships": [
+        {
+          "type": "many_to_one",
+          "to_collection": "triage_runs",
+          "local_field": "triage_run_id",
+          "foreign_field": "_id",
+          "why": "Many stream events belong to a single triage run."
+        },
+        {
+          "type": "many_to_one",
+          "to_collection": "support_tickets",
+          "local_field": "ticket_id",
+          "foreign_field": "_id",
+          "why": "Events are also attributable to the originating support ticket."
+        }
+      ]
+    }
+  ]
+}
