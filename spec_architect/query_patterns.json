@@ -1,0 +1,587 @@
+{
+  "qp1_get_ticket_triage_workspace": {
+    "id": "qp1_get_ticket_triage_workspace",
+    "name": "Get support ticket triage workspace with latest run and guidance",
+    "serves": [
+      "uc1",
+      "uj1"
+    ],
+    "collections": [
+      "support_tickets",
+      "triage_runs",
+      "guidance_suggestions"
+    ],
+    "for": "Load a ticket for triage review, including its current/latest triage run and AI-suggested guidance.",
+    "query": {
+      "collection": "support_tickets",
+      "aggregate": [
+        {
+          "$match": {
+            "_id": "<ticketId>"
+          }
+        },
+        {
+          "$lookup": {
+            "from": "triage_runs",
+            "localField": "latest_triage_run_id",
+            "foreignField": "_id",
+            "as": "latest_run"
+          }
+        },
+        {
+          "$unwind": {
+            "path": "$latest_run",
+            "preserveNullAndEmptyArrays": true
+          }
+        },
+        {
+          "$lookup": {
+            "from": "guidance_suggestions",
+            "let": {
+              "ticketId": "$_id",
+              "runId": "$latest_run._id"
+            },
+            "pipeline": [
+              {
+                "$match": {
+                  "$expr": {
+                    "$and": [
+                      {
+                        "$eq": [
+                          "$ticket_id",
+                          "$$ticketId"
+                        ]
+                      },
+                      {
+                        "$cond": [
+                          {
+                            "$ifNull": [
+                              "$$runId",
+                              false
+                            ]
+                          },
+                          {
+                            "$eq": [
+                              "$triage_run_id",
+                              "$$runId"
+                            ]
+                          },
+                          true
+                        ]
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "$sort": {
+                  "generated_at": -1
+                }
+              },
+              {
+                "$project": {
+                  "_id": 1,
+                  "generated_at": 1,
+                  "guidance_text": 1,
+                  "guidance_type": 1,
+                  "confidence_score": 1,
+                  "applied": 1,
+                  "model_info": 1
+                }
+              }
+            ],
+            "as": "guidance_suggestions"
+          }
+        },
+        {
+          "$project": {
+            "_id": 1,
+            "ticket_number": 1,
+            "title": 1,
+            "description": 1,
+            "requester": 1,
+            "status": 1,
+            "priority": 1,
+            "category": 1,
+            "created_at": 1,
+            "updated_at": 1,
+            "latest_run": {
+              "_id": 1,
+              "run_type": "$latest_run.run_type",
+              "status": "$latest_run.status",
+              "started_at": "$latest_run.started_at",
+              "completed_at": "$latest_run.completed_at",
+              "timeout_ms": "$latest_run.timeout_ms",
+              "duration_ms": "$latest_run.duration_ms",
+              "streaming": "$latest_run.streaming",
+              "verification_result": "$latest_run.verification_result"
+            },
+            "guidance_suggestions": 1
+          }
+        }
+      ]
+    }
+  },
+  "qp2_get_run_event_stream": {
+    "id": "qp2_get_run_event_stream",
+    "name": "Get ordered event stream for a triage run",
+    "serves": [
+      "uc1",
+      "uj1",
+      "fr1",
+      "fr4",
+      "sc1",
+      "sc3"
+    ],
+    "collections": [
+      "triage_stream_events"
+    ],
+    "for": "Retrieve the end-to-end streaming events for a specific verification/triage run in sequence to validate workflow progression and timeout behavior.",
+    "query": {
+      "collection": "triage_stream_events",
+      "find": {
+        "triage_run_id": "<triageRunId>"
+      },
+      "sort": {
+        "sequence": 1
+      },
+      "projection": {
+        "_id": 1,
+        "triage_run_id": 1,
+        "ticket_id": 1,
+        "sequence": 1,
+        "event_type": 1,
+        "event_time": 1,
+        "payload": 1
+      }
+    }
+  },
+  "qp3_get_ticket_run_history": {
+    "id": "qp3_get_ticket_run_history",
+    "name": "Get triage/verification run history for a ticket",
+    "serves": [
+      "uc1",
+      "uj1",
+      "sc1",
+      "sc3"
+    ],
+    "collections": [
+      "triage_runs"
+    ],
+    "for": "Review all verification or triage runs for a given ticket, including streaming progress and completion/timeout outcomes.",
+    "query": {
+      "collection": "triage_runs",
+      "find": {
+        "ticket_id": "<ticketId>"
+      },
+      "sort": {
+        "started_at": -1
+      },
+      "projection": {
+        "_id": 1,
+        "ticket_id": 1,
+        "run_type": 1,
+        "status": 1,
+        "started_at": 1,
+        "completed_at": 1,
+        "timeout_ms": 1,
+        "duration_ms": 1,
+        "streaming": 1,
+        "verification_result": 1,
+        "created_at": 1,
+        "updated_at": 1
+      }
+    }
+  },
+  "qp4_get_guidance_for_run": {
+    "id": "qp4_get_guidance_for_run",
+    "name": "Get AI guidance suggestions for a triage run",
+    "serves": [
+      "uc1",
+      "uj1",
+      "fr3",
+      "ai1",
+      "sc2"
+    ],
+    "collections": [
+      "guidance_suggestions"
+    ],
+    "for": "Review all AI-generated guidance emitted during a particular triage run.",
+    "query": {
+      "collection": "guidance_suggestions",
+      "find": {
+        "triage_run_id": "<triageRunId>"
+      },
+      "sort": {
+        "generated_at": 1
+      },
+      "projection": {
+        "_id": 1,
+        "ticket_id": 1,
+        "triage_run_id": 1,
+        "generated_at": 1,
+        "guidance_text": 1,
+        "guidance_type": 1,
+        "confidence_score": 1,
+        "model_info": 1,
+        "applied": 1
+      }
+    }
+  },
+  "qp5_list_active_streaming_runs": {
+    "id": "qp5_list_active_streaming_runs",
+    "name": "List active streaming triage runs",
+    "serves": [
+      "uc1",
+      "fr1",
+      "fr4"
+    ],
+    "collections": [
+      "triage_runs",
+      "support_tickets"
+    ],
+    "for": "Monitor currently running streaming verification/triage executions and the tickets they belong to.",
+    "query": {
+      "collection": "triage_runs",
+      "aggregate": [
+        {
+          "$match": {
+            "status": "running",
+            "streaming.enabled": true
+          }
+        },
+        {
+          "$lookup": {
+            "from": "support_tickets",
+            "localField": "ticket_id",
+            "foreignField": "_id",
+            "as": "ticket"
+          }
+        },
+        {
+          "$unwind": "$ticket"
+        },
+        {
+          "$project": {
+            "_id": 1,
+            "ticket_id": 1,
+            "run_type": 1,
+            "status": 1,
+            "started_at": 1,
+            "timeout_ms": 1,
+            "duration_ms": 1,
+            "streaming": 1,
+            "ticket.ticket_number": 1,
+            "ticket.title": 1,
+            "ticket.status": 1,
+            "ticket.priority": 1
+          }
+        },
+        {
+          "$sort": {
+            "started_at": -1
+          }
+        }
+      ]
+    }
+  },
+  "qp6_find_runs_near_or_over_timeout": {
+    "id": "qp6_find_runs_near_or_over_timeout",
+    "name": "Find runs near or over timeout threshold",
+    "serves": [
+      "fr4",
+      "sc3"
+    ],
+    "collections": [
+      "triage_runs"
+    ],
+    "for": "Identify long-running executions that are approaching or have exceeded their timeout window during verification.",
+    "query": {
+      "collection": "triage_runs",
+      "aggregate": [
+        {
+          "$match": {
+            "status": {
+              "$in": [
+                "queued",
+                "running",
+                "timed_out",
+                "failed",
+                "completed"
+              ]
+            },
+            "streaming.enabled": true
+          }
+        },
+        {
+          "$addFields": {
+            "elapsed_ms": {
+              "$cond": [
+                {
+                  "$in": [
+                    "$status",
+                    [
+                      "completed",
+                      "failed",
+                      "timed_out",
+                      "cancelled"
+                    ]
+                  ]
+                },
+                {
+                  "$ifNull": [
+                    "$duration_ms",
+                    {
+                      "$subtract": [
+                        "$completed_at",
+                        "$started_at"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "$subtract": [
+                    "$$NOW",
+                    "$started_at"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "$addFields": {
+            "timeout_utilization_pct": {
+              "$cond": [
+                {
+                  "$gt": [
+                    "$timeout_ms",
+                    0
+                  ]
+                },
+                {
+                  "$multiply": [
+                    {
+                      "$divide": [
+                        "$elapsed_ms",
+                        "$timeout_ms"
+                      ]
+                    },
+                    100
+                  ]
+                },
+                null
+              ]
+            }
+          }
+        },
+        {
+          "$match": {
+            "$or": [
+              {
+                "status": "timed_out"
+              },
+              {
+                "timeout_utilization_pct": {
+                  "$gte": 80
+                }
+              }
+            ]
+          }
+        },
+        {
+          "$project": {
+            "_id": 1,
+            "ticket_id": 1,
+            "status": 1,
+            "started_at": 1,
+            "completed_at": 1,
+            "timeout_ms": 1,
+            "duration_ms": 1,
+            "elapsed_ms": 1,
+            "timeout_utilization_pct": 1,
+            "streaming": 1,
+            "verification_result": 1
+          }
+        },
+        {
+          "$sort": {
+            "timeout_utilization_pct": -1,
+            "started_at": 1
+          }
+        }
+      ]
+    }
+  },
+  "qp7_get_verification_summary": {
+    "id": "qp7_get_verification_summary",
+    "name": "Get verification summary for a triage run",
+    "serves": [
+      "bo1",
+      "fr1",
+      "fr4",
+      "sc1",
+      "sc3"
+    ],
+    "collections": [
+      "triage_runs",
+      "triage_stream_events",
+      "guidance_suggestions"
+    ],
+    "for": "Summarize whether a verification run completed successfully, how many stream events occurred, whether guidance was generated, and whether timeout limits were respected.",
+    "query": {
+      "collection": "triage_runs",
+      "aggregate": [
+        {
+          "$match": {
+            "_id": "<triageRunId>",
+            "run_type": "verification"
+          }
+        },
+        {
+          "$lookup": {
+            "from": "triage_stream_events",
+            "localField": "_id",
+            "foreignField": "triage_run_id",
+            "as": "events"
+          }
+        },
+        {
+          "$lookup": {
+            "from": "guidance_suggestions",
+            "localField": "_id",
+            "foreignField": "triage_run_id",
+            "as": "guidance"
+          }
+        },
+        {
+          "$addFields": {
+            "actual_event_count": {
+              "$size": "$events"
+            },
+            "guidance_count": {
+              "$size": "$guidance"
+            },
+            "elapsed_ms": {
+              "$cond": [
+                {
+                  "$in": [
+                    "$status",
+                    [
+                      "completed",
+                      "failed",
+                      "timed_out",
+                      "cancelled"
+                    ]
+                  ]
+                },
+                {
+                  "$ifNull": [
+                    "$duration_ms",
+                    {
+                      "$subtract": [
+                        "$completed_at",
+                        "$started_at"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "$subtract": [
+                    "$$NOW",
+                    "$started_at"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "$project": {
+            "_id": 1,
+            "ticket_id": 1,
+            "status": 1,
+            "started_at": 1,
+            "completed_at": 1,
+            "timeout_ms": 1,
+            "duration_ms": 1,
+            "elapsed_ms": 1,
+            "streaming_enabled": "$streaming.enabled",
+            "recorded_event_count": "$streaming.event_count",
+            "actual_event_count": 1,
+            "guidance_count": 1,
+            "completion_reason": "$streaming.completion_reason",
+            "verification_success": "$verification_result.success",
+            "verification_notes": "$verification_result.notes",
+            "completed_within_timeout": {
+              "$cond": [
+                {
+                  "$and": [
+                    {
+                      "$ne": [
+                        "$elapsed_ms",
+                        null
+                      ]
+                    },
+                    {
+                      "$ne": [
+                        "$timeout_ms",
+                        null
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "$lte": [
+                    "$elapsed_ms",
+                    "$timeout_ms"
+                  ]
+                },
+                null
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "qp8_list_tickets_needing_triage": {
+    "id": "qp8_list_tickets_needing_triage",
+    "name": "List tickets needing triage attention",
+    "serves": [
+      "uc1",
+      "uj1",
+      "fr2"
+    ],
+    "collections": [
+      "support_tickets"
+    ],
+    "for": "Show internal support tickets that are new or currently in triage so the support team can select work items.",
+    "query": {
+      "collection": "support_tickets",
+      "find": {
+        "status": {
+          "$in": [
+            "new",
+            "in_triage"
+          ]
+        }
+      },
+      "sort": {
+        "created_at": 1
+      },
+      "projection": {
+        "_id": 1,
+        "ticket_number": 1,
+        "title": 1,
+        "requester": 1,
+        "status": 1,
+        "priority": 1,
+        "category": 1,
+        "created_at": 1,
+        "updated_at": 1,
+        "latest_triage_run_id": 1
+      }
+    }
+  }
+}
