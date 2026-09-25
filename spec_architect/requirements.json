@@ -1,0 +1,1003 @@
+{
+  "summary": {
+    "scope": "BRMS execution logging POV focused on scalable storage, retrieval, search, analytics, dashboarding, customer-level operational controls, and optional future-ready insight persistence.",
+    "authoritative_artifacts": [
+      "InitialPOVSpec",
+      "data_model",
+      "query_patterns",
+      "api_contract",
+      "frontend_contract"
+    ]
+  },
+  "by_requirement": {
+    "BO-1": {
+      "description": "Control rapid growth of execution log data and avoid relational databases growing into terabytes too quickly.",
+      "collections": [
+        "execution_requests",
+        "execution_rule_steps",
+        "customers"
+      ],
+      "query_patterns": [
+        "QP-012"
+      ],
+      "api_endpoints": [
+        "listCustomerLoggingSettings",
+        "updateCustomer"
+      ],
+      "frontend_pages": [
+        "customer-logging-settings-page",
+        "customer-pov-admin-page"
+      ],
+      "notes": "Addressed primarily through the MongoDB-native log model split between request summaries and incremental rule steps, plus customer retention visibility/settings."
+    },
+    "BO-2": {
+      "description": "Enable analytics on rule execution data to understand impact of policy/rule-definition changes.",
+      "collections": [
+        "execution_requests",
+        "execution_rule_steps",
+        "policy_versions",
+        "policies",
+        "execution_insights"
+      ],
+      "query_patterns": [
+        "QP-007",
+        "QP-008",
+        "QP-009",
+        "QP-014",
+        "QP-015"
+      ],
+      "api_endpoints": [
+        "analyzeOutcomesByPolicyVersion",
+        "comparePolicyVersions",
+        "getTopRulesForRejectedOutcomes",
+        "getPolicyVersionsForComparison",
+        "getExecutionInsights",
+        "createExecutionInsight"
+      ],
+      "frontend_pages": [
+        "policy-outcomes-by-version-page",
+        "policy-version-compare-page",
+        "rejection-rules-page",
+        "execution-insights-query-page",
+        "execution-insight-create-page"
+      ]
+    },
+    "BO-3": {
+      "description": "Provide reports and dashboards on execution-log data for customer/business analysis.",
+      "collections": [
+        "execution_requests",
+        "execution_insights"
+      ],
+      "query_patterns": [
+        "QP-010",
+        "QP-011",
+        "QP-015"
+      ],
+      "api_endpoints": [
+        "getDashboardSummaryByDay",
+        "getDashboardBreakdownBySegment",
+        "getExecutionInsights",
+        "createExecutionInsight"
+      ],
+      "frontend_pages": [
+        "execution-dashboard-summary-page",
+        "execution-dashboard-segment-page",
+        "execution-insights-query-page",
+        "execution-insight-create-page"
+      ]
+    },
+    "BO-4": {
+      "description": "Make execution-log JSON content searchable and filterable at speed.",
+      "collections": [
+        "execution_requests",
+        "execution_rule_steps"
+      ],
+      "query_patterns": [
+        "QP-004",
+        "QP-005",
+        "QP-006"
+      ],
+      "api_endpoints": [
+        "searchExecutionRequestsByAttribute",
+        "searchRuleStepsByRuleAndVariable",
+        "searchExecutionContentByDynamicPath"
+      ],
+      "frontend_pages": [
+        "execution-search-by-attribute-page",
+        "rule-step-search-page",
+        "execution-json-path-search-page"
+      ]
+    },
+    "BO-5": {
+      "description": "Demonstrate how MongoDB can add value and support potential productization.",
+      "collections": [
+        "customers",
+        "policies",
+        "policy_versions",
+        "execution_requests",
+        "execution_rule_steps",
+        "execution_insights"
+      ],
+      "query_patterns": [
+        "QP-001",
+        "QP-003",
+        "QP-004",
+        "QP-007",
+        "QP-010",
+        "QP-012",
+        "QP-015"
+      ],
+      "api_endpoints": [
+        "getExecutionRequest",
+        "getExecutionRequestDrilldown",
+        "searchExecutionRequestsByAttribute",
+        "analyzeOutcomesByPolicyVersion",
+        "getDashboardSummaryByDay",
+        "listCustomerLoggingSettings",
+        "getExecutionInsights"
+      ],
+      "frontend_pages": [
+        "customer-logging-settings-page",
+        "execution-request-lookup-page",
+        "execution-request-drilldown-page",
+        "execution-search-by-attribute-page",
+        "execution-dashboard-summary-page",
+        "policy-outcomes-by-version-page",
+        "execution-insights-query-page"
+      ]
+    },
+    "FR-1": {
+      "description": "Capture execution logs for each request including data passed for auditing.",
+      "collections": [
+        "execution_requests"
+      ],
+      "query_patterns": [
+        "QP-001",
+        "QP-003"
+      ],
+      "api_endpoints": [
+        "getExecutionRequest",
+        "getExecutionRequestDrilldown"
+      ],
+      "frontend_pages": [
+        "execution-request-lookup-page",
+        "execution-request-drilldown-page"
+      ]
+    },
+    "FR-2": {
+      "description": "Store both request JSON input and response JSON output.",
+      "collections": [
+        "execution_requests"
+      ],
+      "query_patterns": [
+        "QP-001",
+        "QP-003",
+        "QP-006"
+      ],
+      "api_endpoints": [
+        "getExecutionRequest",
+        "getExecutionRequestDrilldown",
+        "searchExecutionContentByDynamicPath"
+      ],
+      "frontend_pages": [
+        "execution-request-lookup-page",
+        "execution-request-drilldown-page",
+        "execution-json-path-search-page"
+      ]
+    },
+    "FR-3": {
+      "description": "Track detailed rule execution steps with multiple rows/documents per request.",
+      "collections": [
+        "execution_rule_steps"
+      ],
+      "query_patterns": [
+        "QP-002",
+        "QP-003"
+      ],
+      "api_endpoints": [
+        "getExecutionRequestRuleSteps",
+        "getExecutionRequestDrilldown"
+      ],
+      "frontend_pages": [
+        "execution-request-drilldown-page"
+      ]
+    },
+    "FR-4": {
+      "description": "Support variable numbers of execution-log rows per request.",
+      "collections": [
+        "execution_rule_steps",
+        "execution_requests"
+      ],
+      "query_patterns": [
+        "QP-002",
+        "QP-003"
+      ],
+      "api_endpoints": [
+        "getExecutionRequestRuleSteps",
+        "getExecutionRequestDrilldown"
+      ],
+      "frontend_pages": [
+        "execution-request-drilldown-page"
+      ]
+    },
+    "FR-5": {
+      "description": "Support nested, array-based, and complex JSON payloads.",
+      "collections": [
+        "execution_requests",
+        "execution_rule_steps"
+      ],
+      "query_patterns": [
+        "QP-001",
+        "QP-003",
+        "QP-006"
+      ],
+      "api_endpoints": [
+        "getExecutionRequest",
+        "getExecutionRequestDrilldown",
+        "searchExecutionContentByDynamicPath"
+      ],
+      "frontend_pages": [
+        "execution-request-lookup-page",
+        "execution-request-drilldown-page",
+        "execution-json-path-search-page"
+      ]
+    },
+    "FR-6": {
+      "description": "Ingest log records asynchronously so rule execution does not wait on logging.",
+      "collections": [
+        "execution_rule_steps",
+        "execution_requests"
+      ],
+      "query_patterns": [],
+      "api_endpoints": [],
+      "frontend_pages": [],
+      "notes": "Satisfied by the data model\u2019s separation of request and append-heavy rule-step collections and by the POV scope/API omission of synchronous public log-write endpoints."
+    },
+    "FR-7": {
+      "description": "Support concurrent execution/logging workloads.",
+      "collections": [
+        "execution_rule_steps",
+        "execution_requests"
+      ],
+      "query_patterns": [],
+      "api_endpoints": [],
+      "frontend_pages": [],
+      "notes": "Primarily an ingestion/runtime concern supported by the write-optimized collection design; not surfaced as a user-facing read endpoint."
+    },
+    "FR-8": {
+      "description": "Create log entries incrementally for every rule execution.",
+      "collections": [
+        "execution_rule_steps",
+        "execution_requests"
+      ],
+      "query_patterns": [
+        "QP-002",
+        "QP-003"
+      ],
+      "api_endpoints": [
+        "getExecutionRequestRuleSteps",
+        "getExecutionRequestDrilldown"
+      ],
+      "frontend_pages": [
+        "execution-request-drilldown-page"
+      ]
+    },
+    "FR-9": {
+      "description": "Provide a UI within the product to view execution logs.",
+      "collections": [
+        "execution_requests",
+        "execution_rule_steps",
+        "admin_users"
+      ],
+      "query_patterns": [
+        "QP-001",
+        "QP-002",
+        "QP-003",
+        "QP-013"
+      ],
+      "api_endpoints": [
+        "getExecutionRequest",
+        "getExecutionRequestRuleSteps",
+        "getExecutionRequestDrilldown",
+        "listAuthorizedAdminUsers"
+      ],
+      "frontend_pages": [
+        "execution-request-lookup-page",
+        "execution-request-drilldown-page",
+        "admin-users-page"
+      ]
+    },
+    "FR-10": {
+      "description": "Provide APIs over execution-log data for implementation/delivery teams.",
+      "collections": [
+        "execution_requests",
+        "execution_rule_steps",
+        "policy_versions",
+        "execution_insights",
+        "admin_users"
+      ],
+      "query_patterns": [
+        "QP-001",
+        "QP-002",
+        "QP-004",
+        "QP-005",
+        "QP-006",
+        "QP-007",
+        "QP-008",
+        "QP-009",
+        "QP-010",
+        "QP-011",
+        "QP-014",
+        "QP-015"
+      ],
+      "api_endpoints": [
+        "getExecutionRequest",
+        "getExecutionRequestRuleSteps",
+        "searchExecutionRequestsByAttribute",
+        "searchRuleStepsByRuleAndVariable",
+        "searchExecutionContentByDynamicPath",
+        "analyzeOutcomesByPolicyVersion",
+        "comparePolicyVersions",
+        "getTopRulesForRejectedOutcomes",
+        "getDashboardSummaryByDay",
+        "getDashboardBreakdownBySegment",
+        "getPolicyVersionsForComparison",
+        "getExecutionInsights"
+      ],
+      "frontend_pages": [
+        "execution-request-lookup-page",
+        "execution-request-drilldown-page",
+        "execution-search-by-attribute-page",
+        "rule-step-search-page",
+        "execution-json-path-search-page",
+        "execution-dashboard-summary-page",
+        "execution-dashboard-segment-page",
+        "policy-outcomes-by-version-page",
+        "policy-version-compare-page",
+        "rejection-rules-page",
+        "execution-insights-query-page"
+      ]
+    },
+    "FR-11": {
+      "description": "Allow retrieval of all rule-level execution details for a request using request/correlation ID.",
+      "collections": [
+        "execution_requests",
+        "execution_rule_steps"
+      ],
+      "query_patterns": [
+        "QP-001",
+        "QP-002",
+        "QP-003"
+      ],
+      "api_endpoints": [
+        "getExecutionRequest",
+        "getExecutionRequestRuleSteps",
+        "getExecutionRequestDrilldown"
+      ],
+      "frontend_pages": [
+        "execution-request-lookup-page",
+        "execution-request-drilldown-page"
+      ]
+    },
+    "FR-12": {
+      "description": "Restrict access to detailed execution data to admins or authorized users.",
+      "collections": [
+        "admin_users"
+      ],
+      "query_patterns": [
+        "QP-013"
+      ],
+      "api_endpoints": [
+        "listAuthorizedAdminUsers",
+        "createAdminUser",
+        "updateAdminUser"
+      ],
+      "frontend_pages": [
+        "admin-users-page"
+      ],
+      "notes": "The API contract also states all endpoints are intended for authorized admin or implementation-team use, though detailed auth design is out of scope."
+    },
+    "FR-13": {
+      "description": "Allow rule-execution services to be consumed by external customer applications through exposed service endpoints.",
+      "collections": [
+        "policies"
+      ],
+      "query_patterns": [],
+      "api_endpoints": [
+        "createPolicy",
+        "updatePolicy"
+      ],
+      "frontend_pages": [
+        "policy-pov-admin-page"
+      ],
+      "notes": "Service metadata is represented by `service_name` and `service_endpoint` on policies. Actual invocation APIs are explicitly out of scope in the authoritative API contract."
+    },
+    "FR-14": {
+      "description": "Support searching within logged execution content based on rules and variable values.",
+      "collections": [
+        "execution_requests",
+        "execution_rule_steps"
+      ],
+      "query_patterns": [
+        "QP-004",
+        "QP-005",
+        "QP-006"
+      ],
+      "api_endpoints": [
+        "searchExecutionRequestsByAttribute",
+        "searchRuleStepsByRuleAndVariable",
+        "searchExecutionContentByDynamicPath"
+      ],
+      "frontend_pages": [
+        "execution-search-by-attribute-page",
+        "rule-step-search-page",
+        "execution-json-path-search-page"
+      ]
+    },
+    "FR-15": {
+      "description": "Support analytics comparing policy versions/definitions to explain changes in outcomes.",
+      "collections": [
+        "execution_requests",
+        "execution_rule_steps",
+        "policy_versions",
+        "execution_insights"
+      ],
+      "query_patterns": [
+        "QP-007",
+        "QP-008",
+        "QP-009",
+        "QP-014",
+        "QP-015"
+      ],
+      "api_endpoints": [
+        "analyzeOutcomesByPolicyVersion",
+        "comparePolicyVersions",
+        "getTopRulesForRejectedOutcomes",
+        "getPolicyVersionsForComparison",
+        "getExecutionInsights",
+        "createExecutionInsight"
+      ],
+      "frontend_pages": [
+        "policy-outcomes-by-version-page",
+        "policy-version-compare-page",
+        "rejection-rules-page",
+        "execution-insights-query-page",
+        "execution-insight-create-page"
+      ]
+    },
+    "FR-16": {
+      "description": "Support reporting and visualization by customer attributes or execution parameters.",
+      "collections": [
+        "execution_requests",
+        "execution_insights"
+      ],
+      "query_patterns": [
+        "QP-010",
+        "QP-011",
+        "QP-015"
+      ],
+      "api_endpoints": [
+        "getDashboardSummaryByDay",
+        "getDashboardBreakdownBySegment",
+        "getExecutionInsights"
+      ],
+      "frontend_pages": [
+        "execution-dashboard-summary-page",
+        "execution-dashboard-segment-page",
+        "execution-insights-query-page"
+      ]
+    },
+    "FR-17": {
+      "description": "Support optional enablement/disablement of execution logging by customer.",
+      "collections": [
+        "customers"
+      ],
+      "query_patterns": [
+        "QP-012"
+      ],
+      "api_endpoints": [
+        "listCustomerLoggingSettings",
+        "createCustomer",
+        "updateCustomer"
+      ],
+      "frontend_pages": [
+        "customer-logging-settings-page",
+        "customer-pov-admin-page"
+      ]
+    },
+    "FR-18": {
+      "description": "Support retention management/purging of execution logs based on customer decisions.",
+      "collections": [
+        "customers",
+        "execution_requests"
+      ],
+      "query_patterns": [
+        "QP-012"
+      ],
+      "api_endpoints": [
+        "listCustomerLoggingSettings",
+        "createCustomer",
+        "updateCustomer"
+      ],
+      "frontend_pages": [
+        "customer-logging-settings-page",
+        "customer-pov-admin-page"
+      ],
+      "notes": "Operational visibility is explicit; physical purge endpoints are explicitly not included in the authoritative API contract. Retention is represented through customer settings and `execution_requests.expire_at` in the data model."
+    },
+    "FR-19": {
+      "description": "Support large policies with many variables and many rules per request.",
+      "collections": [
+        "execution_requests",
+        "execution_rule_steps",
+        "policy_versions"
+      ],
+      "query_patterns": [
+        "QP-001",
+        "QP-002",
+        "QP-003",
+        "QP-004",
+        "QP-005",
+        "QP-007",
+        "QP-008",
+        "QP-009",
+        "QP-014"
+      ],
+      "api_endpoints": [
+        "getExecutionRequest",
+        "getExecutionRequestRuleSteps",
+        "getExecutionRequestDrilldown",
+        "searchExecutionRequestsByAttribute",
+        "searchRuleStepsByRuleAndVariable",
+        "analyzeOutcomesByPolicyVersion",
+        "comparePolicyVersions",
+        "getTopRulesForRejectedOutcomes",
+        "getPolicyVersionsForComparison"
+      ],
+      "frontend_pages": [
+        "execution-request-drilldown-page",
+        "execution-search-by-attribute-page",
+        "rule-step-search-page",
+        "policy-outcomes-by-version-page",
+        "policy-version-compare-page",
+        "rejection-rules-page"
+      ]
+    },
+    "AI-1": {
+      "description": "Explore use of LLMs to generate insights from execution-log data.",
+      "collections": [
+        "execution_insights",
+        "execution_requests",
+        "policy_versions"
+      ],
+      "query_patterns": [
+        "QP-015"
+      ],
+      "api_endpoints": [
+        "getExecutionInsights",
+        "createExecutionInsight"
+      ],
+      "frontend_pages": [
+        "execution-insights-query-page",
+        "execution-insight-create-page",
+        "execution-request-drilldown-page",
+        "policy-version-compare-page"
+      ],
+      "notes": "Implemented as future-ready persistence and retrieval for derived insights, not as a committed live AI generation workflow."
+    },
+    "AI-2": {
+      "description": "Potentially use AI/LLMs to explain policy-impact changes and suggest beneficial adjustments.",
+      "collections": [
+        "execution_insights",
+        "execution_requests",
+        "execution_rule_steps",
+        "policy_versions"
+      ],
+      "query_patterns": [
+        "QP-008",
+        "QP-009",
+        "QP-014",
+        "QP-015"
+      ],
+      "api_endpoints": [
+        "comparePolicyVersions",
+        "getTopRulesForRejectedOutcomes",
+        "getPolicyVersionsForComparison",
+        "getExecutionInsights",
+        "createExecutionInsight"
+      ],
+      "frontend_pages": [
+        "policy-version-compare-page",
+        "rejection-rules-page",
+        "execution-insights-query-page",
+        "execution-insight-create-page"
+      ],
+      "notes": "The POV supports the data retrieval and persistence surfaces needed for future explanations; recommendation generation itself is exploratory and not committed."
+    },
+    "UC-1": {
+      "description": "Audit rule execution for a request.",
+      "collections": [
+        "execution_requests",
+        "execution_rule_steps"
+      ],
+      "query_patterns": [
+        "QP-001",
+        "QP-002",
+        "QP-003"
+      ],
+      "api_endpoints": [
+        "getExecutionRequest",
+        "getExecutionRequestRuleSteps",
+        "getExecutionRequestDrilldown"
+      ],
+      "frontend_pages": [
+        "execution-request-lookup-page",
+        "execution-request-drilldown-page"
+      ]
+    },
+    "UC-2": {
+      "description": "Search execution logs by content.",
+      "collections": [
+        "execution_requests",
+        "execution_rule_steps"
+      ],
+      "query_patterns": [
+        "QP-004",
+        "QP-005",
+        "QP-006"
+      ],
+      "api_endpoints": [
+        "searchExecutionRequestsByAttribute",
+        "searchRuleStepsByRuleAndVariable",
+        "searchExecutionContentByDynamicPath"
+      ],
+      "frontend_pages": [
+        "execution-search-by-attribute-page",
+        "rule-step-search-page",
+        "execution-json-path-search-page"
+      ]
+    },
+    "UC-3": {
+      "description": "Analyze impact of policy changes.",
+      "collections": [
+        "execution_requests",
+        "execution_rule_steps",
+        "policy_versions",
+        "execution_insights"
+      ],
+      "query_patterns": [
+        "QP-007",
+        "QP-008",
+        "QP-009",
+        "QP-014",
+        "QP-015"
+      ],
+      "api_endpoints": [
+        "analyzeOutcomesByPolicyVersion",
+        "comparePolicyVersions",
+        "getTopRulesForRejectedOutcomes",
+        "getPolicyVersionsForComparison",
+        "getExecutionInsights",
+        "createExecutionInsight"
+      ],
+      "frontend_pages": [
+        "policy-outcomes-by-version-page",
+        "policy-version-compare-page",
+        "rejection-rules-page",
+        "execution-insights-query-page",
+        "execution-insight-create-page"
+      ]
+    },
+    "UC-4": {
+      "description": "Generate dashboards and reports from execution logs.",
+      "collections": [
+        "execution_requests",
+        "execution_insights"
+      ],
+      "query_patterns": [
+        "QP-010",
+        "QP-011",
+        "QP-015"
+      ],
+      "api_endpoints": [
+        "getDashboardSummaryByDay",
+        "getDashboardBreakdownBySegment",
+        "getExecutionInsights"
+      ],
+      "frontend_pages": [
+        "execution-dashboard-summary-page",
+        "execution-dashboard-segment-page",
+        "execution-insights-query-page"
+      ]
+    },
+    "UJ-1": {
+      "description": "Investigate a request outcome.",
+      "collections": [
+        "execution_requests",
+        "execution_rule_steps",
+        "execution_insights"
+      ],
+      "query_patterns": [
+        "QP-001",
+        "QP-003",
+        "QP-015"
+      ],
+      "api_endpoints": [
+        "getExecutionRequest",
+        "getExecutionRequestDrilldown",
+        "getExecutionInsights"
+      ],
+      "frontend_pages": [
+        "execution-request-lookup-page",
+        "execution-request-drilldown-page"
+      ]
+    },
+    "UJ-2": {
+      "description": "Build customer-specific analysis from log data.",
+      "collections": [
+        "execution_requests",
+        "execution_rule_steps",
+        "policy_versions",
+        "execution_insights"
+      ],
+      "query_patterns": [
+        "QP-004",
+        "QP-005",
+        "QP-006",
+        "QP-007",
+        "QP-008",
+        "QP-009",
+        "QP-010",
+        "QP-011",
+        "QP-014",
+        "QP-015"
+      ],
+      "api_endpoints": [
+        "searchExecutionRequestsByAttribute",
+        "searchRuleStepsByRuleAndVariable",
+        "searchExecutionContentByDynamicPath",
+        "analyzeOutcomesByPolicyVersion",
+        "comparePolicyVersions",
+        "getTopRulesForRejectedOutcomes",
+        "getDashboardSummaryByDay",
+        "getDashboardBreakdownBySegment",
+        "getPolicyVersionsForComparison",
+        "getExecutionInsights"
+      ],
+      "frontend_pages": [
+        "execution-search-by-attribute-page",
+        "rule-step-search-page",
+        "execution-json-path-search-page",
+        "execution-dashboard-summary-page",
+        "execution-dashboard-segment-page",
+        "policy-outcomes-by-version-page",
+        "policy-version-compare-page",
+        "rejection-rules-page",
+        "execution-insights-query-page"
+      ]
+    },
+    "UJ-3": {
+      "description": "Create and publish a policy.",
+      "collections": [
+        "policies",
+        "policy_versions"
+      ],
+      "query_patterns": [
+        "QP-014"
+      ],
+      "api_endpoints": [
+        "createPolicy",
+        "updatePolicy",
+        "createPolicyVersion",
+        "updatePolicyVersion",
+        "getPolicyVersionsForComparison"
+      ],
+      "frontend_pages": [
+        "policy-pov-admin-page",
+        "policy-version-pov-admin-page",
+        "policy-version-compare-page"
+      ]
+    }
+  },
+  "by_collection": {
+    "customers": {
+      "supports": [
+        "FR-17",
+        "FR-18",
+        "BO-1"
+      ],
+      "query_patterns": [
+        "QP-012"
+      ],
+      "api_endpoints": [
+        "listCustomerLoggingSettings",
+        "createCustomer",
+        "updateCustomer"
+      ],
+      "frontend_pages": [
+        "customer-logging-settings-page",
+        "customer-pov-admin-page"
+      ]
+    },
+    "admin_users": {
+      "supports": [
+        "FR-12",
+        "FR-9",
+        "FR-10"
+      ],
+      "query_patterns": [
+        "QP-013"
+      ],
+      "api_endpoints": [
+        "listAuthorizedAdminUsers",
+        "createAdminUser",
+        "updateAdminUser"
+      ],
+      "frontend_pages": [
+        "admin-users-page"
+      ]
+    },
+    "policies": {
+      "supports": [
+        "FR-13",
+        "UJ-3"
+      ],
+      "query_patterns": [],
+      "api_endpoints": [
+        "createPolicy",
+        "updatePolicy"
+      ],
+      "frontend_pages": [
+        "policy-pov-admin-page"
+      ]
+    },
+    "policy_versions": {
+      "supports": [
+        "FR-15",
+        "UC-3",
+        "UJ-3"
+      ],
+      "query_patterns": [
+        "QP-014"
+      ],
+      "api_endpoints": [
+        "createPolicyVersion",
+        "updatePolicyVersion",
+        "getPolicyVersionsForComparison"
+      ],
+      "frontend_pages": [
+        "policy-version-pov-admin-page",
+        "policy-version-compare-page"
+      ]
+    },
+    "execution_requests": {
+      "supports": [
+        "FR-1",
+        "FR-2",
+        "FR-5",
+        "FR-11",
+        "FR-14",
+        "FR-15",
+        "FR-16",
+        "FR-19",
+        "UC-1",
+        "UC-2",
+        "UC-3",
+        "UC-4"
+      ],
+      "query_patterns": [
+        "QP-001",
+        "QP-003",
+        "QP-004",
+        "QP-006",
+        "QP-007",
+        "QP-008",
+        "QP-009",
+        "QP-010",
+        "QP-011"
+      ],
+      "api_endpoints": [
+        "getExecutionRequest",
+        "getExecutionRequestDrilldown",
+        "searchExecutionRequestsByAttribute",
+        "searchExecutionContentByDynamicPath",
+        "analyzeOutcomesByPolicyVersion",
+        "comparePolicyVersions",
+        "getTopRulesForRejectedOutcomes",
+        "getDashboardSummaryByDay",
+        "getDashboardBreakdownBySegment"
+      ],
+      "frontend_pages": [
+        "execution-request-lookup-page",
+        "execution-request-drilldown-page",
+        "execution-search-by-attribute-page",
+        "execution-json-path-search-page",
+        "execution-dashboard-summary-page",
+        "execution-dashboard-segment-page",
+        "policy-outcomes-by-version-page",
+        "policy-version-compare-page",
+        "rejection-rules-page"
+      ]
+    },
+    "execution_rule_steps": {
+      "supports": [
+        "FR-3",
+        "FR-4",
+        "FR-6",
+        "FR-7",
+        "FR-8",
+        "FR-11",
+        "FR-14",
+        "FR-19",
+        "UC-1",
+        "UC-2",
+        "UC-3"
+      ],
+      "query_patterns": [
+        "QP-002",
+        "QP-003",
+        "QP-005",
+        "QP-009"
+      ],
+      "api_endpoints": [
+        "getExecutionRequestRuleSteps",
+        "getExecutionRequestDrilldown",
+        "searchRuleStepsByRuleAndVariable",
+        "getTopRulesForRejectedOutcomes"
+      ],
+      "frontend_pages": [
+        "execution-request-drilldown-page",
+        "rule-step-search-page",
+        "rejection-rules-page"
+      ]
+    },
+    "execution_insights": {
+      "supports": [
+        "AI-1",
+        "AI-2",
+        "UC-3",
+        "UC-4"
+      ],
+      "query_patterns": [
+        "QP-015"
+      ],
+      "api_endpoints": [
+        "getExecutionInsights",
+        "createExecutionInsight"
+      ],
+      "frontend_pages": [
+        "execution-insights-query-page",
+        "execution-insight-create-page",
+        "execution-request-drilldown-page",
+        "policy-version-compare-page"
+      ]
+    }
+  },
+  "gaps_and_non_goals": [
+    {
+      "item": "Public synchronous write APIs for execution_requests/execution_rule_steps",
+      "status": "intentionally not included",
+      "basis": "API contract explicitly excludes them because ingestion is asynchronous and no authoritative query pattern defines public log-write APIs."
+    },
+    {
+      "item": "Delete/purge log endpoints",
+      "status": "intentionally not included",
+      "basis": "Retention visibility/settings exist, but no authoritative delete query pattern or purge endpoint is defined."
+    },
+    {
+      "item": "Rule execution service invocation APIs",
+      "status": "out of scope",
+      "basis": "API contract explicitly excludes BRMS rule execution service invocation for end-customer applications."
+    },
+    {
+      "item": "Full auth protocol design",
+      "status": "out of scope",
+      "basis": "API contract notes endpoints are for authorized users, but exact auth mechanism is not designed here."
+    },
+    {
+      "item": "Generic list/get endpoints for all policies or policy versions",
+      "status": "intentionally not included",
+      "basis": "API contract explicitly avoids inventing read patterns beyond the defined compare-context retrieval."
+    }
+  ]
+}
