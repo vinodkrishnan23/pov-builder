@@ -1,0 +1,835 @@
+{
+  "version": "1.0",
+  "pov_scope_alignment": {
+    "in_scope": [
+      "Execution logging for BRMS requests and rule-level steps",
+      "Request/correlation ID based retrieval of all execution details",
+      "Fast search/filtering on nested JSON execution content",
+      "Analytics/reporting over execution outcomes and policy versions",
+      "Customer-level logging enablement and retention settings",
+      "Optional future-ready storage for AI/LLM-generated insights metadata"
+    ],
+    "out_of_scope": [
+      "Replacing the full BRMS authoring/runtime platform",
+      "Modeling external customer applications beyond IDs/context captured in logs",
+      "Multi-tenant redesign beyond customer scoping in this POV",
+      "Committed LLM workflow implementation"
+    ]
+  },
+  "collections": [
+    {
+      "name": "customers",
+      "description": "Client organizations using the BRMS product. Needed because logging can be enabled/disabled per customer and retention is customer-driven.",
+      "traceability": [
+        "business_entities:Customer",
+        "functional_requirements:FR-17",
+        "functional_requirements:FR-18"
+      ],
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "customer_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "industry",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "deployment_cloud",
+          "type": "string",
+          "required": false,
+          "allowed_values": [
+            "aws",
+            "azure",
+            "other"
+          ]
+        },
+        {
+          "name": "logging_enabled",
+          "type": "bool",
+          "required": true
+        },
+        {
+          "name": "retention_days",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "purge_after",
+          "type": "date",
+          "required": false,
+          "description": "Optional derived date for document lifecycle management if customer-specific retention is materialized per record set."
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "updated_at",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "embedding_vs_references": {
+        "approach": "Referenced by execution_requests and policy_versions via customer_id.",
+        "why": "Customer settings change independently, have low cardinality relative to logs, and are needed for operational controls without duplicating config into every log record beyond denormalized snapshots where useful."
+      },
+      "relationships": [
+        {
+          "to_collection": "execution_requests",
+          "type": "one-to-many",
+          "via": "execution_requests.customer_id -> customers.customer_id"
+        },
+        {
+          "to_collection": "policy_versions",
+          "type": "one-to-many",
+          "via": "policy_versions.customer_id -> customers.customer_id"
+        }
+      ]
+    },
+    {
+      "name": "admin_users",
+      "description": "Authorized product/admin users allowed to access detailed execution logs.",
+      "traceability": [
+        "business_entities:Admin User",
+        "functional_requirements:FR-12",
+        "functional_requirements:FR-9",
+        "functional_requirements:FR-10"
+      ],
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "user_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "customer_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "email",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "roles",
+          "type": "array<string>",
+          "required": true
+        },
+        {
+          "name": "is_active",
+          "type": "bool",
+          "required": true
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "updated_at",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "embedding_vs_references": {
+        "approach": "Standalone collection referenced by customer_id only; not embedded in log data.",
+        "why": "Access control actors are operational metadata, updated separately from immutable logs. Embedding would create duplication and no clear read-path benefit for the scoped POV."
+      },
+      "relationships": [
+        {
+          "to_collection": "customers",
+          "type": "many-to-one",
+          "via": "admin_users.customer_id -> customers.customer_id"
+        }
+      ]
+    },
+    {
+      "name": "policies",
+      "description": "Published policies exposed as rule services.",
+      "traceability": [
+        "business_entities:Policy",
+        "personas:P-1",
+        "user_journeys:UJ-3",
+        "functional_requirements:FR-13"
+      ],
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "policy_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "customer_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "policy_name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "service_name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "service_endpoint",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true,
+          "allowed_values": [
+            "draft",
+            "published",
+            "retired"
+          ]
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "updated_at",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "embedding_vs_references": {
+        "approach": "Policy metadata in a parent collection; versions separated into policy_versions.",
+        "why": "Use case UC-3 requires comparing policy definitions/versions over time. Separating stable policy identity from versioned definitions supports that access pattern cleanly."
+      },
+      "relationships": [
+        {
+          "to_collection": "customers",
+          "type": "many-to-one",
+          "via": "policies.customer_id -> customers.customer_id"
+        },
+        {
+          "to_collection": "policy_versions",
+          "type": "one-to-many",
+          "via": "policy_versions.policy_id -> policies.policy_id"
+        }
+      ]
+    },
+    {
+      "name": "policy_versions",
+      "description": "Versioned policy definitions used at execution time. Added explicitly to support comparison of definition 1 vs definition 2 for impact analysis.",
+      "traceability": [
+        "use_cases:UC-3",
+        "functional_requirements:FR-15",
+        "POVReviewResult:ISS-4"
+      ],
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "policy_version_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "policy_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "customer_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "version_label",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "version_number",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "published_at",
+          "type": "date",
+          "required": false
+        },
+        {
+          "name": "is_active",
+          "type": "bool",
+          "required": true
+        },
+        {
+          "name": "rule_definitions",
+          "type": "array<object>",
+          "required": false,
+          "fields": [
+            {
+              "name": "rule_id",
+              "type": "string",
+              "required": true
+            },
+            {
+              "name": "rule_name",
+              "type": "string",
+              "required": true
+            },
+            {
+              "name": "sequence",
+              "type": "int",
+              "required": false
+            },
+            {
+              "name": "description",
+              "type": "string",
+              "required": false
+            }
+          ]
+        }
+      ],
+      "embedding_vs_references": {
+        "approach": "Rule definitions embedded inside policy_versions for the POV.",
+        "why": "Rules are tightly scoped to a specific policy version and commonly retrieved together when analyzing which version/rules drove an outcome. Embedding avoids extra joins for version comparison while keeping runtime execution logs in separate high-volume collections."
+      },
+      "relationships": [
+        {
+          "to_collection": "policies",
+          "type": "many-to-one",
+          "via": "policy_versions.policy_id -> policies.policy_id"
+        },
+        {
+          "to_collection": "customers",
+          "type": "many-to-one",
+          "via": "policy_versions.customer_id -> customers.customer_id"
+        },
+        {
+          "to_collection": "execution_requests",
+          "type": "one-to-many",
+          "via": "execution_requests.policy_version_id -> policy_versions.policy_version_id"
+        }
+      ]
+    },
+    {
+      "name": "execution_requests",
+      "description": "One document per request/correlation ID. Stores request-level JSON input/output, top-level outcome, and summary metrics for dashboards and drill-down.",
+      "traceability": [
+        "business_entities:Execution Log",
+        "business_entities:Request",
+        "business_entities:Request ID / Correlation ID",
+        "use_cases:UC-1",
+        "use_cases:UC-2",
+        "use_cases:UC-3",
+        "use_cases:UC-4",
+        "functional_requirements:FR-1",
+        "functional_requirements:FR-2",
+        "functional_requirements:FR-5",
+        "functional_requirements:FR-11",
+        "functional_requirements:FR-14",
+        "functional_requirements:FR-15",
+        "functional_requirements:FR-16",
+        "functional_requirements:FR-19"
+      ],
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "request_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "correlation_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "customer_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "policy_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "policy_version_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "service_context",
+          "type": "object",
+          "required": false,
+          "fields": [
+            {
+              "name": "channel",
+              "type": "string",
+              "required": false
+            },
+            {
+              "name": "source_application",
+              "type": "string",
+              "required": false
+            },
+            {
+              "name": "endpoint",
+              "type": "string",
+              "required": false
+            }
+          ]
+        },
+        {
+          "name": "request_received_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "request_payload",
+          "type": "object",
+          "required": true,
+          "description": "Arbitrary nested JSON document; supports arrays and complex structures."
+        },
+        {
+          "name": "response_payload",
+          "type": "object",
+          "required": false,
+          "description": "Arbitrary nested JSON document; may arrive after incremental rule-step inserts."
+        },
+        {
+          "name": "request_status",
+          "type": "string",
+          "required": true,
+          "allowed_values": [
+            "in_progress",
+            "completed",
+            "failed"
+          ]
+        },
+        {
+          "name": "final_outcome",
+          "type": "string",
+          "required": false,
+          "description": "e.g. approved/rejected/score-generated"
+        },
+        {
+          "name": "outcome_code",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "total_rules_executed",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "execution_duration_ms",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "input_attributes_flat",
+          "type": "array<object>",
+          "required": false,
+          "description": "Optional normalized key/value projection of selected request attributes used for fast filtering and analytics.",
+          "fields": [
+            {
+              "name": "path",
+              "type": "string",
+              "required": true
+            },
+            {
+              "name": "value_string",
+              "type": "string",
+              "required": false
+            },
+            {
+              "name": "value_number",
+              "type": "double",
+              "required": false
+            },
+            {
+              "name": "value_bool",
+              "type": "bool",
+              "required": false
+            }
+          ]
+        },
+        {
+          "name": "tags",
+          "type": "array<string>",
+          "required": false
+        },
+        {
+          "name": "expire_at",
+          "type": "date",
+          "required": false,
+          "description": "TTL basis for retention management where customer-specific retention is applied at write time."
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "updated_at",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "embedding_vs_references": {
+        "approach": "Request-level summary separate from rule-step collection; does not embed all rule executions.",
+        "why": "Each request can generate 5-100+ rule logs, with possible soft limits around 500 and incremental inserts. Keeping steps in a separate collection avoids oversized request documents, supports asynchronous per-rule inserts (FR-8), and allows request summary queries and dashboards without scanning step arrays."
+      },
+      "relationships": [
+        {
+          "to_collection": "customers",
+          "type": "many-to-one",
+          "via": "execution_requests.customer_id -> customers.customer_id"
+        },
+        {
+          "to_collection": "policies",
+          "type": "many-to-one",
+          "via": "execution_requests.policy_id -> policies.policy_id"
+        },
+        {
+          "to_collection": "policy_versions",
+          "type": "many-to-one",
+          "via": "execution_requests.policy_version_id -> policy_versions.policy_version_id"
+        },
+        {
+          "to_collection": "execution_rule_steps",
+          "type": "one-to-many",
+          "via": "execution_rule_steps.request_id -> execution_requests.request_id"
+        },
+        {
+          "to_collection": "execution_insights",
+          "type": "one-to-many",
+          "via": "execution_insights.request_id -> execution_requests.request_id"
+        }
+      ]
+    },
+    {
+      "name": "execution_rule_steps",
+      "description": "Incremental rule-level execution log entries. One document per rule execution step/stage.",
+      "traceability": [
+        "business_entities:Execution Log",
+        "business_entities:Rule",
+        "use_cases:UC-1",
+        "use_cases:UC-2",
+        "functional_requirements:FR-3",
+        "functional_requirements:FR-4",
+        "functional_requirements:FR-6",
+        "functional_requirements:FR-7",
+        "functional_requirements:FR-8",
+        "functional_requirements:FR-11",
+        "functional_requirements:FR-14",
+        "functional_requirements:FR-19"
+      ],
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "request_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "correlation_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "customer_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "policy_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "policy_version_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "rule_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "rule_name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "step_sequence",
+          "type": "int",
+          "required": true
+        },
+        {
+          "name": "stage_name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "executed_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "step_status",
+          "type": "string",
+          "required": true,
+          "allowed_values": [
+            "started",
+            "completed",
+            "skipped",
+            "failed"
+          ]
+        },
+        {
+          "name": "condition_result",
+          "type": "bool",
+          "required": false
+        },
+        {
+          "name": "input_snapshot",
+          "type": "object",
+          "required": false,
+          "description": "Arbitrary nested JSON for the rule/step input context."
+        },
+        {
+          "name": "output_snapshot",
+          "type": "object",
+          "required": false,
+          "description": "Arbitrary nested JSON for the rule/step output/result context."
+        },
+        {
+          "name": "intermediate_values",
+          "type": "object",
+          "required": false,
+          "description": "JSON object capturing value after stage N, variable states, and similar internal details."
+        },
+        {
+          "name": "searched_attributes_flat",
+          "type": "array<object>",
+          "required": false,
+          "description": "Optional normalized projection of variable/value pairs for targeted filtering independent of raw nested JSON shape.",
+          "fields": [
+            {
+              "name": "path",
+              "type": "string",
+              "required": true
+            },
+            {
+              "name": "value_string",
+              "type": "string",
+              "required": false
+            },
+            {
+              "name": "value_number",
+              "type": "double",
+              "required": false
+            },
+            {
+              "name": "value_bool",
+              "type": "bool",
+              "required": false
+            }
+          ]
+        },
+        {
+          "name": "duration_ms",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "error_code",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "error_message",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "embedding_vs_references": {
+        "approach": "Referenced to execution_requests by request_id; individual step documents not embedded.",
+        "why": "This collection is the write-heavy append stream for asynchronous Kafka-style ingestion. Separate documents optimize concurrent inserts, request drill-down, and rule/value search across many steps without rewriting parent request documents."
+      },
+      "relationships": [
+        {
+          "to_collection": "execution_requests",
+          "type": "many-to-one",
+          "via": "execution_rule_steps.request_id -> execution_requests.request_id"
+        }
+      ]
+    },
+    {
+      "name": "execution_insights",
+      "description": "Optional derived insights or summaries generated from historical execution data or future AI/LLM workflows. Included only as lightweight future-ready storage, not as a committed AI feature set.",
+      "traceability": [
+        "ai_genai_requirements:AI-1",
+        "mongodb_atlas_opportunities:MAO-4",
+        "pov_scope"
+      ],
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "request_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "customer_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "policy_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "policy_version_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "insight_type",
+          "type": "string",
+          "required": true,
+          "allowed_values": [
+            "request_summary",
+            "policy_version_comparison",
+            "dashboard_annotation",
+            "ai_generated_note"
+          ]
+        },
+        {
+          "name": "source_window",
+          "type": "object",
+          "required": false,
+          "fields": [
+            {
+              "name": "start_at",
+              "type": "date",
+              "required": false
+            },
+            {
+              "name": "end_at",
+              "type": "date",
+              "required": false
+            }
+          ]
+        },
+        {
+          "name": "summary_text",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "structured_findings",
+          "type": "object",
+          "required": false
+        },
+        {
+          "name": "generated_by",
+          "type": "string",
+          "required": true,
+          "allowed_values": [
+            "aggregation_pipeline",
+            "manual",
+            "ai_model"
+          ]
+        },
+        {
+          "name": "model_name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "embedding_vs_references": {
+        "approach": "Standalone optional collection referencing requests/policies when applicable.",
+        "why": "Exploratory AI requirement is not core to near-term scope, so derived insights should not pollute primary execution-log write paths. Separate storage preserves extensibility without forcing a vector or AI-first schema now."
+      },
+      "relationships": [
+        {
+          "to_collection": "execution_requests",
+          "type": "many-to-one",
+          "via": "execution_insights.request_id -> execution_requests.request_id (optional)"
+        },
+        {
+          "to_collection": "policies",
+          "type": "many-to-one",
+          "via": "execution_insights.policy_id -> policies.policy_id (optional)"
+        },
+        {
+          "to_collection": "policy_versions",
+          "type": "many-to-one",
+          "via": "execution_insights.policy_version_id -> policy_versions.policy_version_id (optional)"
+        }
+      ]
+    }
+  ]
+}
