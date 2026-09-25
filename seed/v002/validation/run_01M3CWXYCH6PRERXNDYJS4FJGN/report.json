@@ -1,0 +1,20 @@
+{
+  "correlation": {
+    "poc_id": "1790241012873",
+    "producer": "seed-validator",
+    "run_id": "run_01M3CWXYCH6PRERXNDYJS4FJGN",
+    "task_id": "task_01M3CWXYCH803MZ7SVWK7JSNPE",
+    "trace_id": "trace_01M3CWXYCH6PRERXNDYJS4FJGN"
+  },
+  "error": {
+    "code": "ARTIFACT_MALFORMED",
+    "detail": {
+      "failure_class": "IMPLEMENTATION_FAILURE"
+    },
+    "failure_class": "IMPLEMENTATION_FAILURE",
+    "message": "The generated artifact bundle is malformed.",
+    "retryable": false
+  },
+  "source_commit_sha": "00a899365a9d8ac48ce5d0697ee8f404c1a567ea",
+  "status": "failed"
+}
