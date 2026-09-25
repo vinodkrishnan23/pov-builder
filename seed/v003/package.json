@@ -1,1 +1,0 @@
-{"scripts":{"seed":"node seed.js"},"dependencies":{"mongodb":"^6.10.0"}}
