@@ -1,0 +1,557 @@
+{
+  "collections": [
+    {
+      "name": "customers",
+      "description": "Customer/deployment-level configuration for execution logging and retention. Traces to Logging Configuration, Retention/Purge Decision, FR13, FR14, UC5, UC6.",
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "customer_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "customer_name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "deployment_type",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "on_prem",
+            "customer_cloud_aws",
+            "customer_cloud_azure",
+            "other_customer_managed"
+          ]
+        },
+        {
+          "name": "logging_enabled",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "name": "retention_policy",
+          "type": "document",
+          "required": false,
+          "fields": [
+            {
+              "name": "retention_days",
+              "type": "int",
+              "required": false
+            },
+            {
+              "name": "purge_enabled",
+              "type": "boolean",
+              "required": false
+            },
+            {
+              "name": "purge_threshold_gb",
+              "type": "double",
+              "required": false
+            },
+            {
+              "name": "last_purge_at",
+              "type": "date",
+              "required": false
+            }
+          ]
+        }
+      ],
+      "embedding_vs_references": {
+        "strategy": "standalone root document",
+        "why": "Customer-level logging and retention settings are low-cardinality and updated independently from high-volume execution logs. Logs reference customer_id for filtering and governance."
+      },
+      "relationships": [
+        {
+          "to_collection": "execution_requests",
+          "type": "one-to-many",
+          "via": "customer_id"
+        },
+        {
+          "to_collection": "purge_runs",
+          "type": "one-to-many",
+          "via": "customer_id"
+        }
+      ]
+    },
+    {
+      "name": "policy_definitions",
+      "description": "Policy and version metadata used to group executions and compare outcomes across versions/time. Traces to Policy, Policy Definition Version, FR15, UC3, BO2.",
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "policy_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "policy_name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "version_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "version_label",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "published_at",
+          "type": "date",
+          "required": false
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "draft",
+            "published",
+            "retired"
+          ]
+        },
+        {
+          "name": "rules",
+          "type": "array",
+          "required": false,
+          "items": {
+            "type": "document",
+            "fields": [
+              {
+                "name": "rule_id",
+                "type": "string",
+                "required": true
+              },
+              {
+                "name": "rule_name",
+                "type": "string",
+                "required": false
+              },
+              {
+                "name": "sequence",
+                "type": "int",
+                "required": false
+              }
+            ]
+          }
+        }
+      ],
+      "embedding_vs_references": {
+        "strategy": "embed lightweight rule metadata",
+        "why": "For the POV, rule metadata is mainly needed to label analytics and traces. Embedding basic rule identifiers inside the policy version avoids a separate rules collection unless broader rule-authoring scope is added later."
+      },
+      "relationships": [
+        {
+          "to_collection": "execution_requests",
+          "type": "one-to-many",
+          "via": "policy_id + version_id"
+        },
+        {
+          "to_collection": "execution_log_records",
+          "type": "logical one-to-many",
+          "via": "policy_id + version_id"
+        }
+      ]
+    },
+    {
+      "name": "execution_requests",
+      "description": "One document per execution request/correlation ID, holding request-level outcome and payloads for audit, search, and analytics. Traces to Execution Request, Request/Correlation ID, FR1, FR2, FR9, FR12, FR15, UC1, UC2, UC3, UC4.",
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "request_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "correlation_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "customer_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "policy_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "policy_version_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "source_channel",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "requested_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "completed_at",
+          "type": "date",
+          "required": false
+        },
+        {
+          "name": "final_outcome",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "approved",
+            "rejected",
+            "error",
+            "unknown"
+          ]
+        },
+        {
+          "name": "outcome_reason_codes",
+          "type": "array",
+          "required": false,
+          "items": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "request_payload",
+          "type": "document",
+          "required": false
+        },
+        {
+          "name": "response_payload",
+          "type": "document",
+          "required": false
+        },
+        {
+          "name": "search_attributes",
+          "type": "document",
+          "required": false,
+          "description": "Flattened/promoted commonly queried attributes extracted from payloads, such as applicant_age, product_type, geography, loan_amount."
+        },
+        {
+          "name": "metrics",
+          "type": "document",
+          "required": false,
+          "fields": [
+            {
+              "name": "rule_count",
+              "type": "int",
+              "required": false
+            },
+            {
+              "name": "stage_count",
+              "type": "int",
+              "required": false
+            },
+            {
+              "name": "duration_ms",
+              "type": "long",
+              "required": false
+            }
+          ]
+        },
+        {
+          "name": "logging_enabled_at_execution",
+          "type": "boolean",
+          "required": false
+        }
+      ],
+      "embedding_vs_references": {
+        "strategy": "store request-level payloads in the request document; reference detailed execution steps from log records",
+        "why": "A request can have 5-100+ step records and potentially large payloads. Keeping one request summary document supports fast request-centric retrieval and analytics, while separate log records scale independently for incremental ingestion."
+      },
+      "relationships": [
+        {
+          "to_collection": "customers",
+          "type": "many-to-one",
+          "via": "customer_id"
+        },
+        {
+          "to_collection": "policy_definitions",
+          "type": "many-to-one",
+          "via": "policy_id + policy_version_id"
+        },
+        {
+          "to_collection": "execution_log_records",
+          "type": "one-to-many",
+          "via": "request_id"
+        }
+      ]
+    },
+    {
+      "name": "execution_log_records",
+      "description": "High-volume incremental execution log entries for request-level, rule-level, and stage-level traces. Traces to Execution Log Record, Rule, Rule Execution Stage, FR1-FR6, FR9, FR12, FR17, UC1, UC2.",
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "request_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "correlation_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "customer_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "policy_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "policy_version_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "event_time",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "record_type",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "request_start",
+            "request_end",
+            "rule_execution",
+            "stage_execution",
+            "system_event"
+          ]
+        },
+        {
+          "name": "sequence_no",
+          "type": "int",
+          "required": true
+        },
+        {
+          "name": "rule_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "rule_name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "stage_name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "stage_sequence",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "execution_status",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "started",
+            "completed",
+            "passed",
+            "failed",
+            "skipped",
+            "error"
+          ]
+        },
+        {
+          "name": "condition_results",
+          "type": "array",
+          "required": false,
+          "items": {
+            "type": "document",
+            "fields": [
+              {
+                "name": "condition_name",
+                "type": "string",
+                "required": false
+              },
+              {
+                "name": "expression",
+                "type": "string",
+                "required": false
+              },
+              {
+                "name": "result",
+                "type": "boolean",
+                "required": false
+              }
+            ]
+          }
+        },
+        {
+          "name": "input_payload",
+          "type": "document",
+          "required": false
+        },
+        {
+          "name": "output_payload",
+          "type": "document",
+          "required": false
+        },
+        {
+          "name": "changed_values",
+          "type": "document",
+          "required": false
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "outcome",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "approved",
+            "rejected",
+            "error",
+            "none"
+          ]
+        },
+        {
+          "name": "duration_ms",
+          "type": "long",
+          "required": false
+        }
+      ],
+      "embedding_vs_references": {
+        "strategy": "standalone root document per event",
+        "why": "FR5 and FR6 require asynchronous, incremental inserts per rule/stage. Separate event documents fit Kafka-style ingestion, avoid hot-document growth, and support request drill-down and content search across many logs."
+      },
+      "relationships": [
+        {
+          "to_collection": "execution_requests",
+          "type": "many-to-one",
+          "via": "request_id"
+        },
+        {
+          "to_collection": "customers",
+          "type": "many-to-one",
+          "via": "customer_id"
+        },
+        {
+          "to_collection": "policy_definitions",
+          "type": "many-to-one",
+          "via": "policy_id + policy_version_id"
+        }
+      ]
+    },
+    {
+      "name": "purge_runs",
+      "description": "Operational audit of retention/purge actions. Traces to Retention/Purge Decision, FR14, UC5, J3.",
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "customer_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "started_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "completed_at",
+          "type": "date",
+          "required": false
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "started",
+            "completed",
+            "failed"
+          ]
+        },
+        {
+          "name": "cutoff_time",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "scope",
+          "type": "document",
+          "required": false,
+          "fields": [
+            {
+              "name": "policy_id",
+              "type": "string",
+              "required": false
+            },
+            {
+              "name": "policy_version_id",
+              "type": "string",
+              "required": false
+            }
+          ]
+        },
+        {
+          "name": "documents_deleted",
+          "type": "long",
+          "required": false
+        },
+        {
+          "name": "notes",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "embedding_vs_references": {
+        "strategy": "standalone root document",
+        "why": "Purge executions are infrequent operational records that should be auditable independently of the logs they remove."
+      },
+      "relationships": [
+        {
+          "to_collection": "customers",
+          "type": "many-to-one",
+          "via": "customer_id"
+        }
+      ]
+    }
+  ]
+}
