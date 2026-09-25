@@ -1,768 +1,1099 @@
 {
-  "app_shell": {
-    "global_state": [
-      "selectedTenantId",
-      "chunkingProfilesCache",
-      "activeBenchmarkDatasetId",
-      "activeBenchmarkRunId"
-    ],
-    "navigation": [
-      {
-        "label": "Tenants",
-        "route": "/tenants"
-      },
-      {
-        "label": "Workspace",
-        "route": "/tenants/:tenantId"
-      },
-      {
-        "label": "Documents",
-        "route": "/tenants/:tenantId/documents"
-      },
-      {
-        "label": "Chunking Profiles",
-        "route": "/chunking-profiles"
-      },
-      {
-        "label": "Retrieval Playground",
-        "route": "/tenants/:tenantId/retrieval"
-      },
-      {
-        "label": "Benchmark Datasets",
-        "route": "/tenants/:tenantId/benchmark-datasets"
-      },
-      {
-        "label": "Agent Memory",
-        "route": "/tenants/:tenantId/agent-memory"
-      }
-    ],
-    "notes": [
-      "Tenant scoping is required for all tenant-scoped resources.",
-      "Frontend must not imply automatic file upload, embedding generation, or benchmark execution because the API does not expose those capabilities."
+  "app": {
+    "name": "ThoughtSpot AI Retrieval POV Builder",
+    "type": "tenant_scoped_spa",
+    "base_route": "/",
+    "global_constraints": [
+      "All pages require an active tenantId created during the session; the API contract does not expose tenant list/get endpoints, so returning to prior tenants must rely on client-kept context or manually re-entered deep links.",
+      "Binary file upload/download is not supported by the API contract. Document registration UI must only collect metadata, source_uri, and/or raw_text.",
+      "Chunk creation and embedding generation are not exposed by the API. UI must present chunk inspection as read-only and vector/hybrid retrieval as dependent on an external embedding-generation service/application layer.",
+      "No update/delete endpoints exist for tenants, documents, benchmark prompts, or benchmark runs. UI should not expose edit/delete actions.",
+      "Agent-memory retrieval supports vector mode only; do not present keyword/hybrid options for agent-memory use cases."
     ]
   },
   "routes": [
     {
-      "route": "/tenants",
-      "page_id": "tenant_home"
+      "path": "/",
+      "page_id": "tenant_setup",
+      "default": true
     },
     {
-      "route": "/tenants/:tenantId",
-      "page_id": "tenant_workspace"
+      "path": "/tenants/:tenantId/documents",
+      "page_id": "documents_library"
     },
     {
-      "route": "/tenants/:tenantId/documents",
-      "page_id": "documents_list"
+      "path": "/tenants/:tenantId/documents/:documentId/chunks",
+      "page_id": "document_chunk_inspector"
     },
     {
-      "route": "/tenants/:tenantId/documents/:documentId",
-      "page_id": "document_detail"
+      "path": "/tenants/:tenantId/search",
+      "page_id": "document_search_playground"
     },
     {
-      "route": "/chunking-profiles",
-      "page_id": "chunking_profiles"
+      "path": "/tenants/:tenantId/agent-memory",
+      "page_id": "agent_memory_playground"
     },
     {
-      "route": "/tenants/:tenantId/documents/:documentId/chunks",
-      "page_id": "document_chunks_drilldown"
+      "path": "/tenants/:tenantId/benchmarks/prompts",
+      "page_id": "benchmark_prompts"
     },
     {
-      "route": "/tenants/:tenantId/retrieval",
-      "page_id": "retrieval_playground"
+      "path": "/tenants/:tenantId/benchmarks/prompts/:groundTruthId",
+      "page_id": "benchmark_prompt_detail"
     },
     {
-      "route": "/tenants/:tenantId/benchmark-datasets",
-      "page_id": "benchmark_datasets"
-    },
-    {
-      "route": "/tenants/:tenantId/benchmark-datasets/:benchmarkDatasetId",
-      "page_id": "benchmark_dataset_detail"
-    },
-    {
-      "route": "/tenants/:tenantId/benchmark-datasets/:benchmarkDatasetId/runs",
-      "page_id": "benchmark_runs"
-    },
-    {
-      "route": "/tenants/:tenantId/benchmark-runs/:benchmarkRunId",
-      "page_id": "benchmark_run_detail"
-    },
-    {
-      "route": "/tenants/:tenantId/benchmark-datasets/:benchmarkDatasetId/comparisons",
-      "page_id": "benchmark_run_comparison"
-    },
-    {
-      "route": "/tenants/:tenantId/agent-memory",
-      "page_id": "agent_memory_sessions"
+      "path": "/tenants/:tenantId/benchmarks/comparison",
+      "page_id": "benchmark_comparison_dashboard"
     }
   ],
   "pages": [
     {
-      "page_id": "tenant_home",
-      "title": "Tenant Home",
-      "purpose": "Select or create an isolated tenant/deployment scope for the benchmark session.",
+      "id": "tenant_setup",
+      "route": "/",
+      "purpose": "Create a tenant/demo context for the POV session before any document, retrieval, or benchmark actions can occur.",
       "data_requirements": [
-        "Tenant list with basic metadata",
-        "Optional exact-name filtered tenant lookup"
+        {
+          "name": "tenant_creation_form",
+          "source": "local form state",
+          "fields": [
+            "tenant_key",
+            "display_name",
+            "deployment_model",
+            "cloud",
+            "notes"
+          ]
+        }
       ],
-      "api_endpoints": [
+      "api_endpoints_consumed": [
         {
-          "operation_id": "listTenants",
-          "usage": "initial list and exact-name filter"
-        },
-        {
-          "operation_id": "createTenant",
-          "usage": "create new tenant"
+          "endpoint": "createTenant",
+          "method": "POST",
+          "path": "/tenants",
+          "usage": "Create the active tenant context and route into tenant-scoped screens."
         }
       ],
       "user_actions": [
-        "View tenant list",
-        "Filter by exact tenant name",
-        "Create tenant",
-        "Open tenant workspace"
+        {
+          "action": "create_tenant",
+          "description": "Submit tenant/demo context form.",
+          "api_call": "POST /tenants"
+        },
+        {
+          "action": "proceed_to_documents",
+          "description": "After success, navigate to documents library for the created tenant.",
+          "api_call": null
+        }
       ],
       "loading_states": [
-        "Initial tenant list skeleton",
-        "Inline submitting state on create form"
+        "Submitting tenant creation request disables form and shows inline progress."
       ],
       "error_states": [
-        "List load failure/invalid query",
-        "Create validation error",
-        "Tenant name conflict"
-      ],
-      "components": [
-        "TenantList",
-        "TenantFilterBar",
-        "CreateTenantForm",
-        "EmptyState",
-        "ErrorBanner"
+        {
+          "case": "validation_error",
+          "api_error_code": "VALIDATION_ERROR",
+          "ui_response": "Show field-level validation and form banner."
+        },
+        {
+          "case": "tenant_key_conflict",
+          "api_error_code": "TENANT_KEY_CONFLICT",
+          "ui_response": "Show inline error on tenant_key and suggest a different key."
+        },
+        {
+          "case": "network_or_unknown",
+          "api_error_code": "UNKNOWN",
+          "ui_response": "Show retryable global error banner."
+        }
       ]
     },
     {
-      "page_id": "tenant_workspace",
-      "title": "Tenant Workspace Dashboard",
-      "purpose": "Provide tenant-scoped overview and entry points into ingestion, retrieval testing, benchmark authoring, and secondary agent memory.",
+      "id": "documents_library",
+      "route": "/tenants/:tenantId/documents",
+      "purpose": "Browse recently ingested tenant documents and register new uploaded-file, benchmark-supporting, or agent-memory documents for the live session.",
       "data_requirements": [
-        "Recent documents",
-        "Document ingestion summary",
-        "Benchmark datasets list"
+        {
+          "name": "document_list",
+          "source": "GET /tenants/{tenantId}/documents",
+          "fields": [
+            "_id",
+            "title",
+            "original_filename",
+            "document_type",
+            "source_type",
+            "processing_status",
+            "storage_location_type",
+            "ingested_at",
+            "metadata.tags"
+          ]
+        },
+        {
+          "name": "document_filters",
+          "source": "local UI state",
+          "fields": [
+            "document_types",
+            "source_types",
+            "processing_statuses",
+            "limit"
+          ]
+        },
+        {
+          "name": "new_document_form",
+          "source": "local form state",
+          "fields": [
+            "document_type",
+            "source_type",
+            "title",
+            "original_filename",
+            "mime_type",
+            "source_uri",
+            "storage_location_type",
+            "raw_text",
+            "metadata.author",
+            "metadata.language",
+            "metadata.tags",
+            "metadata.created_by",
+            "metadata.conversation_id",
+            "metadata.session_id",
+            "processing_status"
+          ]
+        }
       ],
-      "api_endpoints": [
+      "api_endpoints_consumed": [
         {
-          "operation_id": "listRecentDocuments",
-          "usage": "dashboard recent documents"
+          "endpoint": "listTenantDocuments",
+          "method": "GET",
+          "path": "/tenants/{tenantId}/documents",
+          "usage": "Populate the document table with current filters."
         },
         {
-          "operation_id": "getDocumentIngestionSummary",
-          "usage": "status counters"
-        },
-        {
-          "operation_id": "listBenchmarkDatasets",
-          "usage": "benchmark dataset summary list"
+          "endpoint": "createDocument",
+          "method": "POST",
+          "path": "/tenants/{tenantId}/documents",
+          "usage": "Register a new document or memory record."
         }
       ],
       "user_actions": [
-        "Navigate to documents",
-        "Navigate to retrieval playground",
-        "Navigate to benchmark datasets",
-        "Navigate to agent memory",
-        "Open recent document",
-        "Open dataset"
+        {
+          "action": "filter_documents",
+          "description": "Apply document type, source type, status, and limit filters.",
+          "api_call": "GET /tenants/{tenantId}/documents"
+        },
+        {
+          "action": "create_document",
+          "description": "Register a document using metadata, source_uri, and/or raw_text.",
+          "api_call": "POST /tenants/{tenantId}/documents"
+        },
+        {
+          "action": "inspect_chunks",
+          "description": "Open chunk inspector for a selected document.",
+          "api_call": null
+        },
+        {
+          "action": "open_search_playground",
+          "description": "Navigate to document search with selected documents pre-scoped client-side.",
+          "api_call": null
+        },
+        {
+          "action": "open_agent_memory_playground",
+          "description": "Navigate to agent-memory screen when working with agent_memory docs.",
+          "api_call": null
+        }
       ],
       "loading_states": [
-        "Card-level loading placeholders"
+        "Initial document list loading with table skeleton.",
+        "Filter refresh loading with retained previous results.",
+        "New document submission loading on form/modal."
       ],
       "error_states": [
-        "Per-widget load failures with retry"
-      ],
-      "components": [
-        "TenantHeader",
-        "KpiCardGroup",
-        "RecentDocumentsTable",
-        "IngestionStatusSummary",
-        "BenchmarkDatasetListPreview",
-        "QuickActionPanel"
+        {
+          "case": "tenant_not_found",
+          "api_error_code": "TENANT_NOT_FOUND",
+          "ui_response": "Show tenant-scoped not-found state and link back to setup."
+        },
+        {
+          "case": "validation_error_on_list",
+          "api_error_code": "VALIDATION_ERROR",
+          "ui_response": "Show filter validation message."
+        },
+        {
+          "case": "validation_error_on_create",
+          "api_error_code": "VALIDATION_ERROR",
+          "ui_response": "Show field-level form errors including enum mismatches."
+        },
+        {
+          "case": "network_or_unknown",
+          "api_error_code": "UNKNOWN",
+          "ui_response": "Show retry banner and preserve entered form data."
+        }
       ]
     },
     {
-      "page_id": "documents_list",
-      "title": "Documents",
-      "purpose": "Register documents and monitor ingestion progress for live benchmark uploads.",
+      "id": "document_chunk_inspector",
+      "route": "/tenants/:tenantId/documents/:documentId/chunks",
+      "purpose": "Inspect read-only chunk outputs across chunking strategies for a selected document to support strategy comparison and troubleshooting.",
       "data_requirements": [
-        "Recent documents list",
-        "Ingestion summary counts"
+        {
+          "name": "chunk_list",
+          "source": "GET /tenants/{tenantId}/documents/{documentId}/chunks",
+          "fields": [
+            "_id",
+            "document_id",
+            "chunking_strategy",
+            "strategy_params.chunk_size",
+            "strategy_params.chunk_overlap",
+            "strategy_params.separator_policy",
+            "strategy_params.notes",
+            "chunk_index",
+            "text",
+            "token_count",
+            "page_span.start_page",
+            "page_span.end_page",
+            "embedding_model"
+          ]
+        },
+        {
+          "name": "chunk_filters",
+          "source": "local UI state",
+          "fields": [
+            "chunking_strategies",
+            "limit"
+          ]
+        }
       ],
-      "api_endpoints": [
+      "api_endpoints_consumed": [
         {
-          "operation_id": "listRecentDocuments",
-          "usage": "table of documents"
-        },
-        {
-          "operation_id": "getDocumentIngestionSummary",
-          "usage": "status summary"
-        },
-        {
-          "operation_id": "createDocument",
-          "usage": "register document metadata/storage reference"
+          "endpoint": "inspectDocumentChunks",
+          "method": "GET",
+          "path": "/tenants/{tenantId}/documents/{documentId}/chunks",
+          "usage": "Load chunks for selected strategies."
         }
       ],
       "user_actions": [
-        "Register document",
-        "Refresh documents",
-        "Open document detail"
+        {
+          "action": "filter_chunk_strategies",
+          "description": "Toggle one or more chunking strategies and reload chunks.",
+          "api_call": "GET /tenants/{tenantId}/documents/{documentId}/chunks"
+        },
+        {
+          "action": "change_limit",
+          "description": "Increase/decrease returned chunk count within API max.",
+          "api_call": "GET /tenants/{tenantId}/documents/{documentId}/chunks"
+        },
+        {
+          "action": "open_search_playground",
+          "description": "Navigate to search playground with current document context.",
+          "api_call": null
+        }
       ],
       "loading_states": [
-        "Table loading",
-        "Create form submitting",
-        "Summary cards loading"
+        "Chunk table/list skeleton while loading.",
+        "Strategy switch loading with optimistic filter chips."
       ],
       "error_states": [
-        "Tenant not found",
-        "Validation error on create",
-        "No documents yet empty state"
-      ],
-      "components": [
-        "RegisterDocumentForm",
-        "DocumentTable",
-        "IngestionSummaryCards",
-        "RefreshButton",
-        "UnsupportedCapabilityNotice"
-      ],
-      "notes": [
-        "Because no binary upload endpoint exists, this page should collect metadata and storage references only, or clearly integrate with an out-of-band upload process."
+        {
+          "case": "document_not_found",
+          "api_error_code": "DOCUMENT_NOT_FOUND",
+          "ui_response": "Show not-found state and option to return to documents list."
+        },
+        {
+          "case": "validation_error",
+          "api_error_code": "VALIDATION_ERROR",
+          "ui_response": "Show invalid strategy/filter message."
+        },
+        {
+          "case": "no_chunks_available",
+          "api_error_code": null,
+          "ui_response": "Empty state indicating chunk generation is not exposed in the API and may not have completed yet."
+        }
       ]
     },
     {
-      "page_id": "document_detail",
-      "title": "Document Detail",
-      "purpose": "Inspect and edit one document's metadata, extracted text, and ingestion state.",
+      "id": "document_search_playground",
+      "route": "/tenants/:tenantId/search",
+      "purpose": "Run and compare keyword, vector, and hybrid retrieval for document-search prompts over selected documents and chunking strategies.",
       "data_requirements": [
-        "Single document metadata and extracted text"
-      ],
-      "api_endpoints": [
         {
-          "operation_id": "getDocument",
-          "usage": "load detail"
+          "name": "document_candidates",
+          "source": "GET /tenants/{tenantId}/documents",
+          "fields": [
+            "_id",
+            "title",
+            "document_type",
+            "source_type",
+            "processing_status"
+          ]
         },
         {
-          "operation_id": "updateDocument",
-          "usage": "patch metadata/status"
+          "name": "search_form",
+          "source": "local UI state",
+          "fields": [
+            "query_text",
+            "retrieval_mode",
+            "chunking_strategy",
+            "document_ids",
+            "limit"
+          ]
+        },
+        {
+          "name": "vector_query_embedding",
+          "source": "external application service/local injected state",
+          "fields": [
+            "query_embedding"
+          ],
+          "notes": "Required for vector and hybrid modes; no embedding-generation API exists in the contract."
+        },
+        {
+          "name": "search_results",
+          "source": "search API response",
+          "fields": [
+            "rank",
+            "document_id",
+            "chunk_id",
+            "score",
+            "combined_score",
+            "vector_score",
+            "keyword_score",
+            "snippet",
+            "page_span",
+            "document_title",
+            "source_type",
+            "document_type"
+          ]
+        }
+      ],
+      "api_endpoints_consumed": [
+        {
+          "endpoint": "listTenantDocuments",
+          "method": "GET",
+          "path": "/tenants/{tenantId}/documents",
+          "usage": "Populate document selection controls."
+        },
+        {
+          "endpoint": "runDocumentKeywordSearch",
+          "method": "POST",
+          "path": "/tenants/{tenantId}/retrieval/document-search/keyword",
+          "usage": "Run keyword baseline retrieval."
+        },
+        {
+          "endpoint": "runDocumentVectorSearch",
+          "method": "POST",
+          "path": "/tenants/{tenantId}/retrieval/document-search/vector",
+          "usage": "Run semantic vector retrieval."
+        },
+        {
+          "endpoint": "runHybridSearch",
+          "method": "POST",
+          "path": "/tenants/{tenantId}/retrieval/hybrid",
+          "usage": "Run hybrid retrieval comparison."
+        },
+        {
+          "endpoint": "recordBenchmarkRun",
+          "method": "POST",
+          "path": "/tenants/{tenantId}/benchmark-runs",
+          "usage": "Persist a selected retrieval execution as benchmark evidence."
         }
       ],
       "user_actions": [
-        "View extracted text",
-        "Edit metadata",
-        "Update ingestion status",
-        "Open chunks drilldown"
+        {
+          "action": "load_documents_for_scope",
+          "description": "Load available docs that can be searched.",
+          "api_call": "GET /tenants/{tenantId}/documents"
+        },
+        {
+          "action": "run_keyword_search",
+          "description": "Submit keyword retrieval.",
+          "api_call": "POST /tenants/{tenantId}/retrieval/document-search/keyword"
+        },
+        {
+          "action": "run_vector_search",
+          "description": "Submit vector retrieval with externally supplied query embedding.",
+          "api_call": "POST /tenants/{tenantId}/retrieval/document-search/vector"
+        },
+        {
+          "action": "run_hybrid_search",
+          "description": "Submit hybrid retrieval with externally supplied query embedding.",
+          "api_call": "POST /tenants/{tenantId}/retrieval/hybrid"
+        },
+        {
+          "action": "save_as_benchmark_run",
+          "description": "Map current results and metrics into a persisted benchmark run tied to a selected ground truth.",
+          "api_call": "POST /tenants/{tenantId}/benchmark-runs"
+        },
+        {
+          "action": "open_benchmark_prompts",
+          "description": "Navigate to prompt selection/creation if no ground truth exists yet.",
+          "api_call": null
+        }
       ],
       "loading_states": [
-        "Detail skeleton",
-        "Patch saving state"
+        "Document selector initial load.",
+        "Search request in progress with disabled submit and spinner in results region.",
+        "Benchmark run save in progress on modal/form."
       ],
       "error_states": [
-        "Document not found",
-        "Validation error on patch"
-      ],
-      "components": [
-        "DocumentMetadataPanel",
-        "IngestionStatusBadge",
-        "ExtractedTextViewer",
-        "EditDocumentForm",
-        "StorageReferenceCard"
+        {
+          "case": "tenant_not_found",
+          "api_error_code": "TENANT_NOT_FOUND",
+          "ui_response": "Show tenant not found state."
+        },
+        {
+          "case": "validation_error_search",
+          "api_error_code": "VALIDATION_ERROR",
+          "ui_response": "Show missing query text, invalid chunking strategy, invalid document IDs, or missing query_embedding for vector/hybrid."
+        },
+        {
+          "case": "missing_embedding_capability",
+          "api_error_code": null,
+          "ui_response": "Show frontend warning that vector/hybrid search requires an embedding from an external service not provided by this API."
+        },
+        {
+          "case": "ground_truth_not_found_on_save",
+          "api_error_code": "GROUND_TRUTH_NOT_FOUND",
+          "ui_response": "Prompt user to select/create a valid benchmark prompt."
+        },
+        {
+          "case": "no_results",
+          "api_error_code": null,
+          "ui_response": "Show empty results state with option to change strategy or retrieval mode."
+        }
       ]
     },
     {
-      "page_id": "chunking_profiles",
-      "title": "Chunking Profiles",
-      "purpose": "Create and compare available chunking strategies used in retrieval and benchmark runs.",
+      "id": "agent_memory_playground",
+      "route": "/tenants/:tenantId/agent-memory",
+      "purpose": "Evaluate vector-only retrieval over conversation-derived memory documents scoped by conversation or session.",
       "data_requirements": [
-        "All chunking profiles"
-      ],
-      "api_endpoints": [
         {
-          "operation_id": "listChunkingProfiles",
-          "usage": "load all profiles"
+          "name": "memory_scope_form",
+          "source": "local UI state",
+          "fields": [
+            "conversation_id",
+            "session_id",
+            "chunking_strategy",
+            "query_text"
+          ]
         },
         {
-          "operation_id": "createChunkingProfile",
-          "usage": "create profile"
+          "name": "memory_documents",
+          "source": "GET /tenants/{tenantId}/agent-memory",
+          "fields": [
+            "_id",
+            "title",
+            "source_type",
+            "metadata.conversation_id",
+            "metadata.session_id",
+            "processing_status",
+            "ingested_at",
+            "updated_at"
+          ]
+        },
+        {
+          "name": "vector_query_embedding",
+          "source": "external application service/local injected state",
+          "fields": [
+            "query_embedding"
+          ],
+          "notes": "Required because the contract has no embedding-generation endpoint."
+        },
+        {
+          "name": "memory_results",
+          "source": "POST /tenants/{tenantId}/retrieval/agent-memory/vector",
+          "fields": [
+            "rank",
+            "document_id",
+            "chunk_id",
+            "score",
+            "snippet",
+            "conversation_id",
+            "session_id",
+            "updated_at"
+          ]
+        }
+      ],
+      "api_endpoints_consumed": [
+        {
+          "endpoint": "listAgentMemoryDocuments",
+          "method": "GET",
+          "path": "/tenants/{tenantId}/agent-memory",
+          "usage": "Load memory docs for a conversation or session scope."
+        },
+        {
+          "endpoint": "createDocument",
+          "method": "POST",
+          "path": "/tenants/{tenantId}/documents",
+          "usage": "Register new agent-memory documents."
+        },
+        {
+          "endpoint": "runAgentMemoryVectorRetrieval",
+          "method": "POST",
+          "path": "/tenants/{tenantId}/retrieval/agent-memory/vector",
+          "usage": "Run vector-only memory retrieval."
+        },
+        {
+          "endpoint": "recordBenchmarkRun",
+          "method": "POST",
+          "path": "/tenants/{tenantId}/benchmark-runs",
+          "usage": "Persist agent-memory benchmark evidence."
         }
       ],
       "user_actions": [
-        "View profiles",
-        "Create profile"
+        {
+          "action": "create_agent_memory_document",
+          "description": "Register conversation-derived document with conversation_id and/or session_id metadata.",
+          "api_call": "POST /tenants/{tenantId}/documents"
+        },
+        {
+          "action": "load_memory_documents",
+          "description": "List existing memory docs for a conversation or session.",
+          "api_call": "GET /tenants/{tenantId}/agent-memory"
+        },
+        {
+          "action": "run_memory_vector_retrieval",
+          "description": "Submit vector retrieval for agent memory.",
+          "api_call": "POST /tenants/{tenantId}/retrieval/agent-memory/vector"
+        },
+        {
+          "action": "save_as_benchmark_run",
+          "description": "Persist current retrieval output against an agent_memory ground truth.",
+          "api_call": "POST /tenants/{tenantId}/benchmark-runs"
+        }
       ],
       "loading_states": [
-        "Profile list loading",
-        "Create form submitting"
+        "Scoped memory document list loading.",
+        "Memory retrieval request in progress.",
+        "Benchmark save loading."
       ],
       "error_states": [
-        "Query execution failure",
-        "Validation error",
-        "Name conflict"
-      ],
-      "components": [
-        "ChunkingProfileList",
-        "CreateChunkingProfileForm",
-        "StrategyTypeBadge",
-        "JsonParametersViewer"
+        {
+          "case": "validation_error_scope",
+          "api_error_code": "VALIDATION_ERROR",
+          "ui_response": "Require either conversation_id or session_id before listing or retrieval."
+        },
+        {
+          "case": "missing_embedding_capability",
+          "api_error_code": null,
+          "ui_response": "Explain that vector retrieval requires external embedding generation."
+        },
+        {
+          "case": "unsupported_mode",
+          "api_error_code": null,
+          "ui_response": "Hide or disable keyword/hybrid choices because the API only supports vector retrieval for agent memory."
+        },
+        {
+          "case": "tenant_not_found",
+          "api_error_code": "TENANT_NOT_FOUND",
+          "ui_response": "Show tenant not found state."
+        }
       ]
     },
     {
-      "page_id": "document_chunks_drilldown",
-      "title": "Document Chunks Drilldown",
-      "purpose": "Inspect ordered chunks for a selected document and chunking profile after retrieval or ingestion.",
+      "id": "benchmark_prompts",
+      "route": "/tenants/:tenantId/benchmarks/prompts",
+      "purpose": "Create and browse customer-provided benchmark prompts/ground truths for document-search and agent-memory evaluations.",
       "data_requirements": [
-        "Document detail header",
-        "Chunking profiles for selector",
-        "Ordered chunks for selected profile"
+        {
+          "name": "task_type_filter",
+          "source": "local UI state",
+          "fields": [
+            "task_type",
+            "provided_during_session"
+          ]
+        },
+        {
+          "name": "prompt_list",
+          "source": "GET /tenants/{tenantId}/benchmark-ground-truths",
+          "fields": [
+            "_id",
+            "prompt_text",
+            "task_type",
+            "ground_truth_text",
+            "relevant_document_ids",
+            "relevant_chunk_ids",
+            "top_k_targets",
+            "notes",
+            "created_at"
+          ]
+        },
+        {
+          "name": "new_prompt_form",
+          "source": "local form state",
+          "fields": [
+            "prompt_text",
+            "task_type",
+            "ground_truth_text",
+            "relevant_document_ids",
+            "relevant_chunk_ids",
+            "top_k_targets",
+            "provided_during_session",
+            "notes"
+          ]
+        }
       ],
-      "api_endpoints": [
+      "api_endpoints_consumed": [
         {
-          "operation_id": "getDocument",
-          "usage": "document context header"
+          "endpoint": "listBenchmarkGroundTruths",
+          "method": "GET",
+          "path": "/tenants/{tenantId}/benchmark-ground-truths",
+          "usage": "List prompts for a chosen task type. Use default provided_during_session=true behavior."
         },
         {
-          "operation_id": "listChunkingProfiles",
-          "usage": "profile selector"
+          "endpoint": "createBenchmarkGroundTruth",
+          "method": "POST",
+          "path": "/tenants/{tenantId}/benchmark-ground-truths",
+          "usage": "Create a new benchmark prompt entered during the live session."
         },
         {
-          "operation_id": "getDocumentChunksForDrilldown",
-          "usage": "ordered chunk list"
+          "endpoint": "listTenantDocuments",
+          "method": "GET",
+          "path": "/tenants/{tenantId}/documents",
+          "usage": "Populate relevant document selection in the creation form when needed."
         }
       ],
       "user_actions": [
-        "Select chunking profile",
-        "Inspect chunk text and page span"
+        {
+          "action": "switch_task_type",
+          "description": "Toggle between document_search and agent_memory prompt sets.",
+          "api_call": "GET /tenants/{tenantId}/benchmark-ground-truths"
+        },
+        {
+          "action": "create_prompt",
+          "description": "Create a new benchmark ground truth.",
+          "api_call": "POST /tenants/{tenantId}/benchmark-ground-truths"
+        },
+        {
+          "action": "open_prompt_detail",
+          "description": "Navigate to detail/history for a selected prompt.",
+          "api_call": null
+        },
+        {
+          "action": "open_comparison_dashboard",
+          "description": "Navigate with selected prompt IDs for side-by-side comparison.",
+          "api_call": null
+        }
       ],
       "loading_states": [
-        "Document header loading",
-        "Chunk list loading when profile changes"
+        "Prompt list initial load and task-type switch loading.",
+        "Prompt creation submit loading.",
+        "Optional document selector loading for relevant_document_ids."
       ],
       "error_states": [
-        "Document/profile not found",
-        "No chunks for selected profile"
-      ],
-      "components": [
-        "DocumentHeader",
-        "ChunkingProfileSelector",
-        "OrderedChunkList",
-        "ChunkCard"
+        {
+          "case": "validation_error_list",
+          "api_error_code": "VALIDATION_ERROR",
+          "ui_response": "Require valid task_type."
+        },
+        {
+          "case": "validation_error_create",
+          "api_error_code": "VALIDATION_ERROR",
+          "ui_response": "Show field errors for prompt form."
+        },
+        {
+          "case": "tenant_not_found",
+          "api_error_code": "TENANT_NOT_FOUND",
+          "ui_response": "Show tenant not found state."
+        },
+        {
+          "case": "empty_prompt_list",
+          "api_error_code": null,
+          "ui_response": "Show empty state encouraging live prompt creation."
+        }
       ]
     },
     {
-      "page_id": "retrieval_playground",
-      "title": "Retrieval Playground",
-      "purpose": "Run ad hoc lexical or vector retrieval for benchmark-style questions and inspect top-k results.",
+      "id": "benchmark_prompt_detail",
+      "route": "/tenants/:tenantId/benchmarks/prompts/:groundTruthId",
+      "purpose": "Inspect a specific benchmark prompt's expected relevant documents/chunks and recent benchmark run history.",
       "data_requirements": [
-        "Chunking profiles",
-        "Search results for chosen mode",
-        "Optional document chunk drilldown targets"
+        {
+          "name": "prompt_detail",
+          "source": "GET /tenants/{tenantId}/benchmark-ground-truths/{groundTruthId}",
+          "fields": [
+            "benchmark_ground_truth._id",
+            "benchmark_ground_truth.prompt_text",
+            "benchmark_ground_truth.task_type",
+            "benchmark_ground_truth.ground_truth_text",
+            "benchmark_ground_truth.top_k_targets",
+            "benchmark_ground_truth.relevant_documents",
+            "benchmark_ground_truth.relevant_chunks"
+          ]
+        },
+        {
+          "name": "run_history",
+          "source": "GET /tenants/{tenantId}/benchmark-ground-truths/{groundTruthId}/runs",
+          "fields": [
+            "_id",
+            "system_under_test",
+            "retrieval_mode",
+            "chunking_strategy",
+            "embedding_model",
+            "metrics",
+            "top_k_results",
+            "run_label",
+            "run_timestamp",
+            "notes"
+          ]
+        }
       ],
-      "api_endpoints": [
+      "api_endpoints_consumed": [
         {
-          "operation_id": "listChunkingProfiles",
-          "usage": "selector options"
+          "endpoint": "getBenchmarkGroundTruthDetail",
+          "method": "GET",
+          "path": "/tenants/{tenantId}/benchmark-ground-truths/{groundTruthId}",
+          "usage": "Load expected targets and explanation context for the prompt."
         },
         {
-          "operation_id": "searchLexicalChunks",
-          "usage": "text retrieval"
-        },
-        {
-          "operation_id": "searchVectorChunks",
-          "usage": "vector retrieval"
-        },
-        {
-          "operation_id": "getDocumentChunksForDrilldown",
-          "usage": "result drilldown"
+          "endpoint": "getBenchmarkPromptHistory",
+          "method": "GET",
+          "path": "/tenants/{tenantId}/benchmark-ground-truths/{groundTruthId}/runs",
+          "usage": "Load benchmark execution history."
         }
       ],
       "user_actions": [
-        "Choose retrieval mode",
-        "Select chunking profile",
-        "Enter query text for lexical search",
-        "Provide query embedding for vector search",
-        "Choose top-k limit",
-        "Inspect result source chunks"
+        {
+          "action": "refresh_prompt_detail",
+          "description": "Reload the prompt detail and recent runs.",
+          "api_call": "GET detail + GET runs"
+        },
+        {
+          "action": "navigate_to_comparison",
+          "description": "Open comparison dashboard seeded with this prompt ID.",
+          "api_call": null
+        },
+        {
+          "action": "navigate_to_search_or_memory_playground",
+          "description": "Return to the appropriate playground based on task_type to run another test.",
+          "api_call": null
+        }
       ],
       "loading_states": [
-        "Chunking profile load",
-        "Search in progress",
-        "Result drilldown loading"
+        "Detail skeleton load.",
+        "Run history table skeleton load.",
+        "Manual refresh loading state."
       ],
       "error_states": [
-        "Missing/invalid query payload",
-        "Chunking profile not found",
-        "Search backend error",
-        "Empty results state"
-      ],
-      "components": [
-        "RetrievalModeToggle",
-        "ChunkingProfileSelector",
-        "TextSearchForm",
-        "VectorSearchForm",
-        "TopKSelector",
-        "SearchResultsList",
-        "ResultDrilldownDrawer",
-        "CapabilityNotice"
-      ],
-      "notes": [
-        "Vector search requires externally generated query embeddings; the API does not offer text-to-embedding conversion."
+        {
+          "case": "ground_truth_not_found_detail",
+          "api_error_code": "GROUND_TRUTH_NOT_FOUND",
+          "ui_response": "Show not-found state and link back to prompt list."
+        },
+        {
+          "case": "ground_truth_not_found_runs",
+          "api_error_code": "GROUND_TRUTH_NOT_FOUND",
+          "ui_response": "Show run-history unavailable state."
+        },
+        {
+          "case": "network_or_unknown",
+          "api_error_code": "UNKNOWN",
+          "ui_response": "Show retry banner."
+        }
       ]
     },
     {
-      "page_id": "benchmark_datasets",
-      "title": "Benchmark Datasets",
-      "purpose": "Create and browse tenant benchmark datasets that group prompts/questions.",
+      "id": "benchmark_comparison_dashboard",
+      "route": "/tenants/:tenantId/benchmarks/comparison",
+      "purpose": "Present side-by-side benchmark evidence across selected prompts and rolled-up performance summaries over a time window.",
       "data_requirements": [
-        "Dataset list"
-      ],
-      "api_endpoints": [
         {
-          "operation_id": "listBenchmarkDatasets",
-          "usage": "list datasets"
+          "name": "selected_ground_truth_ids",
+          "source": "route state/local UI state",
+          "fields": [
+            "ground_truth_ids"
+          ]
         },
         {
-          "operation_id": "createBenchmarkDataset",
-          "usage": "create dataset"
+          "name": "comparison_rows",
+          "source": "POST /tenants/{tenantId}/benchmark-runs/compare",
+          "fields": [
+            "ground_truth_id",
+            "prompt_text",
+            "system_under_test",
+            "retrieval_mode",
+            "chunking_strategy",
+            "embedding_model",
+            "latency_ms",
+            "precision_at_k",
+            "recall_at_k",
+            "result_count",
+            "top_k_results",
+            "run_timestamp"
+          ]
+        },
+        {
+          "name": "summary_window",
+          "source": "local UI state",
+          "fields": [
+            "start_time",
+            "end_time"
+          ]
+        },
+        {
+          "name": "summary_rows",
+          "source": "GET /tenants/{tenantId}/benchmark-runs/summary",
+          "fields": [
+            "system_under_test",
+            "retrieval_mode",
+            "chunking_strategy",
+            "avg_latency_ms",
+            "avg_precision_at_1",
+            "avg_precision_at_5",
+            "avg_precision_at_10",
+            "avg_precision_at_20",
+            "avg_recall_at_1",
+            "avg_recall_at_5",
+            "avg_recall_at_10",
+            "avg_recall_at_20",
+            "run_count"
+          ]
+        }
+      ],
+      "api_endpoints_consumed": [
+        {
+          "endpoint": "compareBenchmarkRuns",
+          "method": "POST",
+          "path": "/tenants/{tenantId}/benchmark-runs/compare",
+          "usage": "Load side-by-side run evidence for selected prompts."
+        },
+        {
+          "endpoint": "summarizeBenchmarkPerformance",
+          "method": "GET",
+          "path": "/tenants/{tenantId}/benchmark-runs/summary",
+          "usage": "Load rolled-up averages across a time window."
         }
       ],
       "user_actions": [
-        "Create dataset",
-        "Filter by exact name if desired",
-        "Open dataset"
-      ],
-      "loading_states": [
-        "List loading",
-        "Create submitting"
-      ],
-      "error_states": [
-        "Tenant not found",
-        "Invalid query",
-        "Validation error"
-      ],
-      "components": [
-        "BenchmarkDatasetList",
-        "CreateBenchmarkDatasetForm",
-        "EmptyState",
-        "ErrorBanner"
-      ]
-    },
-    {
-      "page_id": "benchmark_dataset_detail",
-      "title": "Benchmark Dataset Detail",
-      "purpose": "Review one dataset and author benchmark queries with optional ground truth labels.",
-      "data_requirements": [
-        "Dataset with embedded queries",
-        "Recent documents for selecting ground-truth document ids"
-      ],
-      "api_endpoints": [
         {
-          "operation_id": "getBenchmarkDatasetWithQueries",
-          "usage": "load dataset and queries"
+          "action": "compare_selected_prompts",
+          "description": "Submit one or more prompt IDs for side-by-side evidence.",
+          "api_call": "POST /tenants/{tenantId}/benchmark-runs/compare"
         },
         {
-          "operation_id": "createBenchmarkQuery",
-          "usage": "add query"
+          "action": "load_summary",
+          "description": "Request aggregate benchmark summary for a chosen time window.",
+          "api_call": "GET /tenants/{tenantId}/benchmark-runs/summary"
         },
         {
-          "operation_id": "listRecentDocuments",
-          "usage": "help select document ids for ground truth"
+          "action": "view_prompt_detail",
+          "description": "Navigate from a comparison row to prompt detail/history.",
+          "api_call": null
         }
       ],
-      "user_actions": [
-        "View all benchmark queries",
-        "Add benchmark query",
-        "Enter optional query embedding",
-        "Add ground truth labels with document_id and/or chunk_id if known",
-        "Navigate to runs"
-      ],
       "loading_states": [
-        "Dataset loading",
-        "Query creation submitting"
+        "Comparison load spinner/table skeleton.",
+        "Summary cards/table loading after time window submission."
       ],
       "error_states": [
-        "Dataset not found",
-        "Validation error on query create"
-      ],
-      "components": [
-        "BenchmarkDatasetHeader",
-        "BenchmarkQueryList",
-        "CreateBenchmarkQueryForm",
-        "GroundTruthEditor",
-        "DocumentReferencePicker"
-      ],
-      "notes": [
-        "The API lacks a chunk lookup/search endpoint by text or id outside run results/drilldown flows, so chunk_id ground-truth entry may need manual id entry unless derived from prior retrieval results."
-      ]
-    },
-    {
-      "page_id": "benchmark_runs",
-      "title": "Benchmark Runs",
-      "purpose": "List and configure benchmark runs for a dataset.",
-      "data_requirements": [
-        "Dataset runs with chunking profile summary",
-        "Chunking profiles for run creation"
-      ],
-      "api_endpoints": [
         {
-          "operation_id": "listBenchmarkRuns",
-          "usage": "run list"
+          "case": "validation_error_compare",
+          "api_error_code": "VALIDATION_ERROR",
+          "ui_response": "Require at least one prompt selection."
         },
         {
-          "operation_id": "listChunkingProfiles",
-          "usage": "chunking profile options"
+          "case": "ground_truths_not_found",
+          "api_error_code": "GROUND_TRUTHS_NOT_FOUND",
+          "ui_response": "Show no matching prompts/runs found state."
         },
         {
-          "operation_id": "createBenchmarkRun",
-          "usage": "create run record"
+          "case": "validation_error_summary",
+          "api_error_code": "VALIDATION_ERROR",
+          "ui_response": "Show invalid time window message."
+        },
+        {
+          "case": "no_runs_found",
+          "api_error_code": "NO_RUNS_FOUND",
+          "ui_response": "Show empty summary state for the selected window."
         }
-      ],
-      "user_actions": [
-        "View existing runs",
-        "Create benchmark run configuration",
-        "Open run detail",
-        "Open comparisons"
-      ],
-      "loading_states": [
-        "Runs list loading",
-        "Run creation submitting"
-      ],
-      "error_states": [
-        "Dataset not found",
-        "Validation error",
-        "Related entity not found"
-      ],
-      "components": [
-        "BenchmarkRunList",
-        "CreateBenchmarkRunForm",
-        "RunStatusBadge",
-        "ChunkingProfileMultiSelect"
-      ]
-    },
-    {
-      "page_id": "benchmark_run_detail",
-      "title": "Benchmark Run Detail",
-      "purpose": "Monitor a run, update status, record results, and analyze summary/per-query metrics and outliers.",
-      "data_requirements": [
-        "Run summary metrics",
-        "Per-query result details",
-        "Latency outliers"
-      ],
-      "api_endpoints": [
-        {
-          "operation_id": "updateBenchmarkRun",
-          "usage": "edit status/metadata"
-        },
-        {
-          "operation_id": "getBenchmarkRunSummary",
-          "usage": "aggregate metrics summary"
-        },
-        {
-          "operation_id": "getBenchmarkRunQueryDetails",
-          "usage": "per-query metrics and retrieved hits"
-        },
-        {
-          "operation_id": "getBenchmarkRunLatencyOutliers",
-          "usage": "slow-query analysis"
-        },
-        {
-          "operation_id": "createBenchmarkResult",
-          "usage": "record per-query result"
-        }
-      ],
-      "user_actions": [
-        "Patch run status/timestamps/notes",
-        "Record per-query result",
-        "Review averages and latency statistics",
-        "Inspect per-query retrieved hits",
-        "View latency outliers"
-      ],
-      "loading_states": [
-        "Summary loading",
-        "Results table loading",
-        "Outliers loading",
-        "Result form submitting",
-        "Run patch submitting"
-      ],
-      "error_states": [
-        "Run/results not found",
-        "Validation error on result create or patch",
-        "Duplicate benchmark result",
-        "No results yet empty analysis state"
-      ],
-      "components": [
-        "BenchmarkRunHeader",
-        "RunStatusEditor",
-        "RunSummaryCards",
-        "PerQueryResultsTable",
-        "CreateBenchmarkResultForm",
-        "LatencyOutliersPanel",
-        "RetrievedResultsViewer"
-      ],
-      "notes": [
-        "The frontend can record results but cannot automatically execute benchmark runs from the API alone. Metrics must be supplied in createBenchmarkResult payloads or derived externally before submission."
-      ]
-    },
-    {
-      "page_id": "benchmark_run_comparison",
-      "title": "Benchmark Run Comparison",
-      "purpose": "Show side-by-side comparison of completed runs for a dataset across systems and chunking strategies.",
-      "data_requirements": [
-        "Comparison rows for completed runs"
-      ],
-      "api_endpoints": [
-        {
-          "operation_id": "compareBenchmarkRuns",
-          "usage": "comparison table"
-        }
-      ],
-      "user_actions": [
-        "Review run comparison",
-        "Sort/filter client-side",
-        "Open underlying run detail"
-      ],
-      "loading_states": [
-        "Comparison table loading"
-      ],
-      "error_states": [
-        "No completed runs found",
-        "Invalid path"
-      ],
-      "components": [
-        "RunComparisonTable",
-        "MetricColumnChooser",
-        "EmptyComparisonState"
-      ]
-    },
-    {
-      "page_id": "agent_memory_sessions",
-      "title": "Agent Memory Sessions",
-      "purpose": "Support secondary exploration of session memory storage, session history, and semantic retrieval.",
-      "data_requirements": [
-        "Recent session history for selected session",
-        "Semantic retrieval results for a query embedding"
-      ],
-      "api_endpoints": [
-        {
-          "operation_id": "createAgentMemoryEntry",
-          "usage": "store memory entry"
-        },
-        {
-          "operation_id": "listRecentAgentMemory",
-          "usage": "load chronological session history"
-        },
-        {
-          "operation_id": "searchAgentMemory",
-          "usage": "semantic memory retrieval"
-        }
-      ],
-      "user_actions": [
-        "Create memory entry",
-        "Load a session history by session id",
-        "Search memory semantically with query embedding"
-      ],
-      "loading_states": [
-        "History loading",
-        "Search loading",
-        "Create submitting"
-      ],
-      "error_states": [
-        "Session not found",
-        "Validation error",
-        "Vector search error"
-      ],
-      "components": [
-        "AgentMemoryEntryForm",
-        "SessionSelector",
-        "SessionHistoryList",
-        "MemorySearchForm",
-        "MemorySearchResults"
-      ],
-      "notes": [
-        "No endpoint exists to list all sessions globally; user must supply or navigate with a known session id. Query embeddings must be supplied externally."
       ]
     }
   ],
-  "shared_components": [
+  "components": [
     {
-      "name": "TenantSwitcher",
-      "purpose": "Switch active tenant across tenant-scoped routes",
+      "id": "app_shell",
+      "type": "layout",
+      "purpose": "Global shell with tenant context badge, primary navigation, and page outlet.",
       "used_on": [
-        "tenant_workspace",
-        "documents_list",
-        "document_detail",
-        "document_chunks_drilldown",
-        "retrieval_playground",
-        "benchmark_datasets",
-        "benchmark_dataset_detail",
-        "benchmark_runs",
-        "benchmark_run_detail",
-        "benchmark_run_comparison",
-        "agent_memory_sessions"
+        "all tenant pages"
       ]
     },
     {
-      "name": "ApiErrorBanner",
-      "purpose": "Render API error codes/messages consistently",
-      "used_on": "all"
-    },
-    {
-      "name": "LoadingSkeleton",
-      "purpose": "Standard loading placeholders",
-      "used_on": "all"
-    },
-    {
-      "name": "EmptyStatePanel",
-      "purpose": "Consistent empty-state handling",
-      "used_on": "all list/detail analysis screens"
-    },
-    {
-      "name": "TopKSelector",
-      "purpose": "Select benchmark/retrieval top-k values 1/5/10/20 or allowed custom limit",
+      "id": "tenant_creation_form",
+      "type": "form",
+      "purpose": "Collect required tenant fields and create tenant.",
       "used_on": [
-        "retrieval_playground",
-        "benchmark_runs"
+        "tenant_setup"
       ]
     },
     {
-      "name": "CapabilityNotice",
-      "purpose": "Explain backend limitations where API lacks automation/upload/generation endpoints",
+      "id": "tenant_context_banner",
+      "type": "context",
+      "purpose": "Display active tenant name/id and remind users that tenant listing is unavailable in the API.",
       "used_on": [
-        "documents_list",
-        "retrieval_playground",
-        "benchmark_run_detail",
-        "agent_memory_sessions"
+        "all tenant pages"
+      ]
+    },
+    {
+      "id": "document_filters_bar",
+      "type": "filter_group",
+      "purpose": "Edit document list filters for types, sources, statuses, and limit.",
+      "used_on": [
+        "documents_library"
+      ]
+    },
+    {
+      "id": "documents_table",
+      "type": "data_table",
+      "purpose": "Render document list with status, types, and quick actions.",
+      "used_on": [
+        "documents_library"
+      ]
+    },
+    {
+      "id": "document_registration_form",
+      "type": "form",
+      "purpose": "Register new documents or memory docs without binary upload.",
+      "used_on": [
+        "documents_library",
+        "agent_memory_playground"
+      ]
+    },
+    {
+      "id": "chunk_strategy_selector",
+      "type": "filter_group",
+      "purpose": "Choose one or more chunking strategies.",
+      "used_on": [
+        "document_chunk_inspector",
+        "document_search_playground",
+        "agent_memory_playground"
+      ]
+    },
+    {
+      "id": "chunks_table",
+      "type": "data_table",
+      "purpose": "Display chunk text, index, token count, page span, and strategy params.",
+      "used_on": [
+        "document_chunk_inspector"
+      ]
+    },
+    {
+      "id": "search_query_form",
+      "type": "form",
+      "purpose": "Capture query text, retrieval mode, chunking strategy, document scope, and limit.",
+      "used_on": [
+        "document_search_playground"
+      ]
+    },
+    {
+      "id": "embedding_dependency_notice",
+      "type": "notice",
+      "purpose": "Explain that vector/hybrid retrieval requires external embedding generation because the API does not provide it.",
+      "used_on": [
+        "document_search_playground",
+        "agent_memory_playground"
+      ]
+    },
+    {
+      "id": "retrieval_results_panel",
+      "type": "results_list",
+      "purpose": "Show ranked retrieval results/snippets and retrieval-specific scores.",
+      "used_on": [
+        "document_search_playground",
+        "agent_memory_playground"
+      ]
+    },
+    {
+      "id": "benchmark_run_save_modal",
+      "type": "modal_form",
+      "purpose": "Map current retrieval output into the benchmark-run payload and persist it.",
+      "used_on": [
+        "document_search_playground",
+        "agent_memory_playground"
+      ]
+    },
+    {
+      "id": "memory_scope_form",
+      "type": "form",
+      "purpose": "Capture conversation_id or session_id and retrieval query for agent memory.",
+      "used_on": [
+        "agent_memory_playground"
+      ]
+    },
+    {
+      "id": "memory_documents_table",
+      "type": "data_table",
+      "purpose": "List scoped agent-memory documents.",
+      "used_on": [
+        "agent_memory_playground"
+      ]
+    },
+    {
+      "id": "benchmark_prompt_form",
+      "type": "form",
+      "purpose": "Create new ground truths entered during the session.",
+      "used_on": [
+        "benchmark_prompts"
+      ]
+    },
+    {
+      "id": "benchmark_prompts_table",
+      "type": "data_table",
+      "purpose": "List prompts with task type, targets, and creation time.",
+      "used_on": [
+        "benchmark_prompts"
+      ]
+    },
+    {
+      "id": "prompt_detail_card",
+      "type": "detail_view",
+      "purpose": "Display prompt text, task type, top-K targets, and linked relevant docs/chunks.",
+      "used_on": [
+        "benchmark_prompt_detail"
+      ]
+    },
+    {
+      "id": "run_history_table",
+      "type": "data_table",
+      "purpose": "Render benchmark run history for a single prompt.",
+      "used_on": [
+        "benchmark_prompt_detail"
+      ]
+    },
+    {
+      "id": "comparison_table",
+      "type": "data_table",
+      "purpose": "Render side-by-side benchmark evidence across prompts and systems.",
+      "used_on": [
+        "benchmark_comparison_dashboard"
+      ]
+    },
+    {
+      "id": "summary_metrics_cards",
+      "type": "metric_cards",
+      "purpose": "Highlight aggregated latency/precision/recall by system and strategy.",
+      "used_on": [
+        "benchmark_comparison_dashboard"
+      ]
+    },
+    {
+      "id": "api_error_banner",
+      "type": "feedback",
+      "purpose": "Show structured API errors consistently using code/message/details.",
+      "used_on": [
+        "all pages"
+      ]
+    },
+    {
+      "id": "empty_state_panel",
+      "type": "feedback",
+      "purpose": "Show no-data and unsupported-capability guidance.",
+      "used_on": [
+        "all pages as needed"
       ]
     }
   ],
-  "constraints": [
-    {
-      "type": "api_gap",
-      "description": "No binary file upload endpoint exists. Frontend can only register document metadata/storage references and display them."
-    },
-    {
-      "type": "api_gap",
-      "description": "No embedding generation endpoint exists for documents, benchmark queries, retrieval queries, or agent-memory searches. Frontend must accept externally generated embeddings when vector operations are used."
-    },
-    {
-      "type": "api_gap",
-      "description": "No bulk chunk upload endpoint exists; chunks are created one at a time with createDocumentChunk."
-    },
-    {
-      "type": "api_gap",
-      "description": "No endpoint executes benchmark runs automatically or computes metrics from raw retrieved hits on demand. Frontend can create run records, update status, and submit results/metrics."
-    },
-    {
-      "type": "api_gap",
-      "description": "No cost/storage estimation endpoint exists, so the UI cannot provide backend-derived cost comparison views."
-    },
-    {
-      "type": "api_gap",
-      "description": "No dedicated structured+unstructured workflow endpoint exists, so this should not be represented as an implemented POV screen."
-    },
-    {
-      "type": "api_gap",
-      "description": "No multimodal extraction endpoint exists, so PDF image/table extraction workflows should not be promised."
-    }
+  "notes_on_unsupported_frontend_capabilities": [
+    "Do not design binary file upload widgets that imply transport to the backend; only metadata/raw_text/source_uri registration is supported.",
+    "Do not design tenant switcher backed by an API list/detail endpoint; none exists in the authoritative contract.",
+    "Do not design edit/delete actions for documents, prompts, runs, or tenants.",
+    "Do not design a frontend control that triggers chunk generation; chunk creation is an internal pipeline concern and only inspection is exposed.",
+    "Do not claim cost-analysis APIs or baseline-system execution APIs exist. The frontend can record benchmark runs for systems like elastic/opensearch/qdrant/internal_baseline, but execution/import of those baseline results must come from user/operator workflows outside the provided API.",
+    "Do not expose agent-memory keyword or hybrid retrieval because no such endpoint exists."
   ]
 }
