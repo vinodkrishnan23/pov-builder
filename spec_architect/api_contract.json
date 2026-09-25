@@ -1,0 +1,185 @@
+{
+  "version": "1.0.0",
+  "pov_scope_alignment": {
+    "in_scope": [
+      "Create and manage user-reported stuck UI reports",
+      "List reports needing recheck",
+      "Create and update recheck records tied to reports",
+      "Create and update UI incident records when support chooses to group reports"
+    ],
+    "out_of_scope": [
+      "Automated incident deduplication/grouping logic",
+      "Telemetry/log ingestion",
+      "Analytics dashboards beyond direct CRUD/list operations",
+      "Any Atlas-specific feature beyond persisting atlas_used on rechecks"
+    ]
+  },
+  "resources": {
+    "user_report": {
+      "collection": "user_reports"
+    },
+    "ui_incident": {
+      "collection": "ui_incidents"
+    },
+    "recheck": {
+      "collection": "rechecks"
+    }
+  },
+  "endpoints": [
+    {
+      "operationId": "createUserReport",
+      "method": "POST",
+      "path": "/user-reports",
+      "purpose": "Create a new user-reported stuck UI incident record for later recheck/investigation.",
+      "request": {
+        "contentType": "application/json",
+        "body": {
+          "type": "object",
+          "required": [
+            "reported_at",
+            "reporter_type",
+            "summary"
+          ],
+          "properties": {
+            "reported_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "reporter_type": {
+              "type": "string",
+              "enum": [
+                "end_user",
+                "unknown"
+              ]
+            },
+            "reporter_identifier": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "application_area": {
+              "type": "string"
+            },
+            "ui_screen": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "reported",
+                "under_recheck",
+                "rechecked",
+                "closed"
+              ],
+              "default": "reported"
+            },
+            "incident_id": {
+              "type": "string",
+              "format": "objectId"
+            }
+          }
+        }
+      },
+      "response": {
+        "statusCodes": {
+          "201": {
+            "description": "User report created.",
+            "body": {
+              "type": "object",
+              "properties": {
+                "_id": {
+                  "type": "string",
+                  "format": "objectId"
+                },
+                "reported_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "reporter_type": {
+                  "type": "string",
+                  "enum": [
+                    "end_user",
+                    "unknown"
+                  ]
+                },
+                "reporter_identifier": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "summary": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "application_area": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "ui_screen": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "reported",
+                    "under_recheck",
+                    "rechecked",
+                    "closed"
+                  ]
+                },
+                "incident_id": {
+                  "type": "string",
+                  "format": "objectId",
+                  "nullable": true
+                },
+                "latest_recheck_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updated_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          }
+        },
+        "errors": [
+          {
+            "status": 400,
+            "code": "VALIDATION_ERROR",
+            "cases": [
+              "Missing required fields",
+              "Invalid enum value",
+              "Invalid ObjectId/date format"
+            ]
+          },
+          {
+            "status": 404,
+            "code": "INCIDENT_NOT_FOUND",
+            "cases": [
+              "incident_id provided but no ui_incidents document exists for it"
+            ]
+          }
+        ],
+        "backing": {
+          "type": "crud",
+          "mongo_operation": "insertOne on user_reports; optional findOne on ui_incidents for incident_id validation"
+        }
+      },
+      ":{": "invalid"
+    }
+  ]
+}
