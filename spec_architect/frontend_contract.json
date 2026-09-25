@@ -1,0 +1,823 @@
+{
+  "app_shell": {
+    "layout": "customer-scoped admin/analyst console",
+    "global_dependencies": [
+      "customer context (customerId)",
+      "current user context (user_id)"
+    ],
+    "global_behaviors": [
+      "For pages backed by authorization_required=true endpoints, include user_id in requests.",
+      "Optionally preflight access with POST /customers/{customerId}/log-viewer-authorizations/check before rendering protected data pages.",
+      "Show customer-scoped navigation to Requests, Execution Steps, Policy Comparisons, Dashboards, Policy Definitions, Logging Configuration.",
+      "Do not expose UI for purge execution, user administration, or LLM insights because the API contract does not provide those capabilities."
+    ]
+  },
+  "routes": [
+    {
+      "route": "/customers/:customerId",
+      "page_id": "customerOverviewRedirect",
+      "auth_expectation": "customer context required",
+      "children": [
+        "/customers/:customerId/requests",
+        "/customers/:customerId/execution-steps",
+        "/customers/:customerId/policies",
+        "/customers/:customerId/comparisons",
+        "/customers/:customerId/dashboards",
+        "/customers/:customerId/logging-config"
+      ]
+    },
+    {
+      "route": "/customers/:customerId/requests",
+      "page_id": "requestSearchPage",
+      "auth_expectation": "authorized log viewer required for data results"
+    },
+    {
+      "route": "/customers/:customerId/requests/:requestId",
+      "page_id": "requestAuditTrailPage",
+      "auth_expectation": "authorized log viewer required"
+    },
+    {
+      "route": "/customers/:customerId/execution-steps",
+      "page_id": "executionStepSearchPage",
+      "auth_expectation": "authorized log viewer required"
+    },
+    {
+      "route": "/customers/:customerId/policies",
+      "page_id": "policyDefinitionListPage",
+      "auth_expectation": "customer context required"
+    },
+    {
+      "route": "/customers/:customerId/policies/:policyId/versions/:version",
+      "page_id": "policyDefinitionDetailPage",
+      "auth_expectation": "customer context required"
+    },
+    {
+      "route": "/customers/:customerId/comparisons",
+      "page_id": "policyComparisonSetupPage",
+      "auth_expectation": "authorized log viewer required for comparison results"
+    },
+    {
+      "route": "/customers/:customerId/comparisons/:policyId",
+      "page_id": "policyComparisonResultsPage",
+      "auth_expectation": "authorized log viewer required"
+    },
+    {
+      "route": "/customers/:customerId/dashboards",
+      "page_id": "dashboardOverviewPage",
+      "auth_expectation": "authorized log viewer required for metrics"
+    },
+    {
+      "route": "/customers/:customerId/logging-config",
+      "page_id": "loggingConfigurationPage",
+      "auth_expectation": "customer context required"
+    }
+  ],
+  "pages": [
+    {
+      "page_id": "customerOverviewRedirect",
+      "title": "Customer Area Entry",
+      "purpose": "Resolve customer context and send the user to the most relevant starting page, typically Requests. If authorization precheck fails for execution-log views, allow navigation to non-protected pages such as Policy Definitions or Logging Configuration.",
+      "data_requirements": [
+        "Optional authorization status for current user and customer."
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "authorizeLogViewer",
+          "usage": "Optional preflight to decide default landing experience and protected-nav availability."
+        }
+      ],
+      "user_actions": [
+        "Navigate to Requests",
+        "Navigate to Execution Steps",
+        "Navigate to Policy Definitions",
+        "Navigate to Comparisons",
+        "Navigate to Dashboards",
+        "Navigate to Logging Configuration"
+      ],
+      "loading_states": [
+        "Checking user access for this customer."
+      ],
+      "error_states": [
+        "If authorization check returns 404/unauthorized, show limited-access message and route user to non-protected pages.",
+        "If authorization check fails unexpectedly, show fallback navigation without protected data auto-load."
+      ]
+    },
+    {
+      "page_id": "requestSearchPage",
+      "title": "Execution Requests",
+      "purpose": "Search and filter request-level execution records over a date range, inspect high-level outcomes and metrics, and drill into one request's audit trail.",
+      "data_requirements": [
+        "Authorized user status for current user/customer.",
+        "Request search results with filters: date range, status, final outcome, policy/version, channel, source system, tags, payload field filters, pagination token if available."
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "authorizeLogViewer",
+          "usage": "Optional preflight before first protected search or when customer/user context changes."
+        },
+        {
+          "operation_id": "listExecutionRequests",
+          "usage": "Primary data source for request grid."
+        }
+      ],
+      "user_actions": [
+        "Set from/to date",
+        "Filter by status",
+        "Filter by final outcome",
+        "Filter by policy ID",
+        "Filter by policy version",
+        "Filter by channel",
+        "Filter by source system",
+        "Filter by tags",
+        "Add/remove payload field equality filters",
+        "Submit search",
+        "Clear filters",
+        "Open a request audit trail details page",
+        "Load next page only if next_page_token is returned"
+      ],
+      "loading_states": [
+        "Initial access check in progress.",
+        "Searching requests.",
+        "Loading next page of request results."
+      ],
+      "error_states": [
+        "403 forbidden: show access denied state with no data grid.",
+        "400 invalid request: show inline validation for required date range and supported filters.",
+        "Empty results: show no matching requests state.",
+        "Network/server error: show retry banner while preserving filters."
+      ],
+      "components": [
+        "ProtectedPageGuard",
+        "DateRangeFilter",
+        "RequestFilterPanel",
+        "PayloadFilterBuilder",
+        "RequestResultsGrid",
+        "PaginationControls",
+        "OutcomeBadge",
+        "StatusBadge",
+        "MetricSummaryStrip",
+        "EmptyState",
+        "ErrorBanner"
+      ]
+    },
+    {
+      "page_id": "requestAuditTrailPage",
+      "title": "Request Audit Trail",
+      "purpose": "Display the full ordered audit trail for a single request, including request/response payloads, overall outcome, and all execution-step details needed for investigation.",
+      "data_requirements": [
+        "Authorized user status for current user/customer.",
+        "Request audit trail fetched by request_id from route. API also supports correlation_id, but route is request-based; correlation lookup can be supported from search entry or alternate search control on page."
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "authorizeLogViewer",
+          "usage": "Optional preflight before loading protected request details."
+        },
+        {
+          "operation_id": "getRequestAuditTrail",
+          "usage": "Primary source for request header, payloads, and ordered execution_steps."
+        }
+      ],
+      "user_actions": [
+        "View request summary metrics",
+        "Expand/collapse request payload JSON",
+        "Expand/collapse response payload JSON",
+        "Browse ordered execution steps",
+        "Expand one step to inspect input/output/intermediate payloads and lookup details",
+        "Search within displayed JSON client-side",
+        "Jump back to request search",
+        "Optionally fetch by correlation ID through a search field on the page"
+      ],
+      "loading_states": [
+        "Loading audit trail.",
+        "Loading alternate identifier lookup."
+      ],
+      "error_states": [
+        "403 forbidden: show access denied state.",
+        "404 request not found: show identifier-specific not found message.",
+        "400 invalid request: prompt user to provide request or correlation identifier and user context.",
+        "Partial-data warning is not applicable because the API returns a single combined object; if request fails, show full-page error."
+      ],
+      "components": [
+        "ProtectedPageGuard",
+        "RequestSummaryHeader",
+        "JsonPayloadViewer",
+        "ExecutionStepTimeline",
+        "ExecutionStepRow",
+        "LookupDetailsCard",
+        "CopyToClipboardButton",
+        "SearchWithinJson",
+        "ErrorBanner",
+        "NotFoundState"
+      ]
+    },
+    {
+      "page_id": "executionStepSearchPage",
+      "title": "Execution Steps",
+      "purpose": "Search step-level records directly across requests to investigate rule behavior, errors, lookup usage, and payload-matched step events.",
+      "data_requirements": [
+        "Authorized user status for current user/customer.",
+        "Step search results with date range, policy/version, rule id/name, stage, status, error code, lookup usage, payload field filters, pagination token if available."
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "authorizeLogViewer",
+          "usage": "Optional preflight before protected search."
+        },
+        {
+          "operation_id": "searchExecutionSteps",
+          "usage": "Primary data source for step-level grid."
+        }
+      ],
+      "user_actions": [
+        "Set from/to date",
+        "Filter by policy ID/version",
+        "Filter by rule ID or rule name",
+        "Filter by stage",
+        "Filter by step status",
+        "Filter by error code",
+        "Filter by lookup performed true/false",
+        "Add/remove payload field equality filters",
+        "Submit search",
+        "Clear filters",
+        "Open related request audit trail for a selected step via request_id",
+        "Load next page only if next_page_token is returned"
+      ],
+      "loading_states": [
+        "Initial access check in progress.",
+        "Searching execution steps.",
+        "Loading next page of step results."
+      ],
+      "error_states": [
+        "403 forbidden: show access denied state.",
+        "400 invalid request: show filter/date validation.",
+        "Empty results: no matching steps state.",
+        "Network/server error: show retry banner while preserving filters."
+      ],
+      "components": [
+        "ProtectedPageGuard",
+        "DateRangeFilter",
+        "StepFilterPanel",
+        "PayloadFilterBuilder",
+        "ExecutionStepResultsGrid",
+        "PaginationControls",
+        "StageBadge",
+        "StepStatusBadge",
+        "ErrorCodeCell",
+        "EmptyState",
+        "ErrorBanner"
+      ]
+    },
+    {
+      "page_id": "policyDefinitionListPage",
+      "title": "Policy Definitions",
+      "purpose": "Browse available policy definitions and versions for a customer, optionally filtered by status, and navigate to a policy version detail page. This supports context for comparisons and investigation.",
+      "data_requirements": [
+        "List of policy definitions for customer, optionally filtered by status."
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "listPolicyDefinitions",
+          "usage": "Primary source for policy list."
+        }
+      ],
+      "user_actions": [
+        "Filter by policy status",
+        "Open a policy definition version detail page",
+        "Navigate to policy comparison setup with a selected policy prefilled"
+      ],
+      "loading_states": [
+        "Loading policy definitions."
+      ],
+      "error_states": [
+        "400 invalid customer: show customer context error.",
+        "Empty results: no policies available state.",
+        "Network/server error: show retry banner."
+      ],
+      "components": [
+        "PolicyStatusFilter",
+        "PolicyDefinitionTable",
+        "PolicyVersionLink",
+        "EmptyState",
+        "ErrorBanner"
+      ]
+    },
+    {
+      "page_id": "policyDefinitionDetailPage",
+      "title": "Policy Definition Detail",
+      "purpose": "Inspect one policy version's metadata, consolidated input schema, and embedded rule metadata to understand what rules exist before investigating runtime behavior.",
+      "data_requirements": [
+        "One policy definition version identified by customerId, policyId, and version."
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "getPolicyDefinition",
+          "usage": "Primary source for policy definition detail."
+        }
+      ],
+      "user_actions": [
+        "View policy metadata",
+        "Expand/collapse consolidated input schema JSON",
+        "Browse embedded rules list",
+        "Navigate to comparison setup with this policy/version preselected",
+        "Navigate to request search filtered manually by this policy/version (note: route can prefill UI state, but listExecutionRequests must still be called by page)."
+      ],
+      "loading_states": [
+        "Loading policy definition."
+      ],
+      "error_states": [
+        "404 policy version not found: show not found state.",
+        "400 invalid route params: show route parameter error.",
+        "Network/server error: show retry banner."
+      ],
+      "components": [
+        "PolicyMetadataCard",
+        "JsonSchemaViewer",
+        "RuleMetadataTable",
+        "ErrorBanner",
+        "NotFoundState"
+      ]
+    },
+    {
+      "page_id": "policyComparisonSetupPage",
+      "title": "Policy Comparison Setup",
+      "purpose": "Let the user choose a policy, two versions, and a date range, then run runtime comparisons for outcomes and rule behavior. Policy/version selection is grounded in the policy definition APIs and comparison APIs.",
+      "data_requirements": [
+        "Policy list for selectable policy IDs and versions.",
+        "Authorized user status if the user proceeds to protected comparison results."
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "listPolicyDefinitions",
+          "usage": "Populate policy/version selections."
+        },
+        {
+          "operation_id": "authorizeLogViewer",
+          "usage": "Optional preflight before running comparison."
+        }
+      ],
+      "user_actions": [
+        "Select policy",
+        "Select version A",
+        "Select version B",
+        "Set from/to date",
+        "Run comparison",
+        "Navigate to results route"
+      ],
+      "loading_states": [
+        "Loading selectable policies.",
+        "Checking access before comparison."
+      ],
+      "error_states": [
+        "If policies cannot be loaded, show degraded setup error.",
+        "If user lacks authorization, disable Run Comparison and show access message.",
+        "If chosen versions are invalid or missing, show client-side validation."
+      ],
+      "components": [
+        "PolicyComparisonForm",
+        "DateRangeFilter",
+        "VersionSelector",
+        "ProtectedActionNotice",
+        "ErrorBanner"
+      ]
+    },
+    {
+      "page_id": "policyComparisonResultsPage",
+      "title": "Policy Comparison Results",
+      "purpose": "Show side-by-side runtime analytics for two policy versions: aggregate request outcomes and rule-level behavior differences over a selected time range.",
+      "data_requirements": [
+        "Comparison outcome summary for selected versions.",
+        "Rule-level comparison summary for selected versions.",
+        "Optional policy definition details for richer metadata if needed for display beyond what outcome comparison already returns."
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "authorizeLogViewer",
+          "usage": "Optional preflight before loading protected comparison data."
+        },
+        {
+          "operation_id": "comparePolicyVersionOutcomes",
+          "usage": "Fetch version-level outcome and summary metrics."
+        },
+        {
+          "operation_id": "comparePolicyVersionRules",
+          "usage": "Fetch rule-level behavior comparison."
+        },
+        {
+          "operation_id": "getPolicyDefinition",
+          "usage": "Optional supplemental fetch for either version if the UI needs standalone definition detail tabs; not required for core comparison because compare outcomes already returns policy_metadata."
+        }
+      ],
+      "user_actions": [
+        "Review outcome distribution by version",
+        "Review average duration/rule-count/lookup metrics by version",
+        "Browse or sort rule-level differences",
+        "Open policy definition detail for version A or B",
+        "Adjust comparison inputs and rerun",
+        "Navigate to request search to investigate a version further (UI can prefill filters only; API does not provide deep-link export endpoints)."
+      ],
+      "loading_states": [
+        "Loading comparison summaries.",
+        "Loading rule comparison table.",
+        "Loading optional policy detail tabs."
+      ],
+      "error_states": [
+        "403 forbidden: show access denied state.",
+        "400 invalid comparison inputs: show validation error for missing policy/version/date parameters.",
+        "Empty comparison results: show no runtime data in selected range.",
+        "Network/server error on one comparison call: show partial-page error section and allow retry per section."
+      ],
+      "components": [
+        "ProtectedPageGuard",
+        "ComparisonHeader",
+        "OutcomeComparisonChart",
+        "VersionMetricCards",
+        "RuleComparisonTable",
+        "PolicyMetadataPanel",
+        "RetrySectionButton",
+        "EmptyState",
+        "ErrorBanner"
+      ]
+    },
+    {
+      "page_id": "dashboardOverviewPage",
+      "title": "Dashboards & Reports",
+      "purpose": "Provide chart-ready dashboards for request outcomes over time, rule performance summary, and channel/source summaries within a selected time window. This is the reporting surface supported by the current API contract.",
+      "data_requirements": [
+        "Authorized user status for current user/customer.",
+        "Request outcome timeseries dataset.",
+        "Rule performance summary dataset.",
+        "Channel/source summary dataset.",
+        "Optional policy list for dashboard filters on policy/version where supported by endpoints."
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "authorizeLogViewer",
+          "usage": "Optional preflight before loading protected metrics."
+        },
+        {
+          "operation_id": "listPolicyDefinitions",
+          "usage": "Populate optional policy/version filter controls."
+        },
+        {
+          "operation_id": "getRequestOutcomesTimeseries",
+          "usage": "Load outcomes-over-time chart."
+        },
+        {
+          "operation_id": "getRulePerformanceSummary",
+          "usage": "Load top-N rule metrics chart/table."
+        },
+        {
+          "operation_id": "getChannelSourceSummary",
+          "usage": "Load channel/source summary table or chart."
+        }
+      ],
+      "user_actions": [
+        "Set global date range",
+        "Set timeseries granularity",
+        "Optionally filter by policy and version for supported widgets",
+        "Optionally filter timeseries by channel",
+        "Set top N for rule summary",
+        "Refresh dashboard",
+        "Inspect chart legends/tooltips",
+        "Navigate from a rule in summary to execution step search with filters prefilled client-side"
+      ],
+      "loading_states": [
+        "Initial dashboard load.",
+        "Refreshing one widget.",
+        "Refreshing all widgets."
+      ],
+      "error_states": [
+        "403 forbidden: show access denied state for dashboard area.",
+        "400 invalid request: show inline validation on required date range, granularity, and top N.",
+        "One-widget failure: show widget-level error while other widgets remain visible.",
+        "Empty data: show no metrics for selected window."
+      ],
+      "components": [
+        "ProtectedPageGuard",
+        "DashboardFilterBar",
+        "TimeseriesChart",
+        "RulePerformanceTable",
+        "ChannelSourceSummaryTable",
+        "WidgetCard",
+        "WidgetErrorState",
+        "EmptyState",
+        "ErrorBanner"
+      ]
+    },
+    {
+      "page_id": "loggingConfigurationPage",
+      "title": "Logging Configuration",
+      "purpose": "View and edit customer logging enablement, retention, purge mode, allowed viewer IDs, and deployment context. This is the only configuration editing flow supported by the API contract.",
+      "data_requirements": [
+        "Current customer logging configuration."
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "getCustomerLoggingConfig",
+          "usage": "Load current configuration."
+        },
+        {
+          "operation_id": "updateCustomerLoggingConfig",
+          "usage": "Persist edits."
+        }
+      ],
+      "user_actions": [
+        "View logging enabled status",
+        "Toggle logging enabled",
+        "Edit retention days",
+        "Choose purge mode (ttl, scheduled, manual)",
+        "Edit allowed log viewer user IDs as raw ID list",
+        "Edit deployment context cloud/environment/notes",
+        "Save changes",
+        "Reset unsaved changes"
+      ],
+      "loading_states": [
+        "Loading configuration.",
+        "Saving configuration updates."
+      ],
+      "error_states": [
+        "404 customer config not found: show not found state.",
+        "400 invalid update request: show field-level validation and requirement that at least one change be provided.",
+        "Network/server error: show retry banner.",
+        "Important limitation notice: no API exists to execute purge jobs or manage user records; page only edits configuration values."
+      ],
+      "components": [
+        "LoggingConfigForm",
+        "ToggleField",
+        "NumericField",
+        "SelectField",
+        "StringListEditor",
+        "DeploymentContextForm",
+        "UnsavedChangesPrompt",
+        "SuccessToast",
+        "ErrorBanner",
+        "NotFoundState"
+      ]
+    }
+  ],
+  "components": [
+    {
+      "component_id": "ProtectedPageGuard",
+      "purpose": "Central guard that can run authorizeLogViewer and render loading, denied, or children states for protected pages.",
+      "props": [
+        "customerId",
+        "user_id",
+        "deferUntilUserAction(optional)"
+      ]
+    },
+    {
+      "component_id": "DateRangeFilter",
+      "purpose": "Reusable from/to date-time control with validation.",
+      "props": [
+        "from_date",
+        "to_date",
+        "onChange"
+      ]
+    },
+    {
+      "component_id": "PayloadFilterBuilder",
+      "purpose": "Builder for payload_filters arrays supported by request and step search endpoints; only equality operator is allowed.",
+      "props": [
+        "filters",
+        "onChange",
+        "allowedOperators=['eq']"
+      ]
+    },
+    {
+      "component_id": "RequestFilterPanel",
+      "purpose": "Collect all filters supported by listExecutionRequests.",
+      "props": [
+        "filters",
+        "onSubmit",
+        "onClear"
+      ]
+    },
+    {
+      "component_id": "RequestResultsGrid",
+      "purpose": "Tabular display of request search results with summary metrics and drill-in links.",
+      "props": [
+        "items",
+        "onSelectRequest",
+        "loading"
+      ]
+    },
+    {
+      "component_id": "RequestSummaryHeader",
+      "purpose": "High-level audit trail summary cards for one request.",
+      "props": [
+        "requestAuditTrail"
+      ]
+    },
+    {
+      "component_id": "JsonPayloadViewer",
+      "purpose": "Formatted expandable JSON viewer for request/response and step payloads.",
+      "props": [
+        "data",
+        "title"
+      ]
+    },
+    {
+      "component_id": "ExecutionStepTimeline",
+      "purpose": "Ordered visualization of execution steps for a request.",
+      "props": [
+        "steps",
+        "onSelectStep"
+      ]
+    },
+    {
+      "component_id": "ExecutionStepRow",
+      "purpose": "Expandable row with stage, status, duration, errors, and payload sections.",
+      "props": [
+        "step"
+      ]
+    },
+    {
+      "component_id": "LookupDetailsCard",
+      "purpose": "Display lookup metadata when present.",
+      "props": [
+        "lookup_details"
+      ]
+    },
+    {
+      "component_id": "ExecutionStepResultsGrid",
+      "purpose": "Tabular display of step search results with links back to related requests.",
+      "props": [
+        "items",
+        "onOpenRequest"
+      ]
+    },
+    {
+      "component_id": "StepFilterPanel",
+      "purpose": "Collect all filters supported by searchExecutionSteps.",
+      "props": [
+        "filters",
+        "onSubmit",
+        "onClear"
+      ]
+    },
+    {
+      "component_id": "PolicyDefinitionTable",
+      "purpose": "List policy definitions and versions.",
+      "props": [
+        "items",
+        "onOpenPolicy",
+        "onStartComparison"
+      ]
+    },
+    {
+      "component_id": "PolicyMetadataCard",
+      "purpose": "Display policy version metadata.",
+      "props": [
+        "policy"
+      ]
+    },
+    {
+      "component_id": "JsonSchemaViewer",
+      "purpose": "Display consolidated input schema object returned by policy definition endpoint.",
+      "props": [
+        "schema"
+      ]
+    },
+    {
+      "component_id": "RuleMetadataTable",
+      "purpose": "Display embedded rule metadata from a policy definition.",
+      "props": [
+        "rules"
+      ]
+    },
+    {
+      "component_id": "PolicyComparisonForm",
+      "purpose": "Form for selecting policy, versions, and date range before running comparison.",
+      "props": [
+        "policies",
+        "selectedPolicy",
+        "versionA",
+        "versionB",
+        "dateRange"
+      ]
+    },
+    {
+      "component_id": "OutcomeComparisonChart",
+      "purpose": "Visualize outcomes returned by comparePolicyVersionOutcomes.",
+      "props": [
+        "items"
+      ]
+    },
+    {
+      "component_id": "VersionMetricCards",
+      "purpose": "Show aggregate comparison metrics per version.",
+      "props": [
+        "items"
+      ]
+    },
+    {
+      "component_id": "RuleComparisonTable",
+      "purpose": "Display rule-level differences returned by comparePolicyVersionRules.",
+      "props": [
+        "items"
+      ]
+    },
+    {
+      "component_id": "DashboardFilterBar",
+      "purpose": "Shared dashboard controls for date range, policy/version, granularity, channel, and top N where relevant.",
+      "props": [
+        "filters",
+        "onChange",
+        "onRefresh"
+      ]
+    },
+    {
+      "component_id": "TimeseriesChart",
+      "purpose": "Render request outcomes timeseries data.",
+      "props": [
+        "items",
+        "granularity"
+      ]
+    },
+    {
+      "component_id": "RulePerformanceTable",
+      "purpose": "Render top-N rule performance summary.",
+      "props": [
+        "items"
+      ]
+    },
+    {
+      "component_id": "ChannelSourceSummaryTable",
+      "purpose": "Render grouped channel/source/outcome summary.",
+      "props": [
+        "items"
+      ]
+    },
+    {
+      "component_id": "LoggingConfigForm",
+      "purpose": "Editable form for customer logging configuration.",
+      "props": [
+        "config",
+        "onSave",
+        "onReset"
+      ]
+    },
+    {
+      "component_id": "StringListEditor",
+      "purpose": "Simple editor for allowed_log_viewer_user_ids.",
+      "props": [
+        "values",
+        "onChange"
+      ]
+    },
+    {
+      "component_id": "DeploymentContextForm",
+      "purpose": "Subform for cloud/environment/notes fields.",
+      "props": [
+        "deployment_context",
+        "onChange"
+      ]
+    },
+    {
+      "component_id": "PaginationControls",
+      "purpose": "Handle next-page interaction only when next_page_token is present; must tolerate first-page-only implementations.",
+      "props": [
+        "next_page_token",
+        "onNext",
+        "disabled"
+      ]
+    },
+    {
+      "component_id": "ErrorBanner",
+      "purpose": "Standard API/server error presentation.",
+      "props": [
+        "message",
+        "code",
+        "onRetry(optional)"
+      ]
+    },
+    {
+      "component_id": "EmptyState",
+      "purpose": "Standard no-data presentation.",
+      "props": [
+        "title",
+        "description",
+        "action(optional)"
+      ]
+    },
+    {
+      "component_id": "NotFoundState",
+      "purpose": "Display missing request, policy, or config states.",
+      "props": [
+        "entityName",
+        "identifier"
+      ]
+    }
+  ],
+  "data_constraints_and_limitations": [
+    "Search payload filters support only operator 'eq' because that is the only operator exposed by the API contract.",
+    "Protected pages require user_id in query/body; frontend must supply it from current user context.",
+    "Pagination may be first-page-only in this POV even though next_page_token exists in contract notes; UI should gracefully disable/load no more when token is null.",
+    "There is no endpoint for deleting/purging logs, viewing purge job history, exporting reports, saving dashboard presets, or generating LLM insights/recommendations.",
+    "There is no endpoint for listing or managing admin/log-viewer users beyond editing allowed_log_viewer_user_ids in customer configuration; display those IDs as raw identifiers rather than assumed user profiles.",
+    "There is no endpoint to list distinct policy versions per policy except via listPolicyDefinitions; frontend should derive selectable versions by grouping returned items client-side.",
+    "There is no generic request lookup by correlation ID route besides getRequestAuditTrail; correlation-ID searches should use that endpoint directly rather than assuming a list endpoint supports it.",
+    "Authentication itself is out of scope; frontend assumes user_id/customer context is already available from host application/session."
+  ]
+}
