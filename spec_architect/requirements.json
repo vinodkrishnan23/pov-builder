@@ -1,0 +1,526 @@
+{
+  "business_objectives": {
+    "bo1": {
+      "description": "Improve support-ticket triage for the company through an internal POV.",
+      "collections": [
+        "support_tickets",
+        "ticket_resolution_events"
+      ],
+      "query_patterns": [
+        "qp1_ticket_lookup_by_ticket_number",
+        "qp2_ticket_lookup_by_id",
+        "qp3_ticket_search_for_lookup",
+        "qp4_ticket_with_ai_guidance",
+        "qp5_fetch_similar_resolved_tickets",
+        "qp6_resolve_ticket_update",
+        "qp7_create_resolution_event"
+      ],
+      "api_endpoints": [
+        "GET /api/tickets",
+        "GET /api/tickets/{ticketId}",
+        "GET /api/tickets/by-number/{ticketNumber}",
+        "GET /api/tickets/{ticketId}/triage-guidance",
+        "GET /api/tickets/{ticketId}/similar-resolved-tickets",
+        "POST /api/tickets/{ticketId}/resolve"
+      ],
+      "frontend_pages": [
+        "ticket_lookup",
+        "ticket_triage_detail"
+      ]
+    },
+    "bo2": {
+      "description": "Keep the POV restricted to internal users only, with no customer-facing access.",
+      "collections": [
+        "internal_users",
+        "support_tickets"
+      ],
+      "query_patterns": [
+        "qp8_validate_internal_user_access",
+        "qp1_ticket_lookup_by_ticket_number",
+        "qp2_ticket_lookup_by_id",
+        "qp3_ticket_search_for_lookup",
+        "qp4_ticket_with_ai_guidance",
+        "qp5_fetch_similar_resolved_tickets",
+        "qp6_resolve_ticket_update"
+      ],
+      "api_endpoints": [
+        "GET /api/me",
+        "GET /api/tickets",
+        "GET /api/tickets/{ticketId}",
+        "GET /api/tickets/by-number/{ticketNumber}",
+        "GET /api/tickets/{ticketId}/triage-guidance",
+        "GET /api/tickets/{ticketId}/similar-resolved-tickets",
+        "POST /api/tickets/{ticketId}/resolve"
+      ],
+      "frontend_pages": [
+        "ticket_lookup",
+        "ticket_triage_detail",
+        "access_denied"
+      ]
+    }
+  },
+  "functional_requirements": {
+    "fr1": {
+      "description": "Support agents must be able to look up a ticket.",
+      "collections": [
+        "support_tickets"
+      ],
+      "query_patterns": [
+        "qp1_ticket_lookup_by_ticket_number",
+        "qp2_ticket_lookup_by_id",
+        "qp3_ticket_search_for_lookup"
+      ],
+      "api_endpoints": [
+        "GET /api/tickets",
+        "GET /api/tickets/{ticketId}",
+        "GET /api/tickets/by-number/{ticketNumber}"
+      ],
+      "frontend_pages": [
+        "ticket_lookup",
+        "ticket_triage_detail"
+      ]
+    },
+    "fr2": {
+      "description": "Support agents must be able to view AI-suggested triage guidance for a ticket.",
+      "collections": [
+        "support_tickets"
+      ],
+      "query_patterns": [
+        "qp2_ticket_lookup_by_id",
+        "qp4_ticket_with_ai_guidance"
+      ],
+      "api_endpoints": [
+        "GET /api/tickets/{ticketId}",
+        "GET /api/tickets/{ticketId}/triage-guidance"
+      ],
+      "frontend_pages": [
+        "ticket_triage_detail"
+      ]
+    },
+    "fr3": {
+      "description": "Support agents must be able to view similar resolved tickets.",
+      "collections": [
+        "support_tickets"
+      ],
+      "query_patterns": [
+        "qp5_fetch_similar_resolved_tickets"
+      ],
+      "api_endpoints": [
+        "GET /api/tickets/{ticketId}/similar-resolved-tickets"
+      ],
+      "frontend_pages": [
+        "ticket_triage_detail"
+      ]
+    },
+    "fr4": {
+      "description": "Support agents must be able to mark tickets resolved.",
+      "collections": [
+        "support_tickets",
+        "ticket_resolution_events"
+      ],
+      "query_patterns": [
+        "qp6_resolve_ticket_update",
+        "qp7_create_resolution_event"
+      ],
+      "api_endpoints": [
+        "POST /api/tickets/{ticketId}/resolve"
+      ],
+      "frontend_pages": [
+        "ticket_triage_detail"
+      ]
+    },
+    "fr5": {
+      "description": "The application should be accessible only to internal users and not customers.",
+      "collections": [
+        "internal_users",
+        "support_tickets"
+      ],
+      "query_patterns": [
+        "qp8_validate_internal_user_access"
+      ],
+      "api_endpoints": [
+        "GET /api/me"
+      ],
+      "frontend_pages": [
+        "ticket_lookup",
+        "ticket_triage_detail",
+        "access_denied"
+      ]
+    }
+  },
+  "ai_genai_requirements": {
+    "ai1": {
+      "description": "The POV must provide AI-suggested triage guidance for support tickets.",
+      "collections": [
+        "support_tickets"
+      ],
+      "query_patterns": [
+        "qp2_ticket_lookup_by_id",
+        "qp4_ticket_with_ai_guidance"
+      ],
+      "api_endpoints": [
+        "GET /api/tickets/{ticketId}",
+        "GET /api/tickets/{ticketId}/triage-guidance"
+      ],
+      "frontend_pages": [
+        "ticket_triage_detail"
+      ],
+      "data_fields": [
+        "support_tickets.triage_guidance.generated_at",
+        "support_tickets.triage_guidance.summary",
+        "support_tickets.triage_guidance.suggested_category",
+        "support_tickets.triage_guidance.suggested_priority",
+        "support_tickets.triage_guidance.recommended_actions",
+        "support_tickets.triage_guidance.confidence"
+      ]
+    },
+    "ai2": {
+      "description": "The POV should surface similar resolved tickets to support ticket triage.",
+      "collections": [
+        "support_tickets"
+      ],
+      "query_patterns": [
+        "qp5_fetch_similar_resolved_tickets"
+      ],
+      "api_endpoints": [
+        "GET /api/tickets/{ticketId}/similar-resolved-tickets"
+      ],
+      "frontend_pages": [
+        "ticket_triage_detail"
+      ],
+      "data_fields": [
+        "support_tickets.similar_resolved_ticket_ids",
+        "support_tickets.embedding"
+      ]
+    }
+  },
+  "use_cases": {
+    "uc1": {
+      "title": "Look up support ticket for triage",
+      "collections": [
+        "support_tickets",
+        "internal_users"
+      ],
+      "query_patterns": [
+        "qp1_ticket_lookup_by_ticket_number",
+        "qp2_ticket_lookup_by_id",
+        "qp3_ticket_search_for_lookup",
+        "qp8_validate_internal_user_access"
+      ],
+      "api_endpoints": [
+        "GET /api/me",
+        "GET /api/tickets",
+        "GET /api/tickets/{ticketId}",
+        "GET /api/tickets/by-number/{ticketNumber}"
+      ],
+      "frontend_pages": [
+        "ticket_lookup",
+        "ticket_triage_detail"
+      ]
+    },
+    "uc2": {
+      "title": "Review AI triage assistance",
+      "collections": [
+        "support_tickets",
+        "internal_users"
+      ],
+      "query_patterns": [
+        "qp4_ticket_with_ai_guidance",
+        "qp5_fetch_similar_resolved_tickets",
+        "qp8_validate_internal_user_access"
+      ],
+      "api_endpoints": [
+        "GET /api/me",
+        "GET /api/tickets/{ticketId}/triage-guidance",
+        "GET /api/tickets/{ticketId}/similar-resolved-tickets",
+        "GET /api/tickets/{ticketId}"
+      ],
+      "frontend_pages": [
+        "ticket_triage_detail"
+      ]
+    },
+    "uc3": {
+      "title": "Resolve ticket",
+      "collections": [
+        "support_tickets",
+        "ticket_resolution_events",
+        "internal_users"
+      ],
+      "query_patterns": [
+        "qp6_resolve_ticket_update",
+        "qp7_create_resolution_event",
+        "qp8_validate_internal_user_access"
+      ],
+      "api_endpoints": [
+        "GET /api/me",
+        "POST /api/tickets/{ticketId}/resolve"
+      ],
+      "frontend_pages": [
+        "ticket_triage_detail"
+      ]
+    }
+  },
+  "personas": {
+    "p1": {
+      "name": "Support Agent",
+      "collections": [
+        "internal_users",
+        "support_tickets",
+        "ticket_resolution_events"
+      ],
+      "query_patterns": [
+        "qp8_validate_internal_user_access",
+        "qp1_ticket_lookup_by_ticket_number",
+        "qp2_ticket_lookup_by_id",
+        "qp3_ticket_search_for_lookup",
+        "qp4_ticket_with_ai_guidance",
+        "qp5_fetch_similar_resolved_tickets",
+        "qp6_resolve_ticket_update",
+        "qp7_create_resolution_event"
+      ],
+      "api_endpoints": [
+        "GET /api/me",
+        "GET /api/tickets",
+        "GET /api/tickets/{ticketId}",
+        "GET /api/tickets/by-number/{ticketNumber}",
+        "GET /api/tickets/{ticketId}/triage-guidance",
+        "GET /api/tickets/{ticketId}/similar-resolved-tickets",
+        "POST /api/tickets/{ticketId}/resolve"
+      ],
+      "frontend_pages": [
+        "ticket_lookup",
+        "ticket_triage_detail",
+        "access_denied"
+      ]
+    }
+  },
+  "user_journeys": {
+    "uj1": {
+      "title": "Triage and resolve a support ticket",
+      "steps": [
+        {
+          "step": "Look up a ticket",
+          "query_patterns": [
+            "qp3_ticket_search_for_lookup",
+            "qp1_ticket_lookup_by_ticket_number",
+            "qp2_ticket_lookup_by_id"
+          ],
+          "api_endpoints": [
+            "GET /api/tickets",
+            "GET /api/tickets/by-number/{ticketNumber}",
+            "GET /api/tickets/{ticketId}"
+          ],
+          "frontend_pages": [
+            "ticket_lookup",
+            "ticket_triage_detail"
+          ]
+        },
+        {
+          "step": "Review AI-suggested triage guidance",
+          "query_patterns": [
+            "qp4_ticket_with_ai_guidance"
+          ],
+          "api_endpoints": [
+            "GET /api/tickets/{ticketId}/triage-guidance",
+            "GET /api/tickets/{ticketId}"
+          ],
+          "frontend_pages": [
+            "ticket_triage_detail"
+          ]
+        },
+        {
+          "step": "Review similar resolved tickets",
+          "query_patterns": [
+            "qp5_fetch_similar_resolved_tickets"
+          ],
+          "api_endpoints": [
+            "GET /api/tickets/{ticketId}/similar-resolved-tickets"
+          ],
+          "frontend_pages": [
+            "ticket_triage_detail"
+          ]
+        },
+        {
+          "step": "Mark the ticket resolved",
+          "query_patterns": [
+            "qp6_resolve_ticket_update",
+            "qp7_create_resolution_event"
+          ],
+          "api_endpoints": [
+            "POST /api/tickets/{ticketId}/resolve"
+          ],
+          "frontend_pages": [
+            "ticket_triage_detail"
+          ]
+        }
+      ]
+    }
+  },
+  "success_criteria": {
+    "sc1": {
+      "description": "Support agents can successfully look up a ticket, review AI-suggested triage guidance and similar resolved tickets, and mark the ticket resolved within the POV.",
+      "collections": [
+        "support_tickets",
+        "ticket_resolution_events"
+      ],
+      "query_patterns": [
+        "qp1_ticket_lookup_by_ticket_number",
+        "qp2_ticket_lookup_by_id",
+        "qp3_ticket_search_for_lookup",
+        "qp4_ticket_with_ai_guidance",
+        "qp5_fetch_similar_resolved_tickets",
+        "qp6_resolve_ticket_update",
+        "qp7_create_resolution_event"
+      ],
+      "api_endpoints": [
+        "GET /api/tickets",
+        "GET /api/tickets/{ticketId}",
+        "GET /api/tickets/by-number/{ticketNumber}",
+        "GET /api/tickets/{ticketId}/triage-guidance",
+        "GET /api/tickets/{ticketId}/similar-resolved-tickets",
+        "POST /api/tickets/{ticketId}/resolve"
+      ],
+      "frontend_pages": [
+        "ticket_lookup",
+        "ticket_triage_detail"
+      ]
+    },
+    "sc2": {
+      "description": "The POV is limited to internal use and does not expose customer-facing access.",
+      "collections": [
+        "internal_users",
+        "support_tickets"
+      ],
+      "query_patterns": [
+        "qp8_validate_internal_user_access"
+      ],
+      "api_endpoints": [
+        "GET /api/me"
+      ],
+      "frontend_pages": [
+        "ticket_lookup",
+        "ticket_triage_detail",
+        "access_denied"
+      ]
+    }
+  },
+  "artifacts": {
+    "collections": {
+      "support_tickets": {
+        "supports_requirements": [
+          "fr1",
+          "fr2",
+          "fr3",
+          "fr4",
+          "ai1",
+          "ai2",
+          "bo1"
+        ],
+        "consumed_by_endpoints": [
+          "GET /api/tickets",
+          "GET /api/tickets/{ticketId}",
+          "GET /api/tickets/by-number/{ticketNumber}",
+          "GET /api/tickets/{ticketId}/triage-guidance",
+          "GET /api/tickets/{ticketId}/similar-resolved-tickets",
+          "POST /api/tickets/{ticketId}/resolve"
+        ],
+        "rendered_on_pages": [
+          "ticket_lookup",
+          "ticket_triage_detail"
+        ]
+      },
+      "internal_users": {
+        "supports_requirements": [
+          "fr5",
+          "bo2",
+          "sc2"
+        ],
+        "consumed_by_endpoints": [
+          "GET /api/me"
+        ],
+        "rendered_on_pages": [
+          "ticket_lookup",
+          "ticket_triage_detail",
+          "access_denied"
+        ]
+      },
+      "ticket_resolution_events": {
+        "supports_requirements": [
+          "fr4",
+          "sc1"
+        ],
+        "consumed_by_endpoints": [
+          "POST /api/tickets/{ticketId}/resolve"
+        ],
+        "rendered_on_pages": [
+          "ticket_triage_detail"
+        ]
+      }
+    },
+    "query_patterns": {
+      "qp1_ticket_lookup_by_ticket_number": {
+        "supports": [
+          "fr1",
+          "uc1",
+          "sc1"
+        ]
+      },
+      "qp2_ticket_lookup_by_id": {
+        "supports": [
+          "fr1",
+          "fr2",
+          "ai1",
+          "uc1",
+          "sc1"
+        ]
+      },
+      "qp3_ticket_search_for_lookup": {
+        "supports": [
+          "fr1",
+          "uc1",
+          "sc1"
+        ]
+      },
+      "qp4_ticket_with_ai_guidance": {
+        "supports": [
+          "fr2",
+          "ai1",
+          "uc2",
+          "sc1"
+        ]
+      },
+      "qp5_fetch_similar_resolved_tickets": {
+        "supports": [
+          "fr3",
+          "ai2",
+          "uc2",
+          "sc1"
+        ]
+      },
+      "qp6_resolve_ticket_update": {
+        "supports": [
+          "fr4",
+          "uc3",
+          "sc1"
+        ]
+      },
+      "qp7_create_resolution_event": {
+        "supports": [
+          "fr4",
+          "uc3",
+          "sc1"
+        ]
+      },
+      "qp8_validate_internal_user_access": {
+        "supports": [
+          "fr5",
+          "bo2",
+          "uc1",
+          "uc2",
+          "uc3",
+          "sc2"
+        ]
+      }
+    }
+  }
+}
