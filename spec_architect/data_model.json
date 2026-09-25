@@ -1,0 +1,543 @@
+{
+  "collections": [
+    {
+      "name": "execution_requests",
+      "description": "Request-level execution log for a single policy evaluation. Stores the full request/response JSON plus summary fields used for audit, retrieval, filtering, and analytics.",
+      "traceability": {
+        "business_entities": [
+          "Execution Log",
+          "Request ID",
+          "Input JSON",
+          "Output JSON",
+          "Policy",
+          "Customer Deployment"
+        ],
+        "use_cases": [
+          "UC1",
+          "UC2",
+          "UC3",
+          "UC4",
+          "UC5"
+        ],
+        "functional_requirements": [
+          "FR1",
+          "FR2",
+          "FR3",
+          "FR7",
+          "FR8",
+          "FR9",
+          "FR11",
+          "FR12",
+          "FR13",
+          "FR14",
+          "FR15"
+        ]
+      },
+      "document_shape": {
+        "_id": {
+          "type": "objectId",
+          "required": true
+        },
+        "deployment_id": {
+          "type": "string",
+          "required": true,
+          "description": "Identifies the customer deployment/environment generating the log."
+        },
+        "request_id": {
+          "type": "string",
+          "required": true,
+          "description": "Primary request identifier; correlation ID is synonymous in this use case."
+        },
+        "correlation_id": {
+          "type": "string",
+          "required": false,
+          "description": "Optional duplicate field when upstream systems provide correlation_id separately; expected to equal request_id for this POV context."
+        },
+        "policy": {
+          "type": "document",
+          "required": true,
+          "fields": {
+            "policy_id": {
+              "type": "string",
+              "required": true
+            },
+            "policy_name": {
+              "type": "string",
+              "required": true
+            },
+            "policy_version": {
+              "type": "string",
+              "required": false
+            },
+            "definition_version": {
+              "type": "string",
+              "required": false,
+              "description": "Supports comparing policy definitions/versions for analytics."
+            }
+          }
+        },
+        "request_timestamp": {
+          "type": "date",
+          "required": true
+        },
+        "completion_timestamp": {
+          "type": "date",
+          "required": false
+        },
+        "status": {
+          "type": "string",
+          "required": true,
+          "enum": [
+            "success",
+            "failure",
+            "partial",
+            "in_progress"
+          ]
+        },
+        "final_outcome": {
+          "type": "string",
+          "required": false,
+          "description": "Business decision/result such as approved, rejected, referred, calculated."
+        },
+        "outcome_reason_codes": {
+          "type": "array<string>",
+          "required": false
+        },
+        "request_payload": {
+          "type": "document",
+          "required": true,
+          "description": "Original input JSON; supports nested objects, arrays, and large variable sets."
+        },
+        "response_payload": {
+          "type": "document",
+          "required": false,
+          "description": "Final output JSON returned by policy/rule execution."
+        },
+        "search_attributes": {
+          "type": "document",
+          "required": false,
+          "description": "Flattened or curated key/value fields extracted from request/response for fast filtering/analytics, e.g. age, segment, product, geography."
+        },
+        "metrics": {
+          "type": "document",
+          "required": false,
+          "fields": {
+            "rule_execution_count": {
+              "type": "int",
+              "required": false
+            },
+            "duration_ms": {
+              "type": "int",
+              "required": false
+            },
+            "error_count": {
+              "type": "int",
+              "required": false
+            }
+          }
+        },
+        "logging_enabled": {
+          "type": "bool",
+          "required": true,
+          "description": "Captures whether execution logging was enabled for this deployment/request path; useful for operational visibility around FR13."
+        },
+        "retention": {
+          "type": "document",
+          "required": false,
+          "fields": {
+            "expire_at": {
+              "type": "date",
+              "required": false,
+              "description": "Per-document purge date when customer-specific retention is known."
+            },
+            "retention_days": {
+              "type": "int",
+              "required": false
+            }
+          }
+        },
+        "ingestion": {
+          "type": "document",
+          "required": false,
+          "fields": {
+            "source_type": {
+              "type": "string",
+              "required": false,
+              "enum": [
+                "kafka",
+                "queue",
+                "api",
+                "batch"
+              ]
+            },
+            "ingested_at": {
+              "type": "date",
+              "required": false
+            },
+            "producer_event_id": {
+              "type": "string",
+              "required": false
+            }
+          }
+        }
+      },
+      "embedding_strategy": {
+        "embedded": [
+          "policy",
+          "metrics",
+          "retention",
+          "ingestion"
+        ],
+        "referenced": [
+          "execution_steps"
+        ],
+        "rationale": "Keep request-level audit record self-contained for common lookups by request ID and UI/API retrieval of request input/output. Store rule/stage executions in a separate collection because one request can generate tens to hundreds of step records and occasionally more, which would cause unbounded document growth if embedded."
+      },
+      "relationships": [
+        {
+          "type": "one-to-many",
+          "to_collection": "execution_steps",
+          "local_field": "request_id",
+          "foreign_field": "request_id",
+          "reason": "One request generates many internal rule/stage execution records (FR4, FR9)."
+        },
+        {
+          "type": "many-to-one",
+          "to_collection": "deployment_configs",
+          "local_field": "deployment_id",
+          "foreign_field": "deployment_id",
+          "reason": "Execution logs belong to a customer deployment that controls logging and retention behavior (FR13, FR14)."
+        }
+      ]
+    },
+    {
+      "name": "execution_steps",
+      "description": "Rule-level/stage-level execution records generated for a request, one document per internal rule execution step or stage.",
+      "traceability": {
+        "business_entities": [
+          "Execution Log",
+          "Rule",
+          "Request ID",
+          "Policy"
+        ],
+        "use_cases": [
+          "UC1",
+          "UC2",
+          "UC3",
+          "UC4",
+          "UC5"
+        ],
+        "functional_requirements": [
+          "FR1",
+          "FR4",
+          "FR8",
+          "FR9",
+          "FR11",
+          "FR12",
+          "FR15"
+        ]
+      },
+      "document_shape": {
+        "_id": {
+          "type": "objectId",
+          "required": true
+        },
+        "deployment_id": {
+          "type": "string",
+          "required": true
+        },
+        "request_id": {
+          "type": "string",
+          "required": true
+        },
+        "step_sequence": {
+          "type": "int",
+          "required": true,
+          "description": "Order of execution within the request."
+        },
+        "stage_type": {
+          "type": "string",
+          "required": true,
+          "description": "Type of internal execution step, e.g. rule, stage, function, lookup."
+        },
+        "rule": {
+          "type": "document",
+          "required": false,
+          "fields": {
+            "rule_id": {
+              "type": "string",
+              "required": false
+            },
+            "rule_name": {
+              "type": "string",
+              "required": false
+            },
+            "rule_version": {
+              "type": "string",
+              "required": false
+            }
+          }
+        },
+        "policy": {
+          "type": "document",
+          "required": true,
+          "fields": {
+            "policy_id": {
+              "type": "string",
+              "required": true
+            },
+            "policy_name": {
+              "type": "string",
+              "required": true
+            },
+            "policy_version": {
+              "type": "string",
+              "required": false
+            },
+            "definition_version": {
+              "type": "string",
+              "required": false
+            }
+          }
+        },
+        "execution_timestamp": {
+          "type": "date",
+          "required": true
+        },
+        "step_status": {
+          "type": "string",
+          "required": true,
+          "enum": [
+            "executed",
+            "skipped",
+            "failed",
+            "warning"
+          ]
+        },
+        "condition_expression": {
+          "type": "string",
+          "required": false,
+          "description": "Human-readable rule/stage condition when available."
+        },
+        "input_snapshot": {
+          "type": "document",
+          "required": false,
+          "description": "Optional step-level input subset or snapshot relevant to this rule/stage."
+        },
+        "output_snapshot": {
+          "type": "document",
+          "required": false,
+          "description": "Optional step-level output/result for this rule/stage."
+        },
+        "variable_observations": {
+          "type": "array<document>",
+          "required": false,
+          "fields": {
+            "name": {
+              "type": "string",
+              "required": true
+            },
+            "value": {
+              "type": "mixed",
+              "required": false
+            },
+            "value_type": {
+              "type": "string",
+              "required": false
+            },
+            "matched": {
+              "type": "bool",
+              "required": false
+            }
+          },
+          "description": "Curated variable/value pairs used for filtering/search without scanning all nested JSON."
+        },
+        "decision": {
+          "type": "document",
+          "required": false,
+          "fields": {
+            "outcome": {
+              "type": "string",
+              "required": false
+            },
+            "reason_code": {
+              "type": "string",
+              "required": false
+            },
+            "score": {
+              "type": "number",
+              "required": false
+            }
+          }
+        },
+        "performance": {
+          "type": "document",
+          "required": false,
+          "fields": {
+            "duration_ms": {
+              "type": "int",
+              "required": false
+            },
+            "lookup_count": {
+              "type": "int",
+              "required": false
+            }
+          }
+        },
+        "errors": {
+          "type": "array<document>",
+          "required": false,
+          "fields": {
+            "code": {
+              "type": "string",
+              "required": false
+            },
+            "message": {
+              "type": "string",
+              "required": false
+            }
+          }
+        }
+      },
+      "embedding_strategy": {
+        "embedded": [
+          "rule",
+          "policy",
+          "variable_observations",
+          "decision",
+          "performance",
+          "errors"
+        ],
+        "referenced": [
+          "execution_requests"
+        ],
+        "rationale": "Each step is naturally scoped to a single rule/stage execution and is often retrieved as a set by request_id. Embedding compact rule/policy metadata avoids extra joins for UI drill-down and analytics grouping. Reference back to the parent request instead of embedding all steps because the number of steps per request is variable and can be large."
+      },
+      "relationships": [
+        {
+          "type": "many-to-one",
+          "to_collection": "execution_requests",
+          "local_field": "request_id",
+          "foreign_field": "request_id",
+          "reason": "All steps roll up to a single request for audit and API retrieval."
+        }
+      ]
+    },
+    {
+      "name": "deployment_configs",
+      "description": "Customer deployment-level configuration relevant to execution logging behavior, retention, and access model.",
+      "traceability": {
+        "business_entities": [
+          "Customer Deployment"
+        ],
+        "use_cases": [
+          "UC1",
+          "UC2"
+        ],
+        "functional_requirements": [
+          "FR10",
+          "FR13",
+          "FR14"
+        ]
+      },
+      "document_shape": {
+        "_id": {
+          "type": "objectId",
+          "required": true
+        },
+        "deployment_id": {
+          "type": "string",
+          "required": true
+        },
+        "deployment_name": {
+          "type": "string",
+          "required": true
+        },
+        "environment": {
+          "type": "string",
+          "required": false,
+          "enum": [
+            "dev",
+            "test",
+            "uat",
+            "prod"
+          ]
+        },
+        "hosting_model": {
+          "type": "string",
+          "required": false,
+          "enum": [
+            "on_prem",
+            "aws",
+            "azure",
+            "other_cloud"
+          ]
+        },
+        "logging": {
+          "type": "document",
+          "required": true,
+          "fields": {
+            "enabled": {
+              "type": "bool",
+              "required": true
+            },
+            "default_retention_days": {
+              "type": "int",
+              "required": false
+            },
+            "purge_mode": {
+              "type": "string",
+              "required": false,
+              "enum": [
+                "ttl",
+                "scheduled_job",
+                "manual"
+              ]
+            }
+          }
+        },
+        "access_control": {
+          "type": "document",
+          "required": false,
+          "fields": {
+            "allowed_user_ids": {
+              "type": "array<string>",
+              "required": false
+            },
+            "admin_only": {
+              "type": "bool",
+              "required": false
+            }
+          }
+        },
+        "created_at": {
+          "type": "date",
+          "required": false
+        },
+        "updated_at": {
+          "type": "date",
+          "required": false
+        }
+      },
+      "embedding_strategy": {
+        "embedded": [
+          "logging",
+          "access_control"
+        ],
+        "referenced": [
+          "execution_requests"
+        ],
+        "rationale": "Configuration is small, slowly changing, and naturally belongs to the deployment document. Request logs reference deployment_id rather than copying every config detail to every log."
+      },
+      "relationships": [
+        {
+          "type": "one-to-many",
+          "to_collection": "execution_requests",
+          "local_field": "deployment_id",
+          "foreign_field": "deployment_id",
+          "reason": "A deployment produces many execution logs."
+        }
+      ]
+    }
+  ]
+}
