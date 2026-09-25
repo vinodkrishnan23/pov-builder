@@ -1,0 +1,65 @@
+{
+  "artifacts": [
+    {
+      "bytes": 1950,
+      "key": "seed/v001/SEED_README.md",
+      "sha256": "8d5c02f16ad7ff0c38f2ba78a1a0ca20779f41194eff15e61cb629a5ea4536c8"
+    },
+    {
+      "bytes": 73,
+      "key": "seed/v001/package.json",
+      "sha256": "bdd6f8d6ac7f8c9010dcbad57549451911adbd767201cb826ed7fd38fc88baa1"
+    },
+    {
+      "bytes": 8141,
+      "key": "seed/v001/seed.js",
+      "sha256": "24e5f2f0fb6556ba599bc057717dac495b4058a62d851a1952f851978e4909e8"
+    }
+  ],
+  "code_version": "v001",
+  "correlation": {
+    "poc_id": "1790241012873",
+    "producer": "poc-data-seed",
+    "run_id": "run_01M3CWXYCH6PRERXNDYJS4FJGN",
+    "task_id": "task_01M3CWXYCH803MZ7SVWK7JSNPE",
+    "trace_id": "trace_01M3CWXYCH6PRERXNDYJS4FJGN"
+  },
+  "defaults_applied": [
+    "support_teams: seed count 20",
+    "tickets: seed count 20",
+    "dashboard_metric_snapshots: seed count 20",
+    "QP-2: synthetic vector dimensions 8",
+    "support_teams: derived query index _id",
+    "tickets: derived query index triage_suggestion.suggested_team_id",
+    "dashboard_metric_snapshots: derived query index bucket_start",
+    "dashboard_metric_snapshots: derived query index metric_type",
+    "dashboard_metric_snapshots: derived query index priority",
+    "dashboard_metric_snapshots: derived query index product_line",
+    "dashboard_metric_snapshots: derived query index time_granularity",
+    "dashboard_metric_snapshots: derived query index team_id",
+    "tickets: derived query index created_at",
+    "tickets: derived query index assigned_team_id",
+    "tickets: derived query index resolution_time_minutes",
+    "tickets: derived query index resolved_at",
+    "tickets: derived query index status"
+  ],
+  "inputs": {
+    "data_model": {
+      "commit_sha": "9d354da609c0bef7d34f9163a456cc534f4da3ff",
+      "key": "spec_architect/data_model.json",
+      "sha256": "6baa8964bc0a237fa7974170d84f8aface3a0422da8addd886a2c0f91f2907b2"
+    },
+    "query_patterns": {
+      "commit_sha": "44e04324bb365029d61b63333d8ba1dd9cc01b53",
+      "key": "spec_architect/query_patterns.json",
+      "sha256": "ceb148d9a1ffc87ba84371cf8fc1efb29ec9d06e39d313fcee68cf887fcedc18"
+    }
+  },
+  "poc_id": "1790241012873",
+  "producer": "poc-data-seed",
+  "storage": {
+    "branch": "vinod-krishnan-mongodb-com/trigger-shard",
+    "provider": "github",
+    "repository": "vinodkrishnan23/pov-builder"
+  }
+}
