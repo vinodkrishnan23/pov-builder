@@ -1,0 +1,82 @@
+{
+  "artifacts": [
+    {
+      "bytes": 337,
+      "key": "seed/v003/REPAIR_NOTES.md",
+      "sha256": "d1af777f78eeab98e3efe4daad374fd3a2f9c5103e4a04684bc6996ef5a27ee8"
+    },
+    {
+      "bytes": 1806,
+      "key": "seed/v003/SEED_README.md",
+      "sha256": "555d7421f3b3b7abd06620965465c1325293d33c5d7d528e5bf008c8c6146343"
+    },
+    {
+      "bytes": 98,
+      "key": "seed/v003/package.json",
+      "sha256": "ddffb80c2e553b6a374ec8b3b77daec7b72b8e8cf501f2f31470ac23bd343c3c"
+    },
+    {
+      "bytes": 8868,
+      "key": "seed/v003/seed.js",
+      "sha256": "741d83321ddd9ee255a469cca14b9937f46cd16245c7b5a14303bd0ff5388a21"
+    }
+  ],
+  "code_version": "v003",
+  "correlation": {
+    "poc_id": "1790241012873",
+    "producer": "poc-data-seed",
+    "run_id": "run_01M3CWXYCH6PRERXNDYJS4FJGN",
+    "task_id": "task_01M3CWXYCH803MZ7SVWK7JSNPE",
+    "trace_id": "trace_01M3CWXYCH6PRERXNDYJS4FJGN"
+  },
+  "defaults_applied": [
+    "support_teams: seed count 20",
+    "tickets: seed count 20",
+    "dashboard_metric_snapshots: seed count 20",
+    "QP-2: synthetic vector dimensions 8",
+    "support_teams: derived query index _id",
+    "tickets: derived query index triage_suggestion.suggested_team_id",
+    "dashboard_metric_snapshots: derived query index bucket_start",
+    "dashboard_metric_snapshots: derived query index metric_type",
+    "dashboard_metric_snapshots: derived query index priority",
+    "dashboard_metric_snapshots: derived query index product_line",
+    "dashboard_metric_snapshots: derived query index time_granularity",
+    "dashboard_metric_snapshots: derived query index team_id",
+    "tickets: derived query index created_at",
+    "tickets: derived query index assigned_team_id",
+    "tickets: derived query index resolution_time_minutes",
+    "tickets: derived query index resolved_at",
+    "tickets: derived query index status"
+  ],
+  "inputs": {
+    "data_model": {
+      "commit_sha": "9d354da609c0bef7d34f9163a456cc534f4da3ff",
+      "key": "spec_architect/data_model.json",
+      "sha256": "6baa8964bc0a237fa7974170d84f8aface3a0422da8addd886a2c0f91f2907b2"
+    },
+    "query_patterns": {
+      "commit_sha": "44e04324bb365029d61b63333d8ba1dd9cc01b53",
+      "key": "spec_architect/query_patterns.json",
+      "sha256": "ceb148d9a1ffc87ba84371cf8fc1efb29ec9d06e39d313fcee68cf887fcedc18"
+    }
+  },
+  "poc_id": "1790241012873",
+  "producer": "poc-data-seed",
+  "repair": {
+    "changes": [
+      "Regenerated the complete artifact bundle with explicit Node.js 20 package metadata.",
+      "Normalized optional embedded fields so declared scalar types are never populated with null.",
+      "Retained deterministic data, complete ordinary indexes, merge support, and Atlas Vector Search metadata."
+    ],
+    "code_version": "v003",
+    "finding": {
+      "code": "ARTIFACT_MALFORMED",
+      "message": "The generated artifact bundle is malformed."
+    }
+  },
+  "storage": {
+    "branch": "vinod-krishnan-mongodb-com/trigger-shard",
+    "provider": "github",
+    "repository": "vinodkrishnan23/pov-builder"
+  }
+}
