@@ -1,0 +1,915 @@
+{
+  "app_name": "Support Ticket Triage POV",
+  "routes": [
+    {
+      "path": "/",
+      "page_id": "dashboard_active_runs",
+      "title": "Operations Dashboard",
+      "is_default": true
+    },
+    {
+      "path": "/tickets",
+      "page_id": "ticket_queue",
+      "title": "Ticket Queue"
+    },
+    {
+      "path": "/tickets/new",
+      "page_id": "create_ticket",
+      "title": "Create Support Ticket"
+    },
+    {
+      "path": "/tickets/:ticketId",
+      "page_id": "ticket_workspace",
+      "title": "Ticket Triage Workspace"
+    },
+    {
+      "path": "/tickets/:ticketId/runs",
+      "page_id": "ticket_run_history",
+      "title": "Ticket Run History"
+    },
+    {
+      "path": "/runs/active",
+      "page_id": "active_runs_monitor",
+      "title": "Active Streaming Runs"
+    },
+    {
+      "path": "/runs/timeout-watch",
+      "page_id": "timeout_watch",
+      "title": "Timeout Watch"
+    },
+    {
+      "path": "/runs/:triageRunId",
+      "page_id": "run_detail",
+      "title": "Run Detail"
+    },
+    {
+      "path": "/runs/:triageRunId/summary",
+      "page_id": "verification_summary",
+      "title": "Verification Summary"
+    }
+  ],
+  "pages": [
+    {
+      "page_id": "dashboard_active_runs",
+      "route": "/",
+      "purpose": "Provide an entry dashboard for the POV focused on currently running streaming executions and timeout-risk visibility, so operators can quickly inspect active validations and navigate into affected tickets or runs.",
+      "data_requirements": [
+        {
+          "name": "active_runs",
+          "source": "GET /runs/active",
+          "required": true
+        },
+        {
+          "name": "runs_near_or_over_timeout",
+          "source": "GET /runs/timeout-watch",
+          "required": true,
+          "notes": "Use default threshold only; custom thresholds should not be offered because unsupported values may be rejected."
+        }
+      ],
+      "api_endpoints_consumed": [
+        "listActiveStreamingRuns",
+        "listRunsNearOrOverTimeout"
+      ],
+      "user_actions": [
+        {
+          "action": "Refresh active runs list",
+          "api_calls": [
+            "GET /runs/active"
+          ]
+        },
+        {
+          "action": "Refresh timeout watch list",
+          "api_calls": [
+            "GET /runs/timeout-watch"
+          ]
+        },
+        {
+          "action": "Navigate to a run detail view",
+          "api_calls": []
+        },
+        {
+          "action": "Navigate to the related ticket workspace",
+          "api_calls": []
+        },
+        {
+          "action": "Navigate to full active runs monitor or timeout watch page",
+          "api_calls": []
+        }
+      ],
+      "loading_states": [
+        "Initial dashboard skeleton for both panels.",
+        "Independent loading spinner/skeleton per panel during refresh."
+      ],
+      "error_states": [
+        {
+          "condition": "GET /runs/active returns 500",
+          "ui_response": "Show non-blocking error banner in Active Runs panel with retry."
+        },
+        {
+          "condition": "GET /runs/timeout-watch returns 500",
+          "ui_response": "Show non-blocking error banner in Timeout Watch panel with retry."
+        }
+      ],
+      "components": [
+        "AppShell",
+        "TopNav",
+        "DashboardHeader",
+        "ActiveRunsPanel",
+        "TimeoutWatchPanel",
+        "RunStatusBadge",
+        "StreamingHealthIndicator",
+        "TimeoutUtilizationBar",
+        "EmptyState",
+        "ErrorBanner",
+        "RefreshButton",
+        "LinkCard"
+      ]
+    },
+    {
+      "page_id": "ticket_queue",
+      "route": "/tickets",
+      "purpose": "List internal support tickets that are new or in triage so the support team can select work items and enter the triage workspace.",
+      "data_requirements": [
+        {
+          "name": "tickets",
+          "source": "GET /tickets?status_in=new,in_triage",
+          "required": true
+        }
+      ],
+      "api_endpoints_consumed": [
+        "listTicketsNeedingTriage"
+      ],
+      "user_actions": [
+        {
+          "action": "Filter tickets by supported statuses new and/or in_triage",
+          "api_calls": [
+            "GET /tickets"
+          ]
+        },
+        {
+          "action": "Refresh queue",
+          "api_calls": [
+            "GET /tickets"
+          ]
+        },
+        {
+          "action": "Open ticket triage workspace",
+          "api_calls": []
+        },
+        {
+          "action": "Navigate to create ticket",
+          "api_calls": []
+        }
+      ],
+      "loading_states": [
+        "Initial table/list skeleton.",
+        "Inline loading indicator when filter changes or manual refresh occurs."
+      ],
+      "error_states": [
+        {
+          "condition": "GET /tickets returns 400 due to invalid query values",
+          "ui_response": "Reset filters to supported values and show validation message."
+        },
+        {
+          "condition": "GET /tickets returns 500",
+          "ui_response": "Show full-page error state with retry."
+        },
+        {
+          "condition": "GET /tickets returns 200 with count 0",
+          "ui_response": "Show empty queue state explaining there are no tickets needing triage."
+        }
+      ],
+      "components": [
+        "AppShell",
+        "TopNav",
+        "PageHeader",
+        "TicketFilterBar",
+        "TicketQueueTable",
+        "TicketQueueRow",
+        "StatusBadge",
+        "PriorityBadge",
+        "RelativeTime",
+        "EmptyState",
+        "ErrorBanner",
+        "RefreshButton"
+      ]
+    },
+    {
+      "page_id": "create_ticket",
+      "route": "/tickets/new",
+      "purpose": "Allow creation of a new internal support ticket for use in the POV scenario.",
+      "data_requirements": [],
+      "api_endpoints_consumed": [
+        "createSupportTicket"
+      ],
+      "user_actions": [
+        {
+          "action": "Enter ticket metadata and requester details",
+          "api_calls": []
+        },
+        {
+          "action": "Submit new ticket",
+          "api_calls": [
+            "POST /tickets"
+          ]
+        },
+        {
+          "action": "Cancel and return to queue",
+          "api_calls": []
+        }
+      ],
+      "loading_states": [
+        "Disabled submit button with submitting indicator during POST."
+      ],
+      "error_states": [
+        {
+          "condition": "POST /tickets returns 400",
+          "ui_response": "Map validation errors to the form and show request validation message."
+        },
+        {
+          "condition": "POST /tickets returns 409",
+          "ui_response": "Show ticket number conflict error and keep form values for correction."
+        },
+        {
+          "condition": "POST /tickets returns 500",
+          "ui_response": "Show submit failure banner with retry."
+        }
+      ],
+      "components": [
+        "AppShell",
+        "TopNav",
+        "PageHeader",
+        "TicketForm",
+        "RequesterFields",
+        "FormField",
+        "PrioritySelect",
+        "StatusSelect",
+        "CategoryInput",
+        "SubmitBar",
+        "ErrorBanner"
+      ]
+    },
+    {
+      "page_id": "ticket_workspace",
+      "route": "/tickets/:ticketId",
+      "purpose": "Load a specific support ticket for triage review, show latest/latest-known run status, and present AI guidance suggestions that support the triage decision. This is the main operator workspace for the POV.",
+      "data_requirements": [
+        {
+          "name": "ticket_workspace",
+          "source": "GET /tickets/{ticketId}/workspace",
+          "required": true
+        },
+        {
+          "name": "run_guidance",
+          "source": "GET /runs/{triageRunId}/guidance",
+          "required": false,
+          "notes": "Use when latest_run exists and the page needs a run-scoped guidance refresh beyond workspace payload."
+        },
+        {
+          "name": "run_events_preview",
+          "source": "GET /runs/{triageRunId}/events",
+          "required": false,
+          "notes": "Optional preview panel for latest run progression if latest_run exists."
+        }
+      ],
+      "api_endpoints_consumed": [
+        "getTicketTriageWorkspace",
+        "getGuidanceForRun",
+        "getRunEventStream",
+        "updateSupportTicket",
+        "createTriageRun",
+        "updateGuidanceSuggestion"
+      ],
+      "user_actions": [
+        {
+          "action": "Refresh workspace data",
+          "api_calls": [
+            "GET /tickets/{ticketId}/workspace"
+          ]
+        },
+        {
+          "action": "Update ticket triage fields such as status, priority, category, title, description, requester",
+          "api_calls": [
+            "PATCH /tickets/{ticketId}"
+          ]
+        },
+        {
+          "action": "Create a new triage or verification run record for this ticket",
+          "api_calls": [
+            "POST /tickets/{ticketId}/runs"
+          ],
+          "notes": "The UI may label this as starting a run, but must make clear it is creating the run record defined by the API contract; no separate execution-start endpoint exists."
+        },
+        {
+          "action": "Mark a guidance suggestion as applied/not applied",
+          "api_calls": [
+            "PATCH /guidance/{guidanceId}"
+          ]
+        },
+        {
+          "action": "Open full run detail for latest run",
+          "api_calls": []
+        },
+        {
+          "action": "Open run history for this ticket",
+          "api_calls": []
+        },
+        {
+          "action": "Poll workspace while latest run status is queued or running",
+          "api_calls": [
+            "GET /tickets/{ticketId}/workspace"
+          ]
+        }
+      ],
+      "loading_states": [
+        "Initial workspace skeleton with separate placeholders for ticket details, latest run, and guidance list.",
+        "Section-level refresh indicators during polling or save operations.",
+        "Optimistic applied toggle state for guidance can be used cautiously, but must reconcile with PATCH response."
+      ],
+      "error_states": [
+        {
+          "condition": "GET /tickets/{ticketId}/workspace returns 404",
+          "ui_response": "Show ticket not found state with link back to queue."
+        },
+        {
+          "condition": "GET /tickets/{ticketId}/workspace returns 400",
+          "ui_response": "Show invalid ticket id message."
+        },
+        {
+          "condition": "GET /tickets/{ticketId}/workspace returns 500",
+          "ui_response": "Show full-page error with retry."
+        },
+        {
+          "condition": "PATCH /tickets/{ticketId} returns 400",
+          "ui_response": "Show inline form validation errors."
+        },
+        {
+          "condition": "PATCH /tickets/{ticketId} returns 404",
+          "ui_response": "Show stale resource warning and redirect option."
+        },
+        {
+          "condition": "POST /tickets/{ticketId}/runs returns 400",
+          "ui_response": "Show run creation validation error, including invalid timeout or malformed body if applicable."
+        },
+        {
+          "condition": "POST /tickets/{ticketId}/runs returns 404",
+          "ui_response": "Show ticket no longer exists message."
+        },
+        {
+          "condition": "PATCH /guidance/{guidanceId} returns 404",
+          "ui_response": "Show guidance item unavailable and refresh the guidance list."
+        },
+        {
+          "condition": "GET /runs/{triageRunId}/events returns 404",
+          "ui_response": "Show 'no events yet' or unavailable state in preview area rather than fail whole page when latest run exists but events are absent."
+        },
+        {
+          "condition": "GET /runs/{triageRunId}/guidance returns 404",
+          "ui_response": "Show 'no run-scoped guidance found yet' in optional refresh panel."
+        }
+      ],
+      "components": [
+        "AppShell",
+        "TopNav",
+        "PageHeader",
+        "TicketSummaryCard",
+        "TicketEditForm",
+        "RequesterFields",
+        "LatestRunCard",
+        "RunStatusBadge",
+        "StreamingHealthIndicator",
+        "TimeoutInfo",
+        "GuidanceSuggestionsList",
+        "GuidanceSuggestionCard",
+        "ConfidenceBadge",
+        "AppliedToggle",
+        "RunCreationModal",
+        "RunTypeSelect",
+        "TimeoutInput",
+        "EventTimelinePreview",
+        "EmptyState",
+        "ErrorBanner",
+        "SaveBar",
+        "RefreshButton",
+        "LinkButton"
+      ]
+    },
+    {
+      "page_id": "ticket_run_history",
+      "route": "/tickets/:ticketId/runs",
+      "purpose": "Review all verification and triage runs associated with a single ticket, including streaming progress and timeout/completion outcomes.",
+      "data_requirements": [
+        {
+          "name": "run_history",
+          "source": "GET /tickets/{ticketId}/runs",
+          "required": true
+        },
+        {
+          "name": "ticket_workspace_context",
+          "source": "GET /tickets/{ticketId}/workspace",
+          "required": false,
+          "notes": "Optional for showing ticket header metadata because there is no standalone get-ticket endpoint."
+        }
+      ],
+      "api_endpoints_consumed": [
+        "getTicketRunHistory",
+        "getTicketTriageWorkspace"
+      ],
+      "user_actions": [
+        {
+          "action": "Refresh run history",
+          "api_calls": [
+            "GET /tickets/{ticketId}/runs"
+          ]
+        },
+        {
+          "action": "Navigate to a selected run detail",
+          "api_calls": []
+        },
+        {
+          "action": "Navigate back to ticket workspace",
+          "api_calls": []
+        }
+      ],
+      "loading_states": [
+        "Initial list/table skeleton.",
+        "Inline refresh indicator for history reload."
+      ],
+      "error_states": [
+        {
+          "condition": "GET /tickets/{ticketId}/runs returns 400",
+          "ui_response": "Show invalid ticket id state."
+        },
+        {
+          "condition": "GET /tickets/{ticketId}/runs returns 404",
+          "ui_response": "Show no run history found / ticket missing state; optionally suggest returning to workspace to confirm ticket context."
+        },
+        {
+          "condition": "GET /tickets/{ticketId}/runs returns 500",
+          "ui_response": "Show full-page error with retry."
+        }
+      ],
+      "components": [
+        "AppShell",
+        "TopNav",
+        "PageHeader",
+        "TicketContextHeader",
+        "RunHistoryTable",
+        "RunHistoryRow",
+        "RunTypeBadge",
+        "RunStatusBadge",
+        "StreamingHealthIndicator",
+        "TimeoutUtilizationBar",
+        "VerificationResultBadge",
+        "EmptyState",
+        "ErrorBanner",
+        "RefreshButton"
+      ]
+    },
+    {
+      "page_id": "active_runs_monitor",
+      "route": "/runs/active",
+      "purpose": "Dedicated monitoring screen for all currently running streaming executions across tickets.",
+      "data_requirements": [
+        {
+          "name": "active_runs",
+          "source": "GET /runs/active",
+          "required": true
+        }
+      ],
+      "api_endpoints_consumed": [
+        "listActiveStreamingRuns"
+      ],
+      "user_actions": [
+        {
+          "action": "Refresh/poll active runs",
+          "api_calls": [
+            "GET /runs/active"
+          ]
+        },
+        {
+          "action": "Open run detail",
+          "api_calls": []
+        },
+        {
+          "action": "Open related ticket workspace",
+          "api_calls": []
+        }
+      ],
+      "loading_states": [
+        "Initial monitoring table skeleton.",
+        "Auto-refresh indicator during polling."
+      ],
+      "error_states": [
+        {
+          "condition": "GET /runs/active returns 500",
+          "ui_response": "Show page-level error banner with retry and pause polling."
+        },
+        {
+          "condition": "GET /runs/active returns 200 with count 0",
+          "ui_response": "Show empty state indicating no currently active streaming runs."
+        }
+      ],
+      "components": [
+        "AppShell",
+        "TopNav",
+        "PageHeader",
+        "PollingStatusIndicator",
+        "ActiveRunsTable",
+        "RunStatusBadge",
+        "StreamingHealthIndicator",
+        "DurationCell",
+        "TimeoutCell",
+        "EmptyState",
+        "ErrorBanner",
+        "RefreshButton"
+      ]
+    },
+    {
+      "page_id": "timeout_watch",
+      "route": "/runs/timeout-watch",
+      "purpose": "Highlight runs approaching or exceeding the supported timeout threshold so the POV can validate longer-running execution behavior.",
+      "data_requirements": [
+        {
+          "name": "timeout_watch_runs",
+          "source": "GET /runs/timeout-watch",
+          "required": true,
+          "notes": "UI should use the default threshold only and not expose unsupported custom threshold editing."
+        }
+      ],
+      "api_endpoints_consumed": [
+        "listRunsNearOrOverTimeout"
+      ],
+      "user_actions": [
+        {
+          "action": "Refresh timeout watch",
+          "api_calls": [
+            "GET /runs/timeout-watch"
+          ]
+        },
+        {
+          "action": "Open run detail for at-risk run",
+          "api_calls": []
+        },
+        {
+          "action": "Open related ticket workspace using ticket_id if app route can map it",
+          "api_calls": []
+        }
+      ],
+      "loading_states": [
+        "Initial list skeleton.",
+        "Inline loading state during refresh."
+      ],
+      "error_states": [
+        {
+          "condition": "GET /runs/timeout-watch returns 400 due to unsupported threshold",
+          "ui_response": "This should not occur if UI only uses default; if it does, fall back to default request and show informational message."
+        },
+        {
+          "condition": "GET /runs/timeout-watch returns 500",
+          "ui_response": "Show page-level error with retry."
+        },
+        {
+          "condition": "GET /runs/timeout-watch returns 200 with count 0",
+          "ui_response": "Show empty state indicating no runs currently near timeout."
+        }
+      ],
+      "components": [
+        "AppShell",
+        "TopNav",
+        "PageHeader",
+        "TimeoutWatchTable",
+        "TimeoutUtilizationBar",
+        "RunStatusBadge",
+        "StreamingHealthIndicator",
+        "VerificationResultBadge",
+        "EmptyState",
+        "ErrorBanner",
+        "RefreshButton",
+        "InfoCallout"
+      ]
+    },
+    {
+      "page_id": "run_detail",
+      "route": "/runs/:triageRunId",
+      "purpose": "Inspect a single run in depth, including ordered stream events, AI guidance generated during the run, and mutable run state used for POV simulation or manual progression updates.",
+      "data_requirements": [
+        {
+          "name": "event_stream",
+          "source": "GET /runs/{triageRunId}/events",
+          "required": true
+        },
+        {
+          "name": "run_guidance",
+          "source": "GET /runs/{triageRunId}/guidance",
+          "required": false
+        },
+        {
+          "name": "verification_summary",
+          "source": "GET /runs/{triageRunId}/verification-summary",
+          "required": false,
+          "notes": "Recommended for summary header cards and success/timeout outcome validation."
+        }
+      ],
+      "api_endpoints_consumed": [
+        "getRunEventStream",
+        "getGuidanceForRun",
+        "getVerificationSummary",
+        "appendRunEvent",
+        "createGuidanceSuggestion",
+        "updateTriageRun",
+        "updateGuidanceSuggestion"
+      ],
+      "user_actions": [
+        {
+          "action": "Refresh/poll events",
+          "api_calls": [
+            "GET /runs/{triageRunId}/events"
+          ]
+        },
+        {
+          "action": "Refresh/poll guidance",
+          "api_calls": [
+            "GET /runs/{triageRunId}/guidance"
+          ]
+        },
+        {
+          "action": "Refresh verification summary",
+          "api_calls": [
+            "GET /runs/{triageRunId}/verification-summary"
+          ]
+        },
+        {
+          "action": "Append a run event for simulation/manual logging",
+          "api_calls": [
+            "POST /runs/{triageRunId}/events"
+          ]
+        },
+        {
+          "action": "Create a new guidance suggestion for this run",
+          "api_calls": [
+            "POST /runs/{triageRunId}/guidance"
+          ]
+        },
+        {
+          "action": "Update run status, timeout fields, streaming counters, or verification result",
+          "api_calls": [
+            "PATCH /runs/{triageRunId}"
+          ]
+        },
+        {
+          "action": "Mark a guidance suggestion as applied/not applied",
+          "api_calls": [
+            "PATCH /guidance/{guidanceId}"
+          ]
+        },
+        {
+          "action": "Navigate to verification summary page",
+          "api_calls": []
+        }
+      ],
+      "loading_states": [
+        "Initial split-view skeleton for summary, events, and guidance.",
+        "Section-level loading states for events/guidance/summary when independently refreshed.",
+        "Submitting states for append event, create guidance, and update run actions."
+      ],
+      "error_states": [
+        {
+          "condition": "GET /runs/{triageRunId}/events returns 404",
+          "ui_response": "Show no events found state; do not block guidance or summary sections."
+        },
+        {
+          "condition": "GET /runs/{triageRunId}/guidance returns 404",
+          "ui_response": "Show no guidance generated yet state."
+        },
+        {
+          "condition": "GET /runs/{triageRunId}/verification-summary returns 404",
+          "ui_response": "Show verification summary unavailable state while still allowing event/guidance inspection."
+        },
+        {
+          "condition": "Any GET returns 400 for invalid run id",
+          "ui_response": "Show invalid run id page state."
+        },
+        {
+          "condition": "PATCH /runs/{triageRunId} returns 404",
+          "ui_response": "Show stale run warning and disable editing."
+        },
+        {
+          "condition": "POST /runs/{triageRunId}/events returns 409",
+          "ui_response": "Show sequence conflict error and prompt user to choose a new sequence."
+        },
+        {
+          "condition": "POST /runs/{triageRunId}/events or /guidance returns 404",
+          "ui_response": "Show run no longer exists warning."
+        },
+        {
+          "condition": "Mutation returns 400",
+          "ui_response": "Show inline validation errors in the relevant form."
+        },
+        {
+          "condition": "Any request returns 500",
+          "ui_response": "Show section or page-level error with retry depending on scope."
+        }
+      ],
+      "components": [
+        "AppShell",
+        "TopNav",
+        "PageHeader",
+        "RunSummaryHeader",
+        "RunStatusBadge",
+        "StreamingHealthIndicator",
+        "VerificationResultBadge",
+        "EventTimeline",
+        "EventTimelineItem",
+        "EventTypeBadge",
+        "EventAppendForm",
+        "GuidanceSuggestionsList",
+        "GuidanceSuggestionCard",
+        "GuidanceCreateForm",
+        "AppliedToggle",
+        "RunUpdateForm",
+        "TimeoutInfo",
+        "SummaryStatCard",
+        "EmptyState",
+        "ErrorBanner",
+        "RefreshButton",
+        "PollingStatusIndicator"
+      ]
+    },
+    {
+      "page_id": "verification_summary",
+      "route": "/runs/:triageRunId/summary",
+      "purpose": "Present the verification outcome in a concise, business-readable format showing completion, stream event counts, guidance generation, and timeout compliance for the selected run.",
+      "data_requirements": [
+        {
+          "name": "verification_summary",
+          "source": "GET /runs/{triageRunId}/verification-summary",
+          "required": true
+        }
+      ],
+      "api_endpoints_consumed": [
+        "getVerificationSummary"
+      ],
+      "user_actions": [
+        {
+          "action": "Refresh summary",
+          "api_calls": [
+            "GET /runs/{triageRunId}/verification-summary"
+          ]
+        },
+        {
+          "action": "Navigate to full run detail",
+          "api_calls": []
+        },
+        {
+          "action": "Navigate to related ticket workspace via ticket_id",
+          "api_calls": []
+        }
+      ],
+      "loading_states": [
+        "Initial summary card skeleton.",
+        "Inline loading indicator during refresh."
+      ],
+      "error_states": [
+        {
+          "condition": "GET /runs/{triageRunId}/verification-summary returns 400",
+          "ui_response": "Show invalid run id state."
+        },
+        {
+          "condition": "GET /runs/{triageRunId}/verification-summary returns 404",
+          "ui_response": "Show verification run not found state."
+        },
+        {
+          "condition": "GET /runs/{triageRunId}/verification-summary returns 500",
+          "ui_response": "Show page-level error with retry."
+        }
+      ],
+      "components": [
+        "AppShell",
+        "TopNav",
+        "PageHeader",
+        "VerificationOutcomeHero",
+        "SummaryStatCard",
+        "CompletionReasonBadge",
+        "TimeoutComplianceBadge",
+        "EventCountComparisonCard",
+        "GuidanceCountCard",
+        "NotesPanel",
+        "ErrorBanner",
+        "RefreshButton"
+      ]
+    }
+  ],
+  "shared_components": [
+    {
+      "name": "AppShell",
+      "purpose": "Global page chrome and layout."
+    },
+    {
+      "name": "TopNav",
+      "purpose": "Primary navigation across dashboard, tickets, and runs."
+    },
+    {
+      "name": "PageHeader",
+      "purpose": "Page title, contextual metadata, and actions."
+    },
+    {
+      "name": "ErrorBanner",
+      "purpose": "Reusable API error presentation with retry or recovery hints."
+    },
+    {
+      "name": "EmptyState",
+      "purpose": "Display zero-data conditions."
+    },
+    {
+      "name": "RefreshButton",
+      "purpose": "Manual reload action."
+    },
+    {
+      "name": "StatusBadge",
+      "purpose": "Display ticket statuses."
+    },
+    {
+      "name": "PriorityBadge",
+      "purpose": "Display ticket priorities."
+    },
+    {
+      "name": "RunStatusBadge",
+      "purpose": "Display run lifecycle states."
+    },
+    {
+      "name": "RunTypeBadge",
+      "purpose": "Display verification vs triage run types."
+    },
+    {
+      "name": "VerificationResultBadge",
+      "purpose": "Show verification success/failure/unknown."
+    },
+    {
+      "name": "StreamingHealthIndicator",
+      "purpose": "Expose event count, last event time, and streaming enabled status."
+    },
+    {
+      "name": "TimeoutUtilizationBar",
+      "purpose": "Visualize timeout usage when available."
+    },
+    {
+      "name": "TicketForm",
+      "purpose": "Reusable create/edit ticket form."
+    },
+    {
+      "name": "RequesterFields",
+      "purpose": "Requester sub-form fields."
+    },
+    {
+      "name": "GuidanceSuggestionsList",
+      "purpose": "Render one or more guidance suggestions."
+    },
+    {
+      "name": "GuidanceSuggestionCard",
+      "purpose": "Display guidance text, type, confidence, model info, and applied state."
+    },
+    {
+      "name": "AppliedToggle",
+      "purpose": "Toggle guidance applied status via PATCH /guidance/{guidanceId}."
+    },
+    {
+      "name": "EventTimeline",
+      "purpose": "Ordered display of run events from GET /runs/{triageRunId}/events."
+    },
+    {
+      "name": "EventTimelineItem",
+      "purpose": "Single stream event row/card."
+    },
+    {
+      "name": "PollingStatusIndicator",
+      "purpose": "Show polling activity because the API has no push stream interface."
+    }
+  ],
+  "data_constraints_and_gaps": [
+    {
+      "gap": "No standalone endpoint exists to fetch a ticket by id outside the workspace payload.",
+      "frontend_implication": "Use GET /tickets/{ticketId}/workspace wherever ticket-level detail is needed."
+    },
+    {
+      "gap": "No API endpoint exists to actually trigger backend execution beyond creating/updating run records.",
+      "frontend_implication": "Any UI action labeled 'start verification' or 'start triage run' must be framed as creating the run record for POV simulation/tracking, not guaranteeing orchestration of an execution engine."
+    },
+    {
+      "gap": "No endpoint exists to query events by ticket_id directly.",
+      "frontend_implication": "Event review must always be scoped to a specific run id."
+    },
+    {
+      "gap": "No endpoint exists to get a guidance suggestion by id.",
+      "frontend_implication": "Guidance edit interactions should originate from lists returned by workspace or run-scoped guidance endpoints."
+    },
+    {
+      "gap": "No server-sent events/websocket endpoint exists despite streaming use case.",
+      "frontend_implication": "All real-time monitoring should rely on periodic polling and visible refresh status."
+    },
+    {
+      "gap": "Timeout watch threshold customization is not truly supported in this POV.",
+      "frontend_implication": "Do not expose arbitrary threshold controls; use default backend behavior only."
+    }
+  ]
+}
