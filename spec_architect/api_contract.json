@@ -1,0 +1,1021 @@
+{
+  "version": "1.0.0",
+  "pov_name": "newgen_brms_execution_logging",
+  "base_path": "/api/v1",
+  "content_type": "application/json",
+  "auth": {
+    "note": "Authentication mechanism is out of POV scope. Endpoints that expose detailed execution data require caller context with customer_id and user_id so authorization can be checked via qp9_authorize_log_viewer.",
+    "authorization_flow": "For endpoints marked authorization_required=true, backend must validate user access for the given customer via qp9_authorize_log_viewer before executing the primary query."
+  },
+  "endpoints": [
+    {
+      "operation_id": "authorizeLogViewer",
+      "method": "POST",
+      "path": "/customers/{customerId}/log-viewer-authorizations/check",
+      "purpose": "Validate whether a user is allowed to view detailed execution logs for a customer.",
+      "authorization_required": false,
+      "request": {
+        "path_params": {
+          "customerId": "string"
+        },
+        "body": {
+          "user_id": "string"
+        }
+      },
+      "response": {
+        "200": {
+          "authorized": "boolean",
+          "user": {
+            "user_id": "string",
+            "customer_id": "string",
+            "display_name": "string",
+            "roles": [
+              "string"
+            ],
+            "can_view_execution_logs": "boolean"
+          },
+          "customer_allowed_list": [
+            "string"
+          ],
+          "is_explicitly_allowed": "boolean"
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_REQUEST",
+          "message": "customerId and user_id are required."
+        },
+        {
+          "status": 404,
+          "code": "USER_NOT_AUTHORIZED",
+          "message": "No active authorized log viewer record found for this user and customer."
+        }
+      ],
+      "backing": {
+        "type": "query_pattern",
+        "id": "qp9_authorize_log_viewer"
+      }
+    },
+    {
+      "operation_id": "getCustomerLoggingConfig",
+      "method": "GET",
+      "path": "/customers/{customerId}/logging-config",
+      "purpose": "Get a customer's execution logging enablement, retention, purge mode, and allowed log viewer configuration.",
+      "authorization_required": false,
+      "request": {
+        "path_params": {
+          "customerId": "string"
+        }
+      },
+      "response": {
+        "200": {
+          "customer_id": "string",
+          "name": "string",
+          "logging_enabled": "boolean",
+          "retention_days": "number|null",
+          "purge_mode": "ttl|scheduled|manual|null",
+          "allowed_log_viewer_user_ids": [
+            "string"
+          ],
+          "deployment_context": {
+            "cloud": "string|null",
+            "environment_type": "string|null",
+            "notes": "string|null"
+          }
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_CUSTOMER_ID",
+          "message": "customerId is required."
+        },
+        {
+          "status": 404,
+          "code": "CUSTOMER_NOT_FOUND",
+          "message": "Customer configuration not found."
+        }
+      ],
+      "backing": {
+        "type": "query_pattern",
+        "id": "qp8_customer_logging_configuration_lookup"
+      }
+    },
+    {
+      "operation_id": "updateCustomerLoggingConfig",
+      "method": "PATCH",
+      "path": "/customers/{customerId}/logging-config",
+      "purpose": "Update a customer's execution logging enablement and retention settings.",
+      "authorization_required": false,
+      "request": {
+        "path_params": {
+          "customerId": "string"
+        },
+        "body": {
+          "logging_enabled": "boolean (optional)",
+          "retention_days": "integer >= 0 (optional)",
+          "purge_mode": "ttl|scheduled|manual (optional)",
+          "allowed_log_viewer_user_ids": [
+            "string"
+          ],
+          "deployment_context": {
+            "cloud": "string (optional)",
+            "environment_type": "string (optional)",
+            "notes": "string (optional)"
+          }
+        }
+      },
+      "response": {
+        "200": {
+          "customer_id": "string",
+          "name": "string",
+          "logging_enabled": "boolean",
+          "retention_days": "number|null",
+          "purge_mode": "ttl|scheduled|manual|null",
+          "allowed_log_viewer_user_ids": [
+            "string"
+          ],
+          "deployment_context": {
+            "cloud": "string|null",
+            "environment_type": "string|null",
+            "notes": "string|null"
+          },
+          "updated": "boolean"
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_REQUEST",
+          "message": "At least one updatable field must be provided and all provided values must be valid."
+        },
+        {
+          "status": 404,
+          "code": "CUSTOMER_NOT_FOUND",
+          "message": "Customer not found."
+        }
+      ],
+      "backing": {
+        "type": "mongodb_operation",
+        "collection": "customers",
+        "operation": "updateOne",
+        "filter": {
+          "customer_id": "<customerId>"
+        },
+        "note": "Straightforward CRUD update implied by the customers data model; not backed by a named query pattern."
+      }
+    },
+    {
+      "operation_id": "getRequestAuditTrail",
+      "method": "GET",
+      "path": "/customers/{customerId}/requests/audit-trail",
+      "purpose": "Fetch one request and all of its ordered execution-step records using either request ID or correlation ID.",
+      "authorization_required": true,
+      "request": {
+        "path_params": {
+          "customerId": "string"
+        },
+        "query_params": {
+          "request_id": "string (optional if correlation_id provided)",
+          "correlation_id": "string (optional if request_id provided)",
+          "user_id": "string"
+        }
+      },
+      "validation_rules": [
+        "Either request_id or correlation_id must be provided.",
+        "If both are provided, backend may match either as defined in qp1."
+      ],
+      "response": {
+        "200": {
+          "request_id": "string",
+          "correlation_id": "string|null",
+          "customer_id": "string",
+          "policy_id": "string",
+          "policy_version": "string",
+          "channel": "mobile|portal|web|api|account_opening|loan_processing|other|null",
+          "source_system": "string|null",
+          "request_received_at": "date-time",
+          "completed_at": "date-time|null",
+          "status": "in_progress|completed|failed",
+          "final_outcome": "approved|rejected|review|error|other|null",
+          "request_payload": "object",
+          "response_payload": "object|null",
+          "rule_execution_count": "number|null",
+          "lookup_count": "number|null",
+          "error_count": "number|null",
+          "duration_ms": "number|null",
+          "tags": [
+            "string"
+          ],
+          "execution_steps": [
+            {
+              "request_id": "string",
+              "policy_id": "string",
+              "policy_version": "string",
+              "rule_id": "string",
+              "rule_name": "string|null",
+              "step_sequence": "number",
+              "stage": "rule_enter|lookup|evaluation|rule_exit|other|null",
+              "logged_at": "date-time",
+              "step_status": "executed|skipped|passed|failed|error",
+              "step_outcome": "string|null",
+              "input_payload": "object|null",
+              "output_payload": "object|null",
+              "intermediate_payload": "object|null",
+              "lookup_details": {
+                "lookup_performed": "boolean|null",
+                "lookup_target": "string|null",
+                "lookup_key": "string|null",
+                "lookup_result_summary": "string|null"
+              },
+              "duration_ms": "number|null",
+              "error_code": "string|null",
+              "error_message": "string|null"
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_REQUEST",
+          "message": "customerId, user_id, and either request_id or correlation_id are required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "User is not authorized to view execution logs for this customer."
+        },
+        {
+          "status": 404,
+          "code": "REQUEST_NOT_FOUND",
+          "message": "No matching request was found for the provided identifier."
+        }
+      ],
+      "backing": {
+        "type": "query_pattern",
+        "id": "qp1_get_request_audit_trail",
+        "authorization_query_pattern": "qp9_authorize_log_viewer"
+      }
+    },
+    {
+      "operation_id": "listExecutionRequests",
+      "method": "GET",
+      "path": "/customers/{customerId}/requests",
+      "purpose": "Search and filter request-level execution records for UI grids and API consumers.",
+      "authorization_required": true,
+      "request": {
+        "path_params": {
+          "customerId": "string"
+        },
+        "query_params": {
+          "user_id": "string",
+          "from_date": "date-time",
+          "to_date": "date-time",
+          "status": [
+            "in_progress|completed|failed"
+          ],
+          "final_outcome": [
+            "approved|rejected|review|error|other"
+          ],
+          "policy_id": "string",
+          "policy_version": "string",
+          "channel": "mobile|portal|web|api|account_opening|loan_processing|other",
+          "source_system": "string",
+          "tags": [
+            "string"
+          ],
+          "payload_filters": [
+            {
+              "field_path": "string",
+              "operator": "eq",
+              "value": "any"
+            }
+          ],
+          "page_size": "integer",
+          "page_token": "string (optional, opaque; implementation-specific)"
+        }
+      },
+      "response": {
+        "200": {
+          "items": [
+            {
+              "request_id": "string",
+              "correlation_id": "string|null",
+              "customer_id": "string",
+              "policy_id": "string",
+              "policy_version": "string",
+              "channel": "string|null",
+              "source_system": "string|null",
+              "request_received_at": "date-time",
+              "completed_at": "date-time|null",
+              "status": "string",
+              "final_outcome": "string|null",
+              "rule_execution_count": "number|null",
+              "lookup_count": "number|null",
+              "error_count": "number|null",
+              "duration_ms": "number|null",
+              "request_payload_size_bytes": "number|null",
+              "response_payload_size_bytes": "number|null",
+              "tags": [
+                "string"
+              ]
+            }
+          ],
+          "page_size": "number",
+          "next_page_token": "string|null"
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_REQUEST",
+          "message": "customerId, user_id, from_date, and to_date are required; filters must use supported operators."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "User is not authorized to view execution logs for this customer."
+        }
+      ],
+      "backing": {
+        "type": "query_pattern",
+        "id": "qp2_list_requests_with_filters",
+        "authorization_query_pattern": "qp9_authorize_log_viewer",
+        "notes": "Query pattern supports limited page size only. page_token is contract-level convenience; if implemented, backend would need keyset/skip logic beyond the named pattern. If pagination beyond first page is not implemented in POV, next_page_token should be null."
+      }
+    },
+    {
+      "operation_id": "searchExecutionSteps",
+      "method": "GET",
+      "path": "/customers/{customerId}/execution-steps",
+      "purpose": "Search execution-step records directly by rule, stage, status, error code, lookup usage, or selected values in logged step payloads.",
+      "authorization_required": true,
+      "request": {
+        "path_params": {
+          "customerId": "string"
+        },
+        "query_params": {
+          "user_id": "string",
+          "from_date": "date-time",
+          "to_date": "date-time",
+          "policy_id": "string",
+          "policy_version": "string",
+          "rule_id": "string",
+          "rule_name": "string",
+          "stage": "rule_enter|lookup|evaluation|rule_exit|other",
+          "step_status": "executed|skipped|passed|failed|error",
+          "error_code": "string",
+          "lookup_performed": "boolean",
+          "payload_filters": [
+            {
+              "field_path": "string",
+              "operator": "eq",
+              "value": "any"
+            }
+          ],
+          "page_size": "integer",
+          "page_token": "string (optional, opaque; implementation-specific)"
+        }
+      },
+      "response": {
+        "200": {
+          "items": [
+            {
+              "request_id": "string",
+              "customer_id": "string",
+              "policy_id": "string",
+              "policy_version": "string",
+              "rule_id": "string",
+              "rule_name": "string|null",
+              "step_sequence": "number",
+              "stage": "string|null",
+              "logged_at": "date-time",
+              "step_status": "string",
+              "step_outcome": "string|null",
+              "lookup_details": {
+                "lookup_performed": "boolean|null",
+                "lookup_target": "string|null",
+                "lookup_key": "string|null",
+                "lookup_result_summary": "string|null"
+              },
+              "duration_ms": "number|null",
+              "error_code": "string|null",
+              "error_message": "string|null"
+            }
+          ],
+          "page_size": "number",
+          "next_page_token": "string|null"
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_REQUEST",
+          "message": "customerId, user_id, from_date, and to_date are required; filters must use supported operators."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "User is not authorized to view execution logs for this customer."
+        }
+      ],
+      "backing": {
+        "type": "query_pattern",
+        "id": "qp3_search_steps_by_rule_or_payload",
+        "authorization_query_pattern": "qp9_authorize_log_viewer",
+        "notes": "Same pagination caveat as qp2; first-page-only is the strict fit to the named pattern."
+      }
+    },
+    {
+      "operation_id": "comparePolicyVersionOutcomes",
+      "method": "GET",
+      "path": "/customers/{customerId}/policies/{policyId}/comparisons/outcomes",
+      "purpose": "Compare request outcomes and summary execution characteristics between two policy versions over a time range.",
+      "authorization_required": true,
+      "request": {
+        "path_params": {
+          "customerId": "string",
+          "policyId": "string"
+        },
+        "query_params": {
+          "user_id": "string",
+          "version_a": "string",
+          "version_b": "string",
+          "from_date": "date-time",
+          "to_date": "date-time"
+        }
+      },
+      "response": {
+        "200": {
+          "items": [
+            {
+              "policy_version": "string",
+              "total_requests": "number",
+              "outcomes": [
+                {
+                  "outcome": "string|null",
+                  "request_count": "number"
+                }
+              ],
+              "avg_duration_ms": "number|null",
+              "avg_rule_execution_count": "number|null",
+              "avg_lookup_count": "number|null",
+              "error_requests": "number",
+              "policy_metadata": {
+                "policy_id": "string",
+                "policy_name": "string",
+                "version": "string",
+                "published_at": "date-time|null",
+                "status": "draft|published|retired",
+                "rules": [
+                  {
+                    "rule_id": "string",
+                    "rule_name": "string",
+                    "sequence": "number|null",
+                    "lookup_configured": "boolean|null",
+                    "description": "string|null"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_REQUEST",
+          "message": "customerId, policyId, version_a, version_b, from_date, and to_date are required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "User is not authorized to view execution logs for this customer."
+        }
+      ],
+      "backing": {
+        "type": "query_pattern",
+        "id": "qp4_compare_policy_versions_outcomes",
+        "authorization_query_pattern": "qp9_authorize_log_viewer"
+      }
+    },
+    {
+      "operation_id": "comparePolicyVersionRules",
+      "method": "GET",
+      "path": "/customers/{customerId}/policies/{policyId}/comparisons/rules",
+      "purpose": "Compare rule behavior, statuses, lookup activity, and errors between two policy versions.",
+      "authorization_required": true,
+      "request": {
+        "path_params": {
+          "customerId": "string",
+          "policyId": "string"
+        },
+        "query_params": {
+          "user_id": "string",
+          "version_a": "string",
+          "version_b": "string",
+          "from_date": "date-time",
+          "to_date": "date-time"
+        }
+      },
+      "response": {
+        "200": {
+          "items": [
+            {
+              "policy_version": "string",
+              "rule_id": "string",
+              "rule_name": "string|null",
+              "statuses": [
+                {
+                  "step_status": "executed|skipped|passed|failed|error",
+                  "step_count": "number"
+                }
+              ],
+              "avg_duration_ms": "number|null",
+              "lookup_hits": "number",
+              "error_steps": "number"
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_REQUEST",
+          "message": "customerId, policyId, version_a, version_b, from_date, and to_date are required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "User is not authorized to view execution logs for this customer."
+        }
+      ],
+      "backing": {
+        "type": "query_pattern",
+        "id": "qp5_rule_level_comparison_between_policy_versions",
+        "authorization_query_pattern": "qp9_authorize_log_viewer"
+      }
+    },
+    {
+      "operation_id": "getRequestOutcomesTimeseries",
+      "method": "GET",
+      "path": "/customers/{customerId}/dashboards/request-outcomes-timeseries",
+      "purpose": "Return chart-ready time series metrics for request volume and outcomes over time.",
+      "authorization_required": true,
+      "request": {
+        "path_params": {
+          "customerId": "string"
+        },
+        "query_params": {
+          "user_id": "string",
+          "from_date": "date-time",
+          "to_date": "date-time",
+          "granularity": "day|week|month",
+          "policy_id": "string",
+          "policy_version": "string",
+          "channel": "mobile|portal|web|api|account_opening|loan_processing|other"
+        }
+      },
+      "response": {
+        "200": {
+          "items": [
+            {
+              "period": "date-time",
+              "final_outcome": "approved|rejected|review|error|other|null",
+              "request_count": "number",
+              "avg_duration_ms": "number|null",
+              "avg_rule_execution_count": "number|null"
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_REQUEST",
+          "message": "customerId, user_id, from_date, to_date, and granularity are required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "User is not authorized to view execution logs for this customer."
+        }
+      ],
+      "backing": {
+        "type": "query_pattern",
+        "id": "qp6_dashboard_request_outcomes_timeseries",
+        "authorization_query_pattern": "qp9_authorize_log_viewer"
+      }
+    },
+    {
+      "operation_id": "getRulePerformanceSummary",
+      "method": "GET",
+      "path": "/customers/{customerId}/dashboards/rule-performance-summary",
+      "purpose": "Return summary metrics for the busiest, slowest, or most error-prone rules in a time range.",
+      "authorization_required": true,
+      "request": {
+        "path_params": {
+          "customerId": "string"
+        },
+        "query_params": {
+          "user_id": "string",
+          "from_date": "date-time",
+          "to_date": "date-time",
+          "policy_id": "string",
+          "policy_version": "string",
+          "top_n": "integer"
+        }
+      },
+      "response": {
+        "200": {
+          "items": [
+            {
+              "rule_id": "string",
+              "rule_name": "string|null",
+              "execution_count": "number",
+              "avg_duration_ms": "number|null",
+              "error_count": "number",
+              "failed_count": "number",
+              "lookup_count": "number"
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_REQUEST",
+          "message": "customerId, user_id, from_date, to_date, and top_n are required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "User is not authorized to view execution logs for this customer."
+        }
+      ],
+      "backing": {
+        "type": "query_pattern",
+        "id": "qp7_dashboard_rule_performance_summary",
+        "authorization_query_pattern": "qp9_authorize_log_viewer"
+      }
+    },
+    {
+      "operation_id": "getChannelSourceSummary",
+      "method": "GET",
+      "path": "/customers/{customerId}/dashboards/channel-source-summary",
+      "purpose": "Summarize request counts and average duration by channel, source system, and final outcome.",
+      "authorization_required": true,
+      "request": {
+        "path_params": {
+          "customerId": "string"
+        },
+        "query_params": {
+          "user_id": "string",
+          "from_date": "date-time",
+          "to_date": "date-time"
+        }
+      },
+      "response": {
+        "200": {
+          "items": [
+            {
+              "channel": "mobile|portal|web|api|account_opening|loan_processing|other|null",
+              "source_system": "string|null",
+              "final_outcome": "approved|rejected|review|error|other|null",
+              "request_count": "number",
+              "avg_duration_ms": "number|null"
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_REQUEST",
+          "message": "customerId, user_id, from_date, and to_date are required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "User is not authorized to view execution logs for this customer."
+        }
+      ],
+      "backing": {
+        "type": "query_pattern",
+        "id": "qp10_request_channel_and_source_summary",
+        "authorization_query_pattern": "qp9_authorize_log_viewer"
+      }
+    },
+    {
+      "operation_id": "getPolicyDefinition",
+      "method": "GET",
+      "path": "/customers/{customerId}/policies/{policyId}/versions/{version}",
+      "purpose": "Get one policy definition version and its embedded rule metadata.",
+      "authorization_required": false,
+      "request": {
+        "path_params": {
+          "customerId": "string",
+          "policyId": "string",
+          "version": "string"
+        }
+      },
+      "response": {
+        "200": {
+          "policy_id": "string",
+          "customer_id": "string",
+          "policy_name": "string",
+          "version": "string",
+          "published_at": "date-time|null",
+          "status": "draft|published|retired",
+          "consolidated_input_schema": "object|null",
+          "rules": [
+            {
+              "rule_id": "string",
+              "rule_name": "string",
+              "sequence": "number|null",
+              "lookup_configured": "boolean|null",
+              "description": "string|null"
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_REQUEST",
+          "message": "customerId, policyId, and version are required."
+        },
+        {
+          "status": 404,
+          "code": "POLICY_VERSION_NOT_FOUND",
+          "message": "Policy definition version not found."
+        }
+      ],
+      "backing": {
+        "type": "mongodb_operation",
+        "collection": "policy_definitions",
+        "operation": "findOne",
+        "filter": {
+          "customer_id": "<customerId>",
+          "policy_id": "<policyId>",
+          "version": "<version>"
+        },
+        "note": "Straightforward read implied by the data model; useful because qp4 returns policy metadata only in the context of a comparison."
+      }
+    },
+    {
+      "operation_id": "listPolicyDefinitions",
+      "method": "GET",
+      "path": "/customers/{customerId}/policies",
+      "purpose": "List policy definitions for a customer, optionally filtered by status.",
+      "authorization_required": false,
+      "request": {
+        "path_params": {
+          "customerId": "string"
+        },
+        "query_params": {
+          "status": "draft|published|retired (optional)"
+        }
+      },
+      "response": {
+        "200": {
+          "items": [
+            {
+              "policy_id": "string",
+              "customer_id": "string",
+              "policy_name": "string",
+              "version": "string",
+              "published_at": "date-time|null",
+              "status": "draft|published|retired",
+              "rule_count": "number"
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_CUSTOMER_ID",
+          "message": "customerId is required."
+        }
+      ],
+      "backing": {
+        "type": "mongodb_operation",
+        "collection": "policy_definitions",
+        "operation": "find",
+        "filter": {
+          "customer_id": "<customerId>",
+          "status": "<optional_status>"
+        },
+        "note": "Straightforward CRUD/list implied by the data model; rule_count can be derived in application code from rules array length."
+      }
+    },
+    {
+      "operation_id": "createExecutionRequest",
+      "method": "POST",
+      "path": "/customers/{customerId}/requests",
+      "purpose": "Create a request-level execution record for a policy invocation. Intended for asynchronous ingestion workflows that persist the request summary document.",
+      "authorization_required": false,
+      "request": {
+        "path_params": {
+          "customerId": "string"
+        },
+        "body": {
+          "request_id": "string",
+          "correlation_id": "string (optional)",
+          "policy_id": "string",
+          "policy_version": "string",
+          "channel": "mobile|portal|web|api|account_opening|loan_processing|other (optional)",
+          "source_system": "string (optional)",
+          "request_received_at": "date-time",
+          "completed_at": "date-time (optional)",
+          "status": "in_progress|completed|failed",
+          "final_outcome": "approved|rejected|review|error|other (optional)",
+          "request_payload": "object",
+          "response_payload": "object (optional)",
+          "request_payload_size_bytes": "integer (optional)",
+          "response_payload_size_bytes": "integer (optional)",
+          "rule_execution_count": "integer (optional)",
+          "lookup_count": "integer (optional)",
+          "error_count": "integer (optional)",
+          "duration_ms": "integer (optional)",
+          "tags": [
+            "string"
+          ]
+        }
+      },
+      "response": {
+        "201": {
+          "request_id": "string",
+          "customer_id": "string",
+          "created": "boolean"
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_REQUEST",
+          "message": "Required request fields are missing or invalid."
+        },
+        {
+          "status": 409,
+          "code": "REQUEST_ALREADY_EXISTS",
+          "message": "A request with the same request_id already exists for this customer, if uniqueness is enforced by implementation."
+        },
+        {
+          "status": 422,
+          "code": "LOGGING_DISABLED",
+          "message": "Customer logging is disabled; ingestion should not persist execution logs."
+        }
+      ],
+      "backing": {
+        "type": "mongodb_operation",
+        "collection": "execution_requests",
+        "operation": "insertOne",
+        "precheck_query_pattern": "qp8_customer_logging_configuration_lookup",
+        "note": "Straightforward CRUD insert implied by the data model. Logging-enabled precheck is grounded in customer configuration requirements fr19/qp8."
+      }
+    },
+    {
+      "operation_id": "appendExecutionStep",
+      "method": "POST",
+      "path": "/customers/{customerId}/requests/{requestId}/execution-steps",
+      "purpose": "Append an incremental per-rule execution step record for an existing request. Intended for asynchronous producer-consumer ingestion.",
+      "authorization_required": false,
+      "request": {
+        "path_params": {
+          "customerId": "string",
+          "requestId": "string"
+        },
+        "body": {
+          "policy_id": "string",
+          "policy_version": "string",
+          "rule_id": "string",
+          "rule_name": "string (optional)",
+          "step_sequence": "integer",
+          "stage": "rule_enter|lookup|evaluation|rule_exit|other (optional)",
+          "logged_at": "date-time",
+          "step_status": "executed|skipped|passed|failed|error",
+          "step_outcome": "string (optional)",
+          "input_payload": "object (optional)",
+          "output_payload": "object (optional)",
+          "intermediate_payload": "object (optional)",
+          "lookup_details": {
+            "lookup_performed": "boolean (optional)",
+            "lookup_target": "string (optional)",
+            "lookup_key": "string (optional)",
+            "lookup_result_summary": "string (optional)"
+          },
+          "duration_ms": "integer (optional)",
+          "error_code": "string (optional)",
+          "error_message": "string (optional)"
+        }
+      },
+      "response": {
+        "201": {
+          "request_id": "string",
+          "step_sequence": "number",
+          "created": "boolean"
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_REQUEST",
+          "message": "Required step fields are missing or invalid."
+        },
+        {
+          "status": 404,
+          "code": "REQUEST_NOT_FOUND",
+          "message": "Parent execution request not found."
+        },
+        {
+          "status": 422,
+          "code": "LOGGING_DISABLED",
+          "message": "Customer logging is disabled; ingestion should not persist execution logs."
+        }
+      ],
+      "backing": {
+        "type": "mongodb_operation",
+        "collection": "execution_steps",
+        "operation": "insertOne",
+        "related_read": "execution_requests.findOne({customer_id, request_id})",
+        "precheck_query_pattern": "qp8_customer_logging_configuration_lookup",
+        "note": "Straightforward CRUD insert implied by the data model, with parent-request existence validation performed via direct findOne."
+      }
+    },
+    {
+      "operation_id": "updateExecutionRequestStatus",
+      "method": "PATCH",
+      "path": "/customers/{customerId}/requests/{requestId}",
+      "purpose": "Update the request-level execution summary as processing progresses or completes.",
+      "authorization_required": false,
+      "request": {
+        "path_params": {
+          "customerId": "string",
+          "requestId": "string"
+        },
+        "body": {
+          "correlation_id": "string (optional)",
+          "completed_at": "date-time (optional)",
+          "status": "in_progress|completed|failed (optional)",
+          "final_outcome": "approved|rejected|review|error|other (optional)",
+          "response_payload": "object (optional)",
+          "response_payload_size_bytes": "integer (optional)",
+          "rule_execution_count": "integer (optional)",
+          "lookup_count": "integer (optional)",
+          "error_count": "integer (optional)",
+          "duration_ms": "integer (optional)",
+          "tags": [
+            "string"
+          ]
+        }
+      },
+      "response": {
+        "200": {
+          "request_id": "string",
+          "customer_id": "string",
+          "updated": "boolean"
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_REQUEST",
+          "message": "At least one updatable field must be provided and all provided values must be valid."
+        },
+        {
+          "status": 404,
+          "code": "REQUEST_NOT_FOUND",
+          "message": "Execution request not found."
+        }
+      ],
+      "backing": {
+        "type": "mongodb_operation",
+        "collection": "execution_requests",
+        "operation": "updateOne",
+        "filter": {
+          "customer_id": "<customerId>",
+          "request_id": "<requestId>"
+        },
+        "note": "Straightforward CRUD update implied by the data model and incremental ingestion lifecycle."
+      }
+    }
+  ],
+  "not_included": [
+    {
+      "candidate": "Delete/purge execution logs endpoint",
+      "reason": "The data model includes retention settings, but no named query pattern defines purge reporting or deletion workflow. Actual purge execution could be implemented as background TTL/scheduled/manual operational jobs rather than public API endpoints; inventing a purge API here would go beyond the authoritative query patterns."
+    },
+    {
+      "candidate": "LLM insights/recommendation endpoint",
+      "reason": "AI opportunities are exploratory in the spec, but there is no data model or query pattern designed for prompt history, generated insights, or recommendation persistence."
+    },
+    {
+      "candidate": "Admin user management endpoints",
+      "reason": "admin_users exists for authorization checks, but no query patterns cover listing/creating/updating users. CRUD could be added in a future phase if needed, but it is not required by the current authoritative query patterns."
+    }
+  ]
+}
