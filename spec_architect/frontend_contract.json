@@ -1,0 +1,869 @@
+{
+  "app_shell": {
+    "layout": "authenticated shell with role-aware navigation and page-level guards",
+    "global_components": [
+      "AppHeader",
+      "SideNav",
+      "Breadcrumbs",
+      "RoleGuard",
+      "ApiErrorBanner",
+      "LoadingOverlay",
+      "NotFoundState",
+      "ForbiddenState",
+      "EmptyState",
+      "JsonViewer",
+      "DateRangePicker",
+      "TenantInput",
+      "PolicyIdentityInput",
+      "RequestIdInput",
+      "CorrelationIdInput",
+      "ResultsTable",
+      "DetailDrawer",
+      "ConfirmationToast"
+    ],
+    "navigation": [
+      {
+        "section": "Audit",
+        "routes": [
+          "/",
+          "/request-lookup",
+          "/requests/:requestId",
+          "/requests/:requestId/timeline",
+          "/policies/:policyId/versions/:policyVersion"
+        ]
+      },
+      {
+        "section": "Search",
+        "routes": [
+          "/search/content",
+          "/search/filters",
+          "/search/rule-conditions"
+        ]
+      },
+      {
+        "section": "Analytics",
+        "routes": [
+          "/analytics/policy-outcomes"
+        ]
+      },
+      {
+        "section": "Operations",
+        "routes": [
+          "/operations/ingestion",
+          "/operations/retention"
+        ]
+      },
+      {
+        "section": "External Outcomes",
+        "routes": [
+          "/external-outcomes"
+        ]
+      },
+      {
+        "section": "POV Setup",
+        "routes": [
+          "/setup/policies/new",
+          "/setup/rules/new",
+          "/setup/execution-requests/new",
+          "/setup/execution-requests/:requestId/steps/new"
+        ]
+      }
+    ],
+    "notes": [
+      "No frontend route is designed for live rule invocation because the API contract explicitly excludes a business rule invocation endpoint.",
+      "No generic browse/list policies or rules screens are included because the API contract has no list endpoints.",
+      "No destructive purge screen is included because the API contract has no delete/purge endpoint."
+    ]
+  },
+  "routes": [
+    {
+      "path": "/",
+      "page_id": "home_overview"
+    },
+    {
+      "path": "/request-lookup",
+      "page_id": "request_lookup"
+    },
+    {
+      "path": "/requests/:requestId",
+      "page_id": "execution_request_detail"
+    },
+    {
+      "path": "/requests/:requestId/timeline",
+      "page_id": "execution_timeline"
+    },
+    {
+      "path": "/policies/:policyId/versions/:policyVersion",
+      "page_id": "policy_context"
+    },
+    {
+      "path": "/search/content",
+      "page_id": "content_search"
+    },
+    {
+      "path": "/search/filters",
+      "page_id": "structured_filter_search"
+    },
+    {
+      "path": "/search/rule-conditions",
+      "page_id": "rule_condition_search"
+    },
+    {
+      "path": "/analytics/policy-outcomes",
+      "page_id": "analytics_dashboard"
+    },
+    {
+      "path": "/external-outcomes",
+      "page_id": "external_outcomes"
+    },
+    {
+      "path": "/operations/ingestion",
+      "page_id": "ingestion_monitoring"
+    },
+    {
+      "path": "/operations/retention",
+      "page_id": "retention_planning"
+    },
+    {
+      "path": "/setup/policies/new",
+      "page_id": "create_policy"
+    },
+    {
+      "path": "/setup/rules/new",
+      "page_id": "create_rule"
+    },
+    {
+      "path": "/setup/execution-requests/new",
+      "page_id": "create_execution_request"
+    },
+    {
+      "path": "/setup/execution-requests/:requestId/steps/new",
+      "page_id": "append_rule_step"
+    }
+  ],
+  "pages": [
+    {
+      "page_id": "home_overview",
+      "title": "POV Overview",
+      "purpose": "Entry point summarizing the supported POV capabilities and linking users into audit, search, analytics, operations, external outcomes, and setup workflows.",
+      "data_needed": [
+        "Static capability descriptions",
+        "Role/permission context from frontend auth state"
+      ],
+      "api_endpoints": [],
+      "user_actions": [
+        "Navigate to feature areas"
+      ],
+      "loading_states": [],
+      "error_states": [
+        "Forbidden state if entire app access is denied"
+      ],
+      "components": [
+        "FeatureCardGrid",
+        "RoleAwareNavCards"
+      ]
+    },
+    {
+      "page_id": "request_lookup",
+      "title": "Request Lookup",
+      "purpose": "Allow privileged users to retrieve one execution audit record by request ID or correlation ID.",
+      "data_needed": [
+        "requestId or correlationId input",
+        "optional tenant_id only for frontend scoping/context; correlation/request lookup endpoints do not both require it"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "getExecutionAuditByRequestId",
+          "usage": "Used when lookup mode is request ID."
+        },
+        {
+          "operation_id": "getExecutionAuditByCorrelationId",
+          "usage": "Used when lookup mode is correlation ID."
+        }
+      ],
+      "user_actions": [
+        "Toggle lookup mode between request ID and correlation ID",
+        "Submit lookup",
+        "Navigate to returned request detail"
+      ],
+      "loading_states": [
+        "Inline form submit spinner",
+        "Skeleton placeholder for pending lookup"
+      ],
+      "error_states": [
+        "400 invalid identifier",
+        "401 unauthenticated",
+        "403 forbidden",
+        "404 not found"
+      ],
+      "components": [
+        "LookupModeToggle",
+        "RequestLookupForm",
+        "InlineErrorMessage"
+      ]
+    },
+    {
+      "page_id": "execution_request_detail",
+      "title": "Execution Request Detail",
+      "purpose": "Show the full stored audit record for a single execution request, including request/response payloads, all rule-step details, ingestion metadata, and retention metadata.",
+      "data_needed": [
+        "Execution request audit document",
+        "Optional policy metadata for context links"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "getExecutionAuditByRequestId",
+          "usage": "Primary page data source."
+        },
+        {
+          "operation_id": "updateExecutionRequestRetention",
+          "usage": "Optional retention edit action from privileged operations control on this page."
+        }
+      ],
+      "user_actions": [
+        "Inspect request/response JSON",
+        "Expand/collapse rule steps",
+        "Open timeline page",
+        "Open policy context page",
+        "Edit retention metadata if permitted"
+      ],
+      "loading_states": [
+        "Full-page skeleton on initial load",
+        "Section skeletons for JSON/rule-step panels during refetch"
+      ],
+      "error_states": [
+        "400 invalid request ID",
+        "401 unauthenticated",
+        "403 forbidden",
+        "404 not found",
+        "PATCH save failure for retention update"
+      ],
+      "components": [
+        "RequestSummaryCard",
+        "OutcomeBadge",
+        "JsonViewer",
+        "RuleStepsAccordion",
+        "IngestionMetadataPanel",
+        "RetentionPanel",
+        "RetentionEditForm",
+        "LinkToTimeline",
+        "LinkToPolicyContext"
+      ]
+    },
+    {
+      "page_id": "execution_timeline",
+      "title": "Execution Timeline",
+      "purpose": "Present the chronological sequence of rule-step events for a request in a timeline/table format optimized for step-by-step investigation.",
+      "data_needed": [
+        "Timeline events for request",
+        "Basic request metadata"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "getExecutionTimelineByRequestId",
+          "usage": "Primary timeline dataset."
+        }
+      ],
+      "user_actions": [
+        "Sort/filter visible steps client-side",
+        "Inspect step snapshots",
+        "Navigate back to request detail"
+      ],
+      "loading_states": [
+        "Timeline skeleton rows"
+      ],
+      "error_states": [
+        "400 invalid request ID",
+        "401 unauthenticated",
+        "403 forbidden",
+        "404 not found"
+      ],
+      "components": [
+        "TimelineHeader",
+        "RuleStepTimeline",
+        "StepSnapshotDrawer"
+      ]
+    },
+    {
+      "page_id": "policy_context",
+      "title": "Policy Context",
+      "purpose": "Provide policy and ordered rule-definition context for a request investigation or analytics interpretation.",
+      "data_needed": [
+        "policyId",
+        "policyVersion",
+        "policy metadata with ordered rules"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "getPolicyWithRules",
+          "usage": "Fetches policy version and rules."
+        }
+      ],
+      "user_actions": [
+        "Review policy status and publish date",
+        "Inspect consolidated input schema",
+        "Inspect ordered rule definitions"
+      ],
+      "loading_states": [
+        "Schema and rule list skeleton"
+      ],
+      "error_states": [
+        "400 invalid policy parameters",
+        "401 unauthenticated",
+        "403 forbidden",
+        "404 not found"
+      ],
+      "components": [
+        "PolicyHeader",
+        "SchemaViewer",
+        "OrderedRulesTable"
+      ]
+    },
+    {
+      "page_id": "content_search",
+      "title": "Content Search",
+      "purpose": "Search execution logs by terms or phrases found inside payloads, outcomes, or rule-step content.",
+      "data_needed": [
+        "tenant_id",
+        "search_term",
+        "optional limit"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "searchExecutionLogsByContent",
+          "usage": "Primary search endpoint."
+        }
+      ],
+      "user_actions": [
+        "Submit search",
+        "Refine search term",
+        "Open a matching request detail"
+      ],
+      "loading_states": [
+        "Search button spinner",
+        "Results table skeleton"
+      ],
+      "error_states": [
+        "400 invalid search request",
+        "401 unauthenticated",
+        "403 forbidden",
+        "Empty results state"
+      ],
+      "components": [
+        "ContentSearchForm",
+        "SearchResultsTable",
+        "RelevanceScoreBadge"
+      ]
+    },
+    {
+      "page_id": "structured_filter_search",
+      "title": "Structured Filter Search",
+      "purpose": "Filter execution requests by structured criteria supported by the API: tenant, policy, version, date range, final outcome, and one payload_summary field/value pair.",
+      "data_needed": [
+        "tenant_id",
+        "policy_id",
+        "policy_version",
+        "from_date",
+        "to_date",
+        "final_outcome",
+        "payload_summary_filter.field_name",
+        "payload_summary_filter.field_value",
+        "optional limit"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "filterExecutionRequests",
+          "usage": "Primary structured filter endpoint."
+        }
+      ],
+      "user_actions": [
+        "Set required filters",
+        "Submit filter query",
+        "Open matching request detail"
+      ],
+      "loading_states": [
+        "Form submit spinner",
+        "Results table skeleton"
+      ],
+      "error_states": [
+        "400 invalid filter request if any required field missing",
+        "401 unauthenticated",
+        "403 forbidden",
+        "Empty results state"
+      ],
+      "components": [
+        "StructuredFilterForm",
+        "PayloadSummaryFilterBuilder",
+        "ResultsTable"
+      ]
+    },
+    {
+      "page_id": "rule_condition_search",
+      "title": "Rule Condition Search",
+      "purpose": "Find requests where a specified rule step occurred with a given status and decision during a date range.",
+      "data_needed": [
+        "tenant_id",
+        "from_date",
+        "to_date",
+        "rule_id",
+        "step_status",
+        "decision",
+        "optional limit"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "findRequestsByRuleCondition",
+          "usage": "Primary rule-condition search endpoint."
+        }
+      ],
+      "user_actions": [
+        "Submit rule-condition query",
+        "Inspect matching step context",
+        "Open request detail"
+      ],
+      "loading_states": [
+        "Form submit spinner",
+        "Results table skeleton"
+      ],
+      "error_states": [
+        "400 invalid rule condition request",
+        "401 unauthenticated",
+        "403 forbidden",
+        "Empty results state"
+      ],
+      "components": [
+        "RuleConditionSearchForm",
+        "MatchingStepResultsTable"
+      ]
+    },
+    {
+      "page_id": "analytics_dashboard",
+      "title": "Analytics Dashboard",
+      "purpose": "Visualize policy outcome trends and compare policy-version impact using the exact analytics endpoints provided by the API.",
+      "data_needed": [
+        "tenant_id",
+        "policy_id",
+        "from_date",
+        "to_date",
+        "one or more policy_versions for daily trends",
+        "exactly two policy_versions for impact comparison",
+        "single policy_version for rejection reasons"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "getPolicyVersionTrendMetrics",
+          "usage": "Trend charts for one or more selected versions."
+        },
+        {
+          "operation_id": "compareApprovalRateImpact",
+          "usage": "Side-by-side impact comparison when exactly two versions are selected."
+        },
+        {
+          "operation_id": "getRejectionReasonBreakdown",
+          "usage": "Top rejection reasons for one selected version."
+        }
+      ],
+      "user_actions": [
+        "Enter manual analytics criteria",
+        "Load trends",
+        "Compare two versions",
+        "Switch rejection-reason version focus"
+      ],
+      "loading_states": [
+        "Per-panel loading states so one chart can load independently",
+        "Dashboard-level initial skeleton"
+      ],
+      "error_states": [
+        "400 invalid analytics request",
+        "401 unauthenticated",
+        "403 forbidden",
+        "Empty analytics states when no records exist"
+      ],
+      "components": [
+        "AnalyticsCriteriaForm",
+        "DailyOutcomeTrendChart",
+        "ImpactComparisonCards",
+        "ApprovalRateComparisonChart",
+        "RejectionReasonBarChart",
+        "AnalyticsInsightCallout"
+      ],
+      "notes": [
+        "Because there is no endpoint for AI/LLM-generated insights, any insight callout must be deterministic client-side copy derived from returned metrics, not generative backend functionality.",
+        "Because there is no list-policies endpoint, policy and version values must be entered manually or navigated in from an existing context."
+      ]
+    },
+    {
+      "page_id": "external_outcomes",
+      "title": "External Outcomes",
+      "purpose": "Show recent externally invoked request outcomes and response payloads without exposing rule-step internals.",
+      "data_needed": [
+        "tenant_id",
+        "from_date",
+        "to_date",
+        "optional limit"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "listExternalInvocationOutcomes",
+          "usage": "Primary consumer-safe outcomes list."
+        }
+      ],
+      "user_actions": [
+        "Load outcomes",
+        "Inspect response payload in-place"
+      ],
+      "loading_states": [
+        "Table skeleton",
+        "Payload drawer skeleton"
+      ],
+      "error_states": [
+        "400 invalid external outcome request",
+        "401 unauthenticated",
+        "403 forbidden",
+        "Empty results state"
+      ],
+      "components": [
+        "ExternalOutcomeFilters",
+        "ExternalOutcomesTable",
+        "ResponsePayloadDrawer"
+      ]
+    },
+    {
+      "page_id": "ingestion_monitoring",
+      "title": "Ingestion Monitoring",
+      "purpose": "Monitor requests that are still being ingested, failed, or partially logged.",
+      "data_needed": [
+        "tenant_id",
+        "from_date",
+        "to_date",
+        "optional limit"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "monitorIngestionRequests",
+          "usage": "Primary operational monitoring dataset."
+        }
+      ],
+      "user_actions": [
+        "Refresh monitoring query",
+        "Inspect ingestion metadata",
+        "Open request detail for a selected request"
+      ],
+      "loading_states": [
+        "Table skeleton",
+        "Refresh spinner"
+      ],
+      "error_states": [
+        "400 invalid ingestion monitor request",
+        "401 unauthenticated",
+        "403 forbidden",
+        "Empty state when no problem/in-flight requests exist"
+      ],
+      "components": [
+        "IngestionFilterBar",
+        "IngestionStatusTable",
+        "IngestionMetadataDrawer"
+      ]
+    },
+    {
+      "page_id": "retention_planning",
+      "title": "Retention Planning",
+      "purpose": "Help operations users understand retention backlog and identify purge-eligible requests, with supported retention metadata updates only.",
+      "data_needed": [
+        "tenant_id for summary",
+        "tenant_id plus as_of_date for candidates",
+        "selected request retention metadata for edit"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "getRetentionBacklogSummary",
+          "usage": "Summary cards/charts by retention class."
+        },
+        {
+          "operation_id": "listPurgeEligibleRequests",
+          "usage": "List purge candidates as of a date."
+        },
+        {
+          "operation_id": "updateExecutionRequestRetention",
+          "usage": "Edit one request's retention metadata from results or detail context."
+        }
+      ],
+      "user_actions": [
+        "Load backlog summary",
+        "Load purge candidates",
+        "Edit retention metadata for one request",
+        "Navigate to request detail"
+      ],
+      "loading_states": [
+        "Independent loading states for summary and candidates",
+        "Inline save spinner for retention edits"
+      ],
+      "error_states": [
+        "400 invalid retention summary/candidate/update request",
+        "401 unauthenticated",
+        "403 forbidden",
+        "404 if updating a request that no longer exists",
+        "Empty results state"
+      ],
+      "components": [
+        "RetentionSummaryCards",
+        "PurgeCandidatesTable",
+        "RetentionEditModal"
+      ],
+      "notes": [
+        "The frontend must not present a 'Purge Now' action because the API contract does not provide deletion/purge execution."
+      ]
+    },
+    {
+      "page_id": "create_policy",
+      "title": "Create Policy",
+      "purpose": "Allow POV admins to seed policy metadata needed for policy context and analytics demonstrations.",
+      "data_needed": [
+        "policy create form fields"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "createPolicy",
+          "usage": "Create a policy metadata document."
+        }
+      ],
+      "user_actions": [
+        "Enter policy metadata",
+        "Submit create",
+        "Navigate to related create rule or policy context pages"
+      ],
+      "loading_states": [
+        "Submit spinner"
+      ],
+      "error_states": [
+        "400 invalid policy create",
+        "409 duplicate policy version"
+      ],
+      "components": [
+        "PolicyForm"
+      ]
+    },
+    {
+      "page_id": "create_rule",
+      "title": "Create Rule",
+      "purpose": "Allow POV admins to seed rule metadata referenced by policy context and execution steps.",
+      "data_needed": [
+        "rule create form fields"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "createRule",
+          "usage": "Create a rule definition document."
+        }
+      ],
+      "user_actions": [
+        "Enter rule metadata",
+        "Submit create",
+        "Optionally create another rule"
+      ],
+      "loading_states": [
+        "Submit spinner"
+      ],
+      "error_states": [
+        "400 invalid rule create",
+        "409 duplicate rule version"
+      ],
+      "components": [
+        "RuleForm"
+      ]
+    },
+    {
+      "page_id": "create_execution_request",
+      "title": "Create Execution Request",
+      "purpose": "Allow POV admins to seed an execution audit document for demo purposes.",
+      "data_needed": [
+        "Execution request create form fields including payloads, status, ingestion metadata, retention metadata, optional embedded steps"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "createExecutionRequest",
+          "usage": "Create execution request audit document."
+        }
+      ],
+      "user_actions": [
+        "Enter execution request metadata and payloads",
+        "Submit create",
+        "Navigate to request detail or append step"
+      ],
+      "loading_states": [
+        "Submit spinner"
+      ],
+      "error_states": [
+        "400 invalid execution request",
+        "409 duplicate request ID"
+      ],
+      "components": [
+        "ExecutionRequestForm",
+        "JsonEditor",
+        "RetentionFields",
+        "IngestionMetadataFields"
+      ]
+    },
+    {
+      "page_id": "append_rule_step",
+      "title": "Append Rule Step",
+      "purpose": "Append an incremental rule-step event to an existing execution request to demonstrate asynchronous/incremental logging.",
+      "data_needed": [
+        "requestId from route",
+        "step payload",
+        "optional update_fields such as status/final outcome/response payload"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "appendRuleStepToExecutionRequest",
+          "usage": "Append rule step and update related fields."
+        }
+      ],
+      "user_actions": [
+        "Enter next rule-step data",
+        "Submit append",
+        "Repeat append",
+        "Open request detail/timeline"
+      ],
+      "loading_states": [
+        "Submit spinner"
+      ],
+      "error_states": [
+        "400 invalid step request",
+        "404 request not found"
+      ],
+      "components": [
+        "RuleStepForm",
+        "ExecutionUpdateFieldsForm"
+      ]
+    }
+  ],
+  "components": [
+    {
+      "component_id": "AppHeader",
+      "purpose": "Global top bar with app title, user role indicator, and quick navigation."
+    },
+    {
+      "component_id": "SideNav",
+      "purpose": "Sectioned navigation based on allowed routes."
+    },
+    {
+      "component_id": "RoleGuard",
+      "purpose": "Hide or block routes/actions not permitted for current user role."
+    },
+    {
+      "component_id": "RequestLookupForm",
+      "purpose": "Accept request ID or correlation ID and submit the matching lookup call."
+    },
+    {
+      "component_id": "JsonViewer",
+      "purpose": "Render large nested request/response/input/output snapshots with collapse/expand support."
+    },
+    {
+      "component_id": "RuleStepsAccordion",
+      "purpose": "Display all embedded rule steps with expandable detail per step."
+    },
+    {
+      "component_id": "RuleStepTimeline",
+      "purpose": "Chronological visualization/table for step-by-step execution analysis."
+    },
+    {
+      "component_id": "SchemaViewer",
+      "purpose": "Pretty-print consolidated input schema for a policy version."
+    },
+    {
+      "component_id": "ContentSearchForm",
+      "purpose": "Collect tenant_id, search_term, and limit for content search."
+    },
+    {
+      "component_id": "StructuredFilterForm",
+      "purpose": "Collect exact structured filters required by filterExecutionRequests."
+    },
+    {
+      "component_id": "PayloadSummaryFilterBuilder",
+      "purpose": "Collect the single supported payload_summary field/value filter pair."
+    },
+    {
+      "component_id": "RuleConditionSearchForm",
+      "purpose": "Collect rule-condition search inputs supported by the API."
+    },
+    {
+      "component_id": "SearchResultsTable",
+      "purpose": "Display search/filter results and navigate to request detail."
+    },
+    {
+      "component_id": "AnalyticsCriteriaForm",
+      "purpose": "Collect tenant, policy, dates, and policy-version selections for analytics endpoints."
+    },
+    {
+      "component_id": "DailyOutcomeTrendChart",
+      "purpose": "Plot daily total/approved/rejected counts by policy version."
+    },
+    {
+      "component_id": "ImpactComparisonCards",
+      "purpose": "Summarize version-to-version approval/rejection rate impact."
+    },
+    {
+      "component_id": "RejectionReasonBarChart",
+      "purpose": "Show top rejection reason codes for one version."
+    },
+    {
+      "component_id": "ExternalOutcomesTable",
+      "purpose": "List external-safe outcomes and response payload previews."
+    },
+    {
+      "component_id": "IngestionStatusTable",
+      "purpose": "Show requests with ingestion or partial logging concerns."
+    },
+    {
+      "component_id": "RetentionSummaryCards",
+      "purpose": "Summarize backlog counts by retention class."
+    },
+    {
+      "component_id": "PurgeCandidatesTable",
+      "purpose": "List retention-expired requests eligible for purge review."
+    },
+    {
+      "component_id": "RetentionEditModal",
+      "purpose": "Edit retention metadata for a single request using supported PATCH endpoint."
+    },
+    {
+      "component_id": "PolicyForm",
+      "purpose": "Create policy metadata documents for POV setup."
+    },
+    {
+      "component_id": "RuleForm",
+      "purpose": "Create rule metadata documents for POV setup."
+    },
+    {
+      "component_id": "ExecutionRequestForm",
+      "purpose": "Create an execution request audit document for POV setup."
+    },
+    {
+      "component_id": "RuleStepForm",
+      "purpose": "Compose one incremental rule-step append payload."
+    }
+  ],
+  "data_constraints_and_gaps": [
+    {
+      "gap": "No live rule invocation endpoint exists in the authoritative API.",
+      "frontend_implication": "Do not design a screen that submits business input to execute a policy/rule. External outcomes can only review stored outcomes, not trigger them."
+    },
+    {
+      "gap": "No generic list policies or list rules endpoint exists.",
+      "frontend_implication": "Forms and analytics criteria must use manual entry, route context, or seeded IDs rather than dropdowns populated from backend listing APIs."
+    },
+    {
+      "gap": "No delete/purge endpoint exists.",
+      "frontend_implication": "Retention screens may identify purge candidates and edit retention metadata, but cannot execute destructive purge."
+    },
+    {
+      "gap": "No analytics endpoint exists for arbitrary dashboards beyond the three provided analytics queries.",
+      "frontend_implication": "Dashboard scope must remain limited to daily trends, two-version impact comparison, and rejection reason breakdown."
+    },
+    {
+      "gap": "No AI/LLM insight endpoint exists.",
+      "frontend_implication": "Any 'insights' displayed must be simple client-side interpretations of available metrics, clearly not an AI backend feature."
+    }
+  ]
+}
