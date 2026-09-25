@@ -1,0 +1,1312 @@
+{
+  "service_name": "brms_execution_logging_api",
+  "version": "1.0.0",
+  "description": "API contract for MongoDB-backed BRMS execution logging POV. Endpoints are limited to straightforward CRUD on the authoritative data model or to the authoritative query patterns QP1-QP14. No unsupported endpoints are introduced for features not backed by the model/query patterns.",
+  "base_path": "/api/v1",
+  "content_type": "application/json",
+  "authz_note": "Detailed execution-log and analytics endpoints are intended for admin/privileged users per FR11. External-consumer-facing outcome retrieval omits rule-step internals per FR12.",
+  "endpoints": [
+    {
+      "operation_id": "getExecutionAuditByRequestId",
+      "method": "GET",
+      "path": "/execution-requests/{requestId}",
+      "purpose": "Retrieve the full stored audit record for one execution request, including request/response payloads and all embedded rule-level steps.",
+      "backed_by": {
+        "type": "query_pattern",
+        "id": "QP1",
+        "mongodb_operation": "findOne on execution_requests"
+      },
+      "path_params": [
+        {
+          "name": "requestId",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "query_params": [
+        {
+          "name": "tenant_id",
+          "type": "string",
+          "required": false,
+          "description": "Optional tenant scoping value. Not part of QP1 filter, but may be enforced by application-layer authorization if tenant isolation is enabled."
+        }
+      ],
+      "request_body": null,
+      "response_body": {
+        "success": {
+          "request_id": "string",
+          "tenant_id": "string|null",
+          "correlation_id": "string|null",
+          "policy_id": "string",
+          "policy_version": "string",
+          "invocation_channel": "api|mobile|portal|banking_app|batch|other|null",
+          "logging_enabled": "boolean",
+          "request_received_at": "date-time",
+          "execution_completed_at": "date-time|null",
+          "status": "received|in_progress|completed|failed|partially_logged",
+          "final_outcome": "string|null",
+          "outcome_reason_codes": [
+            "string"
+          ],
+          "request_payload": {
+            "type": "object"
+          },
+          "response_payload": {
+            "type": "object|null"
+          },
+          "rule_step_count": "number",
+          "rule_steps": [
+            {
+              "step_no": "number",
+              "logged_at": "date-time",
+              "rule_id": "string|null",
+              "rule_name": "string|null",
+              "rule_sequence": "number|null",
+              "stage_name": "string|null",
+              "step_status": "started|completed|failed|skipped|null",
+              "input_snapshot": {
+                "type": "object|null"
+              },
+              "output_snapshot": {
+                "type": "object|null"
+              },
+              "decision": "string|null",
+              "reason": "string|null",
+              "lookup_performed": "boolean|null",
+              "lookup_details": {
+                "type": "object|null"
+              }
+            }
+          ],
+          "ingestion_metadata": {
+            "source_type": "kafka|queue|direct_api|batch|null",
+            "source_message_id": "string|null",
+            "ingested_at": "date-time|null",
+            "ingestion_status": "pending|ingested|error|null",
+            "error_message": "string|null"
+          },
+          "retention": {
+            "expire_at": "date-time|null",
+            "retention_class": "short|standard|extended|legal_hold|null",
+            "purge_hold": "boolean|null"
+          }
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_REQUEST_ID",
+          "message": "requestId must be a non-empty string."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHORIZED",
+          "message": "Authentication required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "Caller is not permitted to view detailed execution logs."
+        },
+        {
+          "status": 404,
+          "code": "NOT_FOUND",
+          "message": "No execution request found for the supplied requestId."
+        }
+      ]
+    },
+    {
+      "operation_id": "getExecutionAuditByCorrelationId",
+      "method": "GET",
+      "path": "/execution-requests/by-correlation/{correlationId}",
+      "purpose": "Retrieve the full stored audit record when the caller has a correlation ID instead of a request ID.",
+      "backed_by": {
+        "type": "query_pattern",
+        "id": "QP2",
+        "mongodb_operation": "findOne on execution_requests"
+      },
+      "path_params": [
+        {
+          "name": "correlationId",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "query_params": [
+        {
+          "name": "tenant_id",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "request_body": null,
+      "response_body": {
+        "success": {
+          "same_as": "GET /execution-requests/{requestId} success response"
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_CORRELATION_ID",
+          "message": "correlationId must be a non-empty string."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHORIZED",
+          "message": "Authentication required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "Caller is not permitted to view detailed execution logs."
+        },
+        {
+          "status": 404,
+          "code": "NOT_FOUND",
+          "message": "No execution request found for the supplied correlationId."
+        }
+      ]
+    },
+    {
+      "operation_id": "getExecutionTimelineByRequestId",
+      "method": "GET",
+      "path": "/execution-requests/{requestId}/timeline",
+      "purpose": "Return the execution timeline for a request as a chronological list of rule-step events ordered by step number.",
+      "backed_by": {
+        "type": "query_pattern",
+        "id": "QP3",
+        "mongodb_operation": "aggregate on execution_requests"
+      },
+      "path_params": [
+        {
+          "name": "requestId",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "query_params": [],
+      "request_body": null,
+      "response_body": {
+        "success": {
+          "request_id": "string",
+          "policy_id": "string",
+          "policy_version": "string",
+          "final_outcome": "string|null",
+          "request_received_at": "date-time",
+          "execution_completed_at": "date-time|null",
+          "steps": [
+            {
+              "step_no": "number|null",
+              "logged_at": "date-time|null",
+              "rule_id": "string|null",
+              "rule_name": "string|null",
+              "rule_sequence": "number|null",
+              "stage_name": "string|null",
+              "step_status": "started|completed|failed|skipped|null",
+              "decision": "string|null",
+              "reason": "string|null",
+              "lookup_performed": "boolean|null",
+              "input_snapshot": {
+                "type": "object|null"
+              },
+              "output_snapshot": {
+                "type": "object|null"
+              }
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_REQUEST_ID",
+          "message": "requestId must be a non-empty string."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHORIZED",
+          "message": "Authentication required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "Caller is not permitted to view detailed execution logs."
+        },
+        {
+          "status": 404,
+          "code": "NOT_FOUND",
+          "message": "No execution request found for the supplied requestId."
+        }
+      ]
+    },
+    {
+      "operation_id": "searchExecutionLogsByContent",
+      "method": "POST",
+      "path": "/execution-requests/search/content",
+      "purpose": "Search execution requests by terms or phrases found inside logged JSON payloads, outcome fields, or rule-step content.",
+      "backed_by": {
+        "type": "query_pattern",
+        "id": "QP4",
+        "mongodb_operation": "aggregate with Atlas Search on execution_requests"
+      },
+      "path_params": [],
+      "query_params": [],
+      "request_body": {
+        "tenant_id": "string",
+        "search_term": "string",
+        "limit": "number|null (optional, max 50; default 50)"
+      },
+      "response_body": {
+        "success": {
+          "results": [
+            {
+              "request_id": "string",
+              "correlation_id": "string|null",
+              "tenant_id": "string|null",
+              "policy_id": "string",
+              "policy_version": "string",
+              "request_received_at": "date-time",
+              "status": "received|in_progress|completed|failed|partially_logged",
+              "final_outcome": "string|null",
+              "outcome_reason_codes": [
+                "string"
+              ],
+              "score": "number"
+            }
+          ],
+          "count": "number"
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_SEARCH_REQUEST",
+          "message": "tenant_id and search_term are required."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHORIZED",
+          "message": "Authentication required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "Caller is not permitted to search detailed execution logs."
+        }
+      ]
+    },
+    {
+      "operation_id": "filterExecutionRequests",
+      "method": "POST",
+      "path": "/execution-requests/search/filters",
+      "purpose": "Filter execution requests using structured criteria such as tenant, policy, policy version, time range, outcome, and an extracted payload_summary field.",
+      "backed_by": {
+        "type": "query_pattern",
+        "id": "QP5",
+        "mongodb_operation": "find on execution_requests"
+      },
+      "path_params": [],
+      "query_params": [],
+      "request_body": {
+        "tenant_id": "string",
+        "policy_id": "string",
+        "policy_version": "string",
+        "from_date": "date-time",
+        "to_date": "date-time",
+        "final_outcome": "string",
+        "payload_summary_filter": {
+          "field_name": "string",
+          "field_value": "any"
+        },
+        "limit": "number|null (optional, max 100; default 100)"
+      },
+      "response_body": {
+        "success": {
+          "results": [
+            {
+              "request_id": "string",
+              "policy_id": "string",
+              "policy_version": "string",
+              "request_received_at": "date-time",
+              "status": "received|in_progress|completed|failed|partially_logged",
+              "final_outcome": "string|null",
+              "outcome_reason_codes": [
+                "string"
+              ],
+              "payload_summary": {
+                "type": "object|null"
+              }
+            }
+          ],
+          "count": "number"
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_FILTER_REQUEST",
+          "message": "tenant_id, policy_id, policy_version, from_date, to_date, final_outcome, and payload_summary_filter are required."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHORIZED",
+          "message": "Authentication required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "Caller is not permitted to search detailed execution logs."
+        }
+      ]
+    },
+    {
+      "operation_id": "findRequestsByRuleCondition",
+      "method": "POST",
+      "path": "/execution-requests/search/rule-conditions",
+      "purpose": "Find requests where a specified rule step occurred with a given status and decision in a date range.",
+      "backed_by": {
+        "type": "query_pattern",
+        "id": "QP6",
+        "mongodb_operation": "aggregate on execution_requests with rule_steps unwind"
+      },
+      "path_params": [],
+      "query_params": [],
+      "request_body": {
+        "tenant_id": "string",
+        "from_date": "date-time",
+        "to_date": "date-time",
+        "rule_id": "string",
+        "step_status": "started|completed|failed|skipped",
+        "decision": "string",
+        "limit": "number|null (optional, max 100; default 100)"
+      },
+      "response_body": {
+        "success": {
+          "results": [
+            {
+              "request_id": "string",
+              "policy_id": "string",
+              "policy_version": "string",
+              "request_received_at": "date-time",
+              "final_outcome": "string|null",
+              "step_no": "number",
+              "logged_at": "date-time",
+              "rule_id": "string",
+              "rule_name": "string|null",
+              "stage_name": "string|null",
+              "step_status": "started|completed|failed|skipped",
+              "decision": "string|null",
+              "reason": "string|null"
+            }
+          ],
+          "count": "number"
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_RULE_CONDITION_REQUEST",
+          "message": "tenant_id, from_date, to_date, rule_id, step_status, and decision are required by the backed query pattern."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHORIZED",
+          "message": "Authentication required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "Caller is not permitted to inspect rule-level execution data."
+        }
+      ]
+    },
+    {
+      "operation_id": "getPolicyVersionTrendMetrics",
+      "method": "GET",
+      "path": "/analytics/policy-outcomes/daily",
+      "purpose": "Retrieve pre-aggregated daily outcome metrics for one policy and selected policy versions over a date range, for dashboards and version trend comparisons.",
+      "backed_by": {
+        "type": "query_pattern",
+        "id": "QP7",
+        "mongodb_operation": "find on analytics_daily_policy_outcomes"
+      },
+      "path_params": [],
+      "query_params": [
+        {
+          "name": "tenant_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "policy_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "from_date",
+          "type": "date-time",
+          "required": true
+        },
+        {
+          "name": "to_date",
+          "type": "date-time",
+          "required": true
+        },
+        {
+          "name": "policy_versions",
+          "type": "array<string>",
+          "required": true,
+          "description": "Backed query pattern supports comparison with versions in an $in list; POV should pass one or more versions, commonly two."
+        }
+      ],
+      "request_body": null,
+      "response_body": {
+        "success": {
+          "results": [
+            {
+              "metric_date": "date",
+              "policy_id": "string",
+              "policy_version": "string",
+              "total_requests": "number",
+              "approved_count": "number|null",
+              "rejected_count": "number|null",
+              "other_outcome_counts": {
+                "type": "object|null"
+              },
+              "avg_rule_step_count": "number|null",
+              "top_reason_codes": [
+                {
+                  "reason_code": "string",
+                  "count": "number"
+                }
+              ]
+            }
+          ],
+          "count": "number"
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_ANALYTICS_REQUEST",
+          "message": "tenant_id, policy_id, from_date, to_date, and policy_versions are required."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHORIZED",
+          "message": "Authentication required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "Caller is not permitted to access analytics data."
+        }
+      ]
+    },
+    {
+      "operation_id": "compareApprovalRateImpact",
+      "method": "GET",
+      "path": "/analytics/policy-outcomes/impact",
+      "purpose": "Compute side-by-side outcome rates from raw execution requests for selected policy versions over a period.",
+      "backed_by": {
+        "type": "query_pattern",
+        "id": "QP8",
+        "mongodb_operation": "aggregate on execution_requests"
+      },
+      "path_params": [],
+      "query_params": [
+        {
+          "name": "tenant_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "policy_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "from_date",
+          "type": "date-time",
+          "required": true
+        },
+        {
+          "name": "to_date",
+          "type": "date-time",
+          "required": true
+        },
+        {
+          "name": "policy_versions",
+          "type": "array<string>",
+          "required": true,
+          "description": "Authoritative query pattern shows two versions; API should require exactly two versions for POV parity."
+        }
+      ],
+      "request_body": null,
+      "response_body": {
+        "success": {
+          "results": [
+            {
+              "policy_version": "string",
+              "total_requests": "number",
+              "approved_count": "number",
+              "rejected_count": "number",
+              "approval_rate": "number",
+              "rejection_rate": "number",
+              "avg_rule_step_count": "number|null",
+              "reason_code_sets": [
+                [
+                  "string"
+                ]
+              ]
+            }
+          ],
+          "count": "number"
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_IMPACT_REQUEST",
+          "message": "tenant_id, policy_id, from_date, to_date, and exactly two policy_versions are required."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHORIZED",
+          "message": "Authentication required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "Caller is not permitted to access analytics data."
+        }
+      ]
+    },
+    {
+      "operation_id": "getRejectionReasonBreakdown",
+      "method": "GET",
+      "path": "/analytics/policy-outcomes/rejection-reasons",
+      "purpose": "Return the top rejection reason codes for a given policy version and date range.",
+      "backed_by": {
+        "type": "query_pattern",
+        "id": "QP9",
+        "mongodb_operation": "aggregate on execution_requests"
+      },
+      "path_params": [],
+      "query_params": [
+        {
+          "name": "tenant_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "policy_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "policy_version",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "from_date",
+          "type": "date-time",
+          "required": true
+        },
+        {
+          "name": "to_date",
+          "type": "date-time",
+          "required": true
+        }
+      ],
+      "request_body": null,
+      "response_body": {
+        "success": {
+          "results": [
+            {
+              "reason_code": "string",
+              "rejection_count": "number"
+            }
+          ],
+          "count": "number"
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_REJECTION_BREAKDOWN_REQUEST",
+          "message": "tenant_id, policy_id, policy_version, from_date, and to_date are required."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHORIZED",
+          "message": "Authentication required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "Caller is not permitted to access analytics data."
+        }
+      ]
+    },
+    {
+      "operation_id": "listExternalInvocationOutcomes",
+      "method": "GET",
+      "path": "/external-outcomes",
+      "purpose": "List recent stored final outcomes and response payloads for externally invoked requests without exposing rule-step internals.",
+      "backed_by": {
+        "type": "query_pattern",
+        "id": "QP10",
+        "mongodb_operation": "find on execution_requests"
+      },
+      "path_params": [],
+      "query_params": [
+        {
+          "name": "tenant_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "from_date",
+          "type": "date-time",
+          "required": true
+        },
+        {
+          "name": "to_date",
+          "type": "date-time",
+          "required": true
+        },
+        {
+          "name": "limit",
+          "type": "number",
+          "required": false,
+          "description": "Optional response limit; authoritative query pattern caps at 100."
+        }
+      ],
+      "request_body": null,
+      "response_body": {
+        "success": {
+          "results": [
+            {
+              "request_id": "string",
+              "correlation_id": "string|null",
+              "policy_id": "string",
+              "policy_version": "string",
+              "invocation_channel": "api|mobile|portal|banking_app",
+              "request_received_at": "date-time",
+              "execution_completed_at": "date-time|null",
+              "status": "received|in_progress|completed|failed|partially_logged",
+              "final_outcome": "string|null",
+              "response_payload": {
+                "type": "object|null"
+              }
+            }
+          ],
+          "count": "number"
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_EXTERNAL_OUTCOME_REQUEST",
+          "message": "tenant_id, from_date, and to_date are required."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHORIZED",
+          "message": "Authentication required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "Caller is not permitted to access these outcomes."
+        }
+      ]
+    },
+    {
+      "operation_id": "monitorIngestionRequests",
+      "method": "GET",
+      "path": "/operations/ingestion-status",
+      "purpose": "List requests that are still being ingested, failed, or are partially logged within a time range.",
+      "backed_by": {
+        "type": "query_pattern",
+        "id": "QP11",
+        "mongodb_operation": "find on execution_requests"
+      },
+      "path_params": [],
+      "query_params": [
+        {
+          "name": "tenant_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "from_date",
+          "type": "date-time",
+          "required": true
+        },
+        {
+          "name": "to_date",
+          "type": "date-time",
+          "required": true
+        },
+        {
+          "name": "limit",
+          "type": "number",
+          "required": false,
+          "description": "Optional response limit; authoritative query pattern caps at 100."
+        }
+      ],
+      "request_body": null,
+      "response_body": {
+        "success": {
+          "results": [
+            {
+              "request_id": "string",
+              "correlation_id": "string|null",
+              "policy_id": "string",
+              "policy_version": "string",
+              "status": "received|in_progress|failed|partially_logged",
+              "request_received_at": "date-time",
+              "execution_completed_at": "date-time|null",
+              "rule_step_count": "number",
+              "ingestion_metadata": {
+                "source_type": "kafka|queue|direct_api|batch|null",
+                "source_message_id": "string|null",
+                "ingested_at": "date-time|null",
+                "ingestion_status": "pending|ingested|error|null",
+                "error_message": "string|null"
+              },
+              "updated_at": "date-time"
+            }
+          ],
+          "count": "number"
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_INGESTION_MONITOR_REQUEST",
+          "message": "tenant_id, from_date, and to_date are required."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHORIZED",
+          "message": "Authentication required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "Caller is not permitted to access operational monitoring data."
+        }
+      ]
+    },
+    {
+      "operation_id": "listPurgeEligibleRequests",
+      "method": "GET",
+      "path": "/retention/purge-candidates",
+      "purpose": "List execution-request documents whose retention expiry has passed and that are not under purge hold.",
+      "backed_by": {
+        "type": "query_pattern",
+        "id": "QP12",
+        "mongodb_operation": "find on execution_requests"
+      },
+      "path_params": [],
+      "query_params": [
+        {
+          "name": "tenant_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "as_of_date",
+          "type": "date-time",
+          "required": true
+        },
+        {
+          "name": "limit",
+          "type": "number",
+          "required": false,
+          "description": "Optional response limit; authoritative query pattern caps at 1000."
+        }
+      ],
+      "request_body": null,
+      "response_body": {
+        "success": {
+          "results": [
+            {
+              "request_id": "string",
+              "policy_id": "string",
+              "policy_version": "string",
+              "request_received_at": "date-time",
+              "status": "received|in_progress|completed|failed|partially_logged",
+              "retention": {
+                "expire_at": "date-time|null",
+                "retention_class": "short|standard|extended|legal_hold|null",
+                "purge_hold": "boolean|null"
+              }
+            }
+          ],
+          "count": "number"
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_PURGE_CANDIDATE_REQUEST",
+          "message": "tenant_id and as_of_date are required."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHORIZED",
+          "message": "Authentication required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "Caller is not permitted to access retention data."
+        }
+      ]
+    },
+    {
+      "operation_id": "getRetentionBacklogSummary",
+      "method": "GET",
+      "path": "/retention/backlog-summary",
+      "purpose": "Summarize execution-log backlog by retention class for storage-growth and purge planning.",
+      "backed_by": {
+        "type": "query_pattern",
+        "id": "QP13",
+        "mongodb_operation": "aggregate on execution_requests"
+      },
+      "path_params": [],
+      "query_params": [
+        {
+          "name": "tenant_id",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "request_body": null,
+      "response_body": {
+        "success": {
+          "results": [
+            {
+              "retention_class": "short|standard|extended|legal_hold|null",
+              "document_count": "number",
+              "oldest_expire_at": "date-time|null",
+              "newest_expire_at": "date-time|null"
+            }
+          ],
+          "count": "number"
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_RETENTION_SUMMARY_REQUEST",
+          "message": "tenant_id is required."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHORIZED",
+          "message": "Authentication required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "Caller is not permitted to access retention data."
+        }
+      ]
+    },
+    {
+      "operation_id": "getPolicyWithRules",
+      "method": "GET",
+      "path": "/policies/{policyId}/versions/{policyVersion}",
+      "purpose": "Fetch one policy version together with its ordered rule definitions for audit or analytics context.",
+      "backed_by": {
+        "type": "query_pattern",
+        "id": "QP14",
+        "mongodb_operation": "aggregate with $lookup from policies to rules"
+      },
+      "path_params": [
+        {
+          "name": "policyId",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "policyVersion",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "query_params": [],
+      "request_body": null,
+      "response_body": {
+        "success": {
+          "policy_id": "string",
+          "name": "string",
+          "version": "string",
+          "status": "draft|validated|published|retired",
+          "published_at": "date-time|null",
+          "consolidated_input_schema": {
+            "type": "object|null"
+          },
+          "rules": [
+            {
+              "rule_id": "string",
+              "name": "string",
+              "sequence": "number|null",
+              "description": "string|null",
+              "is_lookup_enabled": "boolean|null"
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_POLICY_REQUEST",
+          "message": "policyId and policyVersion are required."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHORIZED",
+          "message": "Authentication required."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "Caller is not permitted to access policy metadata."
+        },
+        {
+          "status": 404,
+          "code": "NOT_FOUND",
+          "message": "No policy found for the supplied policyId and policyVersion."
+        }
+      ]
+    },
+    {
+      "operation_id": "createExecutionRequest",
+      "method": "POST",
+      "path": "/execution-requests",
+      "purpose": "Create a new execution request audit document, typically for asynchronous ingestion or direct API logging bootstrap.",
+      "backed_by": {
+        "type": "crud",
+        "collection": "execution_requests",
+        "mongodb_operation": "insertOne"
+      },
+      "path_params": [],
+      "query_params": [],
+      "request_body": {
+        "tenant_id": "string|null",
+        "request_id": "string",
+        "correlation_id": "string|null",
+        "policy_id": "string",
+        "policy_version": "string",
+        "invocation_channel": "api|mobile|portal|banking_app|batch|other|null",
+        "logging_enabled": "boolean",
+        "request_received_at": "date-time",
+        "execution_completed_at": "date-time|null",
+        "status": "received|in_progress|completed|failed|partially_logged",
+        "final_outcome": "string|null",
+        "outcome_reason_codes": [
+          "string"
+        ],
+        "request_payload": {
+          "type": "object"
+        },
+        "response_payload": {
+          "type": "object|null"
+        },
+        "payload_summary": {
+          "type": "object|null"
+        },
+        "rule_step_count": "number",
+        "rule_steps": [
+          {
+            "step_no": "number",
+            "logged_at": "date-time",
+            "rule_id": "string|null",
+            "rule_name": "string|null",
+            "rule_sequence": "number|null",
+            "stage_name": "string|null",
+            "step_status": "started|completed|failed|skipped|null",
+            "input_snapshot": {
+              "type": "object|null"
+            },
+            "output_snapshot": {
+              "type": "object|null"
+            },
+            "decision": "string|null",
+            "reason": "string|null",
+            "lookup_performed": "boolean|null",
+            "lookup_details": {
+              "type": "object|null"
+            }
+          }
+        ],
+        "ingestion_metadata": {
+          "source_type": "kafka|queue|direct_api|batch|null",
+          "source_message_id": "string|null",
+          "ingested_at": "date-time|null",
+          "ingestion_status": "pending|ingested|error|null",
+          "error_message": "string|null"
+        },
+        "retention": {
+          "expire_at": "date-time|null",
+          "retention_class": "short|standard|extended|legal_hold|null",
+          "purge_hold": "boolean|null"
+        }
+      },
+      "response_body": {
+        "success": {
+          "acknowledged": "boolean",
+          "request_id": "string"
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_EXECUTION_REQUEST",
+          "message": "Required fields are missing or invalid."
+        },
+        {
+          "status": 409,
+          "code": "DUPLICATE_REQUEST_ID",
+          "message": "An execution request with the same request_id already exists."
+        }
+      ],
+      "notes": "This is a straightforward CRUD endpoint implied by the data model and unique index ux_request_id. It is not a business rule invocation API; it persists the audit/log document."
+    },
+    {
+      "operation_id": "appendRuleStepToExecutionRequest",
+      "method": "POST",
+      "path": "/execution-requests/{requestId}/steps",
+      "purpose": "Append one incremental rule-step log entry to an existing execution request document, supporting asynchronous incremental logging.",
+      "backed_by": {
+        "type": "crud",
+        "collection": "execution_requests",
+        "mongodb_operation": "updateOne with $push to rule_steps and related field updates"
+      },
+      "path_params": [
+        {
+          "name": "requestId",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "query_params": [],
+      "request_body": {
+        "step": {
+          "step_no": "number",
+          "logged_at": "date-time",
+          "rule_id": "string|null",
+          "rule_name": "string|null",
+          "rule_sequence": "number|null",
+          "stage_name": "string|null",
+          "step_status": "started|completed|failed|skipped|null",
+          "input_snapshot": {
+            "type": "object|null"
+          },
+          "output_snapshot": {
+            "type": "object|null"
+          },
+          "decision": "string|null",
+          "reason": "string|null",
+          "lookup_performed": "boolean|null",
+          "lookup_details": {
+            "type": "object|null"
+          }
+        },
+        "update_fields": {
+          "status": "received|in_progress|completed|failed|partially_logged|null",
+          "execution_completed_at": "date-time|null",
+          "final_outcome": "string|null",
+          "outcome_reason_codes": [
+            "string"
+          ],
+          "response_payload": {
+            "type": "object|null"
+          },
+          "updated_at": "date-time"
+        }
+      },
+      "response_body": {
+        "success": {
+          "matched_count": "number",
+          "modified_count": "number",
+          "request_id": "string"
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_STEP_REQUEST",
+          "message": "requestId and a valid step object are required."
+        },
+        {
+          "status": 404,
+          "code": "REQUEST_NOT_FOUND",
+          "message": "No execution request found for the supplied requestId."
+        }
+      ],
+      "notes": "Straightforward CRUD implied by FR6 and the embedded rule_steps model. Implementation should also maintain rule_step_count consistently."
+    },
+    {
+      "operation_id": "updateExecutionRequestRetention",
+      "method": "PATCH",
+      "path": "/execution-requests/{requestId}/retention",
+      "purpose": "Update retention metadata for one execution request, such as expire_at, retention_class, or purge_hold.",
+      "backed_by": {
+        "type": "crud",
+        "collection": "execution_requests",
+        "mongodb_operation": "updateOne with $set on retention"
+      },
+      "path_params": [
+        {
+          "name": "requestId",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "query_params": [],
+      "request_body": {
+        "retention": {
+          "expire_at": "date-time|null",
+          "retention_class": "short|standard|extended|legal_hold|null",
+          "purge_hold": "boolean|null"
+        }
+      },
+      "response_body": {
+        "success": {
+          "matched_count": "number",
+          "modified_count": "number",
+          "request_id": "string"
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_RETENTION_UPDATE",
+          "message": "requestId and at least one retention field are required."
+        },
+        {
+          "status": 404,
+          "code": "REQUEST_NOT_FOUND",
+          "message": "No execution request found for the supplied requestId."
+        }
+      ],
+      "notes": "Straightforward CRUD endpoint implied by the retention subdocument in the authoritative data model."
+    },
+    {
+      "operation_id": "createPolicy",
+      "method": "POST",
+      "path": "/policies",
+      "purpose": "Create a policy metadata document for a published/draft policy version used by execution analytics context.",
+      "backed_by": {
+        "type": "crud",
+        "collection": "policies",
+        "mongodb_operation": "insertOne"
+      },
+      "path_params": [],
+      "query_params": [],
+      "request_body": {
+        "policy_id": "string",
+        "name": "string",
+        "version": "string",
+        "status": "draft|validated|published|retired",
+        "published_at": "date-time|null",
+        "consolidated_input_schema": {
+          "type": "object|null"
+        },
+        "rule_refs": [
+          "objectId"
+        ],
+        "created_at": "date-time",
+        "updated_at": "date-time"
+      },
+      "response_body": {
+        "success": {
+          "acknowledged": "boolean",
+          "policy_id": "string",
+          "version": "string"
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_POLICY_CREATE",
+          "message": "Required policy fields are missing or invalid."
+        },
+        {
+          "status": 409,
+          "code": "DUPLICATE_POLICY_VERSION",
+          "message": "A policy with the same policy_id and version already exists."
+        }
+      ]
+    },
+    {
+      "operation_id": "createRule",
+      "method": "POST",
+      "path": "/rules",
+      "purpose": "Create a rule definition document referenced by a policy version and execution-step snapshots.",
+      "backed_by": {
+        "type": "crud",
+        "collection": "rules",
+        "mongodb_operation": "insertOne"
+      },
+      "path_params": [],
+      "query_params": [],
+      "request_body": {
+        "rule_id": "string",
+        "policy_id": "string",
+        "policy_version": "string",
+        "name": "string",
+        "sequence": "number|null",
+        "description": "string|null",
+        "is_lookup_enabled": "boolean|null",
+        "created_at": "date-time",
+        "updated_at": "date-time"
+      },
+      "response_body": {
+        "success": {
+          "acknowledged": "boolean",
+          "rule_id": "string",
+          "policy_version": "string"
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_RULE_CREATE",
+          "message": "Required rule fields are missing or invalid."
+        },
+        {
+          "status": 409,
+          "code": "DUPLICATE_RULE_VERSION",
+          "message": "A rule with the same rule_id and policy_version already exists."
+        }
+      ]
+    }
+  ],
+  "non_endpoints_considered": [
+    {
+      "name": "Invoke policy/rule for business decision",
+      "status": "excluded",
+      "reason": "The authoritative data model and query patterns only cover storage/retrieval/analytics of execution logs and metadata. They do not define a rule-execution command or request/response contract for live BRMS invocation, so an invocation endpoint is not added here."
+    },
+    {
+      "name": "Delete/purge execution requests API",
+      "status": "excluded",
+      "reason": "QP12 and QP13 support identifying purge candidates and summarizing backlog, but no authoritative delete query pattern or explicit CRUD workflow for destructive purge execution was provided. To avoid inventing unsupported behavior, only read/list and retention-update endpoints are included."
+    },
+    {
+      "name": "Generic list policies or list rules endpoints",
+      "status": "excluded",
+      "reason": "No specific query pattern was provided for generic listing, and the POV can retrieve policy metadata via QP14 or create documents via straightforward CRUD."
+    }
+  ]
+}
