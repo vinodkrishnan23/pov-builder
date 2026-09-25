@@ -1,1157 +1,1323 @@
 {
-  "app": {
-    "name": "thoughtspot_mongodb_voyage_pov_frontend",
-    "baseRoute": "/",
-    "routeModel": "tenant-scoped SPA with nested workspace routes",
-    "authoritativeApiBaseUrl": "/api/v1",
-    "constraints": [
-      "Do not assume binary file upload/download; document registration is metadata/sourceUri based only.",
-      "Do not assume server-side query embedding generation; endpoints that require queryEmbedding must obtain it from an external app service or manual input outside this API contract.",
-      "Do not expose update/delete actions for documents, chunks, ground truth sets, or benchmark runs because the API contract does not provide them.",
-      "Do not assume a document detail endpoint exists; document-specific screens should derive context from list endpoints, search results, and document-scoped chunk/chunking endpoints."
-    ]
-  },
   "routes": [
     {
-      "path": "/",
-      "screen": "TenantLanding",
-      "auth": "unspecified"
+      "path": "/tenants",
+      "page_id": "tenant_list",
+      "auth_scope": "global"
     },
     {
       "path": "/tenants/new",
-      "screen": "CreateTenant",
-      "auth": "unspecified"
+      "page_id": "tenant_create",
+      "auth_scope": "global"
     },
     {
-      "path": "/tenants/:tenantKey",
-      "screen": "TenantWorkspaceHome",
-      "auth": "unspecified"
+      "path": "/tenants/:tenantId",
+      "page_id": "tenant_home",
+      "auth_scope": "tenant"
     },
     {
-      "path": "/tenants/:tenantKey/documents",
-      "screen": "DocumentLibrary",
-      "auth": "unspecified"
-    },
-    {
-      "path": "/tenants/:tenantKey/documents/new",
-      "screen": "RegisterDocument",
-      "auth": "unspecified"
-    },
-    {
-      "path": "/tenants/:tenantKey/documents/processing",
-      "screen": "DocumentProcessingMonitor",
-      "auth": "unspecified"
-    },
-    {
-      "path": "/tenants/:tenantKey/documents/:documentId/chunking",
-      "screen": "DocumentChunkingComparison",
-      "auth": "unspecified"
-    },
-    {
-      "path": "/tenants/:tenantKey/documents/:documentId/chunks",
-      "screen": "DocumentChunkInspector",
-      "auth": "unspecified",
-      "queryParams": [
-        "chunkingStrategy"
+      "path": "/tenants/:tenantId/documents",
+      "page_id": "session_documents",
+      "auth_scope": "tenant",
+      "query_params": [
+        {
+          "name": "upload_session_label",
+          "required": true
+        }
       ]
     },
     {
-      "path": "/tenants/:tenantKey/search/documents",
-      "screen": "DocumentSearchPlayground",
-      "auth": "unspecified"
+      "path": "/tenants/:tenantId/documents/new",
+      "page_id": "document_create",
+      "auth_scope": "tenant",
+      "prefill_from_query": [
+        "upload_session_label"
+      ]
     },
     {
-      "path": "/tenants/:tenantKey/search/documents/filtered",
-      "screen": "StructuredUnstructuredSearch",
-      "auth": "unspecified"
+      "path": "/tenants/:tenantId/documents/failed",
+      "page_id": "failed_documents",
+      "auth_scope": "tenant"
     },
     {
-      "path": "/tenants/:tenantKey/agent-memory",
-      "screen": "AgentMemoryLibrary",
-      "auth": "unspecified"
+      "path": "/tenants/:tenantId/documents/chunking-coverage",
+      "page_id": "chunking_coverage",
+      "auth_scope": "tenant",
+      "query_params": [
+        {
+          "name": "upload_session_label",
+          "required": true
+        }
+      ]
     },
     {
-      "path": "/tenants/:tenantKey/agent-memory/search",
-      "screen": "AgentMemorySearchPlayground",
-      "auth": "unspecified"
+      "path": "/tenants/:tenantId/document-chunks/new",
+      "page_id": "document_chunk_create",
+      "auth_scope": "tenant",
+      "query_params": [
+        {
+          "name": "document_id",
+          "required": false
+        },
+        {
+          "name": "upload_session_label",
+          "required": false
+        }
+      ]
     },
     {
-      "path": "/tenants/:tenantKey/ground-truth-sets/new",
-      "screen": "GroundTruthSetCreator",
-      "auth": "unspecified"
+      "path": "/tenants/:tenantId/retrieval/document-search",
+      "page_id": "document_search_vector",
+      "auth_scope": "tenant"
     },
     {
-      "path": "/tenants/:tenantKey/ground-truth-sets/:name",
-      "screen": "GroundTruthSetViewer",
-      "auth": "unspecified"
+      "path": "/tenants/:tenantId/retrieval/document-keyword-filtered",
+      "page_id": "document_search_keyword_filtered",
+      "auth_scope": "tenant"
     },
     {
-      "path": "/tenants/:tenantKey/benchmark-runs",
-      "screen": "BenchmarkRunsList",
-      "auth": "unspecified"
+      "path": "/tenants/:tenantId/retrieval/document-hybrid",
+      "page_id": "document_search_hybrid",
+      "auth_scope": "tenant"
     },
     {
-      "path": "/tenants/:tenantKey/benchmark-runs/new",
-      "screen": "CreateBenchmarkRun",
-      "auth": "unspecified"
+      "path": "/tenants/:tenantId/agent-memory",
+      "page_id": "agent_memory",
+      "auth_scope": "tenant"
     },
     {
-      "path": "/tenants/:tenantKey/benchmark-runs/compare",
-      "screen": "BenchmarkComparisonDashboard",
-      "auth": "unspecified"
+      "path": "/tenants/:tenantId/benchmarks",
+      "page_id": "benchmark_runs",
+      "auth_scope": "tenant"
     },
     {
-      "path": "/tenants/:tenantKey/benchmark-runs/:benchmarkRunId/questions",
-      "screen": "BenchmarkQuestionAnalysis",
-      "auth": "unspecified"
+      "path": "/benchmark-runs/:benchmarkRunId/questions",
+      "page_id": "benchmark_questions",
+      "auth_scope": "tenant_via_run_context"
     },
     {
-      "path": "/tenants/:tenantKey/benchmark-runs/:benchmarkRunId/questions/:questionId/hits",
-      "screen": "BenchmarkQuestionHitDetails",
-      "auth": "unspecified"
+      "path": "/benchmark-runs/:benchmarkRunId/results/new",
+      "page_id": "benchmark_results_capture",
+      "auth_scope": "tenant_via_run_context"
+    },
+    {
+      "path": "/benchmark-runs/:benchmarkRunId/questions/:benchmarkQuestionId/results",
+      "page_id": "benchmark_question_results",
+      "auth_scope": "tenant_via_run_context",
+      "query_params": [
+        {
+          "name": "system_name",
+          "required": true
+        },
+        {
+          "name": "top_k",
+          "required": true
+        }
+      ]
+    },
+    {
+      "path": "/benchmark-runs/:benchmarkRunId/comparison",
+      "page_id": "benchmark_comparison",
+      "auth_scope": "tenant_via_run_context",
+      "query_params": [
+        {
+          "name": "top_k_values",
+          "required": true
+        }
+      ]
+    },
+    {
+      "path": "/benchmark-runs/:benchmarkRunId/summary",
+      "page_id": "benchmark_summary",
+      "auth_scope": "tenant_via_run_context",
+      "query_params": [
+        {
+          "name": "systems",
+          "required": true
+        }
+      ]
     }
   ],
   "pages": [
     {
-      "screen": "TenantLanding",
-      "purpose": "Entry screen to resolve an existing tenant/workshop namespace before entering the POV workspace.",
+      "page_id": "tenant_list",
+      "title": "Tenants",
+      "purpose": "Entry point to view existing evaluation tenants and select one for the workshop.",
       "data_requirements": [
-        "tenantKey input from user or URL"
-      ],
-      "api_endpoints": [
         {
-          "endpoint": "getTenant",
-          "usage": "Validate tenantKey and fetch tenant metadata."
+          "name": "tenants",
+          "source": "API",
+          "shape": "array of tenant summaries"
+        }
+      ],
+      "api_consumption": [
+        {
+          "operation_id": "listTenants",
+          "usage": "initial load and manual refresh"
         }
       ],
       "user_actions": [
-        "Enter tenant key",
-        "Open tenant workspace on success",
-        "Navigate to create tenant if tenant not found or new workspace is needed"
+        {
+          "action": "select_tenant",
+          "effect": "navigate to /tenants/:tenantId"
+        },
+        {
+          "action": "create_tenant",
+          "effect": "navigate to /tenants/new"
+        },
+        {
+          "action": "refresh",
+          "effect": "refetch tenants"
+        }
       ],
       "loading_states": [
-        "Resolving tenant key"
+        "Initial skeleton list while tenants load.",
+        "Inline spinner on refresh."
       ],
       "error_states": [
-        "TENANT_NOT_FOUND with CTA to create tenant",
-        "Network/API error banner"
-      ],
-      "components": [
-        "TenantKeyForm",
-        "TenantLookupStatus",
-        "PrimaryNavigationShell"
+        {
+          "condition": "GET /tenants fails",
+          "ui": "full-page error with retry"
+        }
       ]
     },
     {
-      "screen": "CreateTenant",
-      "purpose": "Create a new tenant/workshop namespace for shared or isolated POV execution.",
-      "data_requirements": [
-        "tenantKey",
-        "name",
-        "deploymentMode",
-        "optional status",
-        "optional notes"
-      ],
-      "api_endpoints": [
+      "page_id": "tenant_create",
+      "title": "Create Tenant",
+      "purpose": "Create an evaluation tenant for a POV workshop.",
+      "data_requirements": [],
+      "api_consumption": [
         {
-          "endpoint": "createTenant",
-          "usage": "Create tenant namespace."
+          "operation_id": "createTenant",
+          "usage": "form submit"
         }
       ],
       "user_actions": [
-        "Fill tenant form",
-        "Submit tenant creation",
-        "Cancel and return to landing"
+        {
+          "action": "submit_tenant_form",
+          "effect": "POST tenant then navigate to tenant home on success"
+        },
+        {
+          "action": "cancel",
+          "effect": "return to tenant list"
+        }
       ],
       "loading_states": [
-        "Submitting tenant creation"
+        "Disable form and show submitting state during POST."
       ],
       "error_states": [
-        "VALIDATION_ERROR inline form errors",
-        "TENANT_KEY_ALREADY_EXISTS conflict error",
-        "Network/API error banner"
-      ],
-      "components": [
-        "CreateTenantForm",
-        "DeploymentModeSelector",
-        "FormErrorSummary"
+        {
+          "condition": "400 INVALID_REQUEST",
+          "ui": "field and form validation messages"
+        },
+        {
+          "condition": "409 TENANT_KEY_CONFLICT",
+          "ui": "tenant_key conflict message"
+        },
+        {
+          "condition": "network/server error",
+          "ui": "toast/banner with retry"
+        }
       ]
     },
     {
-      "screen": "TenantWorkspaceHome",
-      "purpose": "Workspace overview showing current tenant metadata and navigation to major POV tasks.",
-      "data_requirements": [
-        "tenant metadata"
-      ],
-      "api_endpoints": [
+      "page_id": "tenant_home",
+      "title": "Tenant Workspace Home",
+      "purpose": "Landing page for a selected tenant, summarizing available workshop workflows and navigation.",
+      "data_requirements": [],
+      "api_consumption": [],
+      "user_actions": [
         {
-          "endpoint": "getTenant",
-          "usage": "Fetch tenant metadata for header and overview."
+          "action": "go_to_session_documents",
+          "effect": "navigate to documents page with chosen upload_session_label"
+        },
+        {
+          "action": "go_to_retrieval_demo",
+          "effect": "navigate to retrieval pages"
+        },
+        {
+          "action": "go_to_agent_memory",
+          "effect": "navigate to agent memory"
+        },
+        {
+          "action": "go_to_benchmarks",
+          "effect": "navigate to benchmark runs"
         }
       ],
-      "user_actions": [
-        "Navigate to documents",
-        "Navigate to agent memory",
-        "Navigate to benchmark area",
-        "Navigate to ground truth set creation"
-      ],
-      "loading_states": [
-        "Loading workspace metadata"
-      ],
+      "loading_states": [],
       "error_states": [
-        "TENANT_NOT_FOUND full-page state",
-        "Network/API error banner"
-      ],
-      "components": [
-        "TenantHeader",
-        "WorkspaceOverviewCards",
-        "WorkspaceNavTiles"
+        {
+          "condition": "tenantId invalid or stale route context",
+          "ui": "not found / back to tenants"
+        }
       ]
     },
     {
-      "screen": "DocumentLibrary",
-      "purpose": "Review registered documents for the tenant and filter corpus by type/source category.",
+      "page_id": "session_documents",
+      "title": "Session Documents",
+      "purpose": "Show registered documents for a specific upload session and their ingestion state during the workshop.",
       "data_requirements": [
-        "document list",
-        "selected filters: documentTypes, sourceCategories, pageSize"
-      ],
-      "api_endpoints": [
         {
-          "endpoint": "listDocuments",
-          "usage": "Fetch filtered document list."
+          "name": "upload_session_label",
+          "source": "route query",
+          "shape": "string"
+        },
+        {
+          "name": "documents",
+          "source": "API",
+          "shape": "array of session documents"
+        }
+      ],
+      "api_consumption": [
+        {
+          "operation_id": "listSessionDocuments",
+          "usage": "load documents for active session"
         }
       ],
       "user_actions": [
-        "Filter by document type",
-        "Filter by source category",
-        "Change page size",
-        "Open register document",
-        "Open processing monitor",
-        "Open chunking comparison for a document"
+        {
+          "action": "change_upload_session_label",
+          "effect": "reload list for different session"
+        },
+        {
+          "action": "register_document",
+          "effect": "navigate to document create with upload_session_label prefilled"
+        },
+        {
+          "action": "view_failed_documents",
+          "effect": "navigate to failed documents"
+        },
+        {
+          "action": "view_chunking_coverage",
+          "effect": "navigate to chunking coverage with current upload_session_label"
+        },
+        {
+          "action": "add_chunk_for_document",
+          "effect": "navigate to add document chunk page using selected document id"
+        },
+        {
+          "action": "refresh",
+          "effect": "refetch current session list"
+        }
       ],
       "loading_states": [
-        "Initial document list load",
-        "Refreshing filtered list"
+        "Initial table skeleton.",
+        "Empty state when no documents found for session.",
+        "Inline refresh spinner."
       ],
       "error_states": [
-        "TENANT_NOT_FOUND full-page state",
-        "VALIDATION_ERROR for invalid filters/page size",
-        "Empty state when no documents match"
-      ],
-      "components": [
-        "TenantScopedLayout",
-        "DocumentFilterBar",
-        "DocumentTable",
-        "EmptyStatePanel",
-        "PageSizeSelector"
+        {
+          "condition": "400 MISSING_UPLOAD_SESSION_LABEL",
+          "ui": "blocking prompt to provide upload_session_label"
+        },
+        {
+          "condition": "404 TENANT_NOT_FOUND",
+          "ui": "tenant not found state"
+        },
+        {
+          "condition": "other fetch failure",
+          "ui": "error banner with retry"
+        }
       ]
     },
     {
-      "screen": "RegisterDocument",
-      "purpose": "Register metadata for an uploaded file, connector export, or conversation memory document so it becomes part of the POV corpus.",
+      "page_id": "document_create",
+      "title": "Register Document",
+      "purpose": "Register a customer-provided source document and its current ingest metadata for the workshop flow.",
       "data_requirements": [
-        "documentType",
-        "sourceCategory",
-        "title",
-        "optional sourceUri",
-        "optional storageProvider",
-        "optional mimeType",
-        "optional fileSizeBytes",
-        "optional checksum",
-        "optional language",
-        "tags",
-        "structuredMetadata",
-        "textExtraction",
-        "agentMemoryMetadata",
-        "status",
-        "checkDuplicate"
-      ],
-      "api_endpoints": [
         {
-          "endpoint": "createDocument",
-          "usage": "Create document metadata record with duplicate check behavior."
+          "name": "tenantId",
+          "source": "route",
+          "shape": "string"
+        },
+        {
+          "name": "upload_session_label",
+          "source": "route query or form",
+          "shape": "string optional"
+        }
+      ],
+      "api_consumption": [
+        {
+          "operation_id": "createDocument",
+          "usage": "form submit"
         }
       ],
       "user_actions": [
-        "Enter document metadata",
-        "Toggle duplicate check",
-        "Submit registration",
-        "Handle duplicate conflict by reviewing existing document summary and returning to library"
+        {
+          "action": "submit_document_form",
+          "effect": "create document then return to session documents for same upload_session_label when available"
+        },
+        {
+          "action": "cancel",
+          "effect": "return to session documents or tenant home"
+        }
       ],
       "loading_states": [
-        "Submitting document registration"
+        "Disable submit and show saving state during POST."
       ],
       "error_states": [
-        "VALIDATION_ERROR inline form errors",
-        "TENANT_NOT_FOUND full-page state",
-        "DUPLICATE_DOCUMENT conflict panel with existing document info",
-        "Network/API error banner"
-      ],
-      "components": [
-        "DocumentRegistrationForm",
-        "DocumentTypeSelector",
-        "SourceCategorySelector",
-        "StructuredMetadataFields",
-        "TextExtractionFields",
-        "AgentMemoryMetadataFields",
-        "DuplicateConflictNotice"
+        {
+          "condition": "400 INVALID_REQUEST",
+          "ui": "field validation messages for required enums/dates/status"
+        },
+        {
+          "condition": "404 TENANT_NOT_FOUND",
+          "ui": "tenant not found message and link back"
+        },
+        {
+          "condition": "server error",
+          "ui": "toast/banner with retry"
+        }
       ]
     },
     {
-      "screen": "DocumentProcessingMonitor",
-      "purpose": "Monitor asynchronous extraction/processing readiness for registered documents.",
+      "page_id": "failed_documents",
+      "title": "Failed Documents",
+      "purpose": "Troubleshoot documents whose ingest pipeline failed.",
       "data_requirements": [
-        "processing status list for documents"
-      ],
-      "api_endpoints": [
         {
-          "endpoint": "getDocumentProcessingStatus",
-          "usage": "Fetch and poll processing states."
+          "name": "documents",
+          "source": "API",
+          "shape": "array of failed documents with ingest_errors"
+        }
+      ],
+      "api_consumption": [
+        {
+          "operation_id": "listFailedDocuments",
+          "usage": "initial load and refresh"
         }
       ],
       "user_actions": [
-        "Start/stop auto-refresh polling",
-        "Manually refresh",
-        "Navigate to search when documents are processed"
+        {
+          "action": "refresh",
+          "effect": "refetch failed documents"
+        },
+        {
+          "action": "back_to_session_documents",
+          "effect": "return to documents page"
+        }
       ],
       "loading_states": [
-        "Initial status load",
-        "Polling refresh state"
+        "Skeleton list on load."
       ],
       "error_states": [
-        "TENANT_NOT_FOUND full-page state",
-        "Empty state when no documents exist",
-        "Network/API error banner"
-      ],
-      "components": [
-        "ProcessingStatusTable",
-        "PollingToggle",
-        "RefreshButton",
-        "StatusBadge"
+        {
+          "condition": "404 TENANT_NOT_FOUND",
+          "ui": "tenant not found state"
+        },
+        {
+          "condition": "other fetch failure",
+          "ui": "error banner with retry"
+        }
       ]
     },
     {
-      "screen": "DocumentChunkingComparison",
-      "purpose": "Compare chunking strategies for a selected document to support chunking evaluation in the POV.",
+      "page_id": "chunking_coverage",
+      "title": "Chunking Coverage",
+      "purpose": "Summarize which chunking strategies have been applied to documents in the current upload session.",
       "data_requirements": [
-        "documentId from route",
-        "chunking comparison summary"
-      ],
-      "api_endpoints": [
         {
-          "endpoint": "compareDocumentChunkingStrategies",
-          "usage": "Fetch per-strategy chunk count and size summary for the selected document."
+          "name": "upload_session_label",
+          "source": "route query",
+          "shape": "string"
+        },
+        {
+          "name": "strategies",
+          "source": "API",
+          "shape": "array of coverage summaries"
+        }
+      ],
+      "api_consumption": [
+        {
+          "operation_id": "getChunkingCoverageSummary",
+          "usage": "load strategy coverage for session"
         }
       ],
       "user_actions": [
-        "Review strategy metrics",
-        "Open chunk inspector for a chosen strategy"
+        {
+          "action": "change_upload_session_label",
+          "effect": "reload summary"
+        },
+        {
+          "action": "back_to_documents",
+          "effect": "navigate back to session documents"
+        }
       ],
       "loading_states": [
-        "Loading chunking comparison"
+        "Cards/table skeleton while coverage loads."
       ],
       "error_states": [
-        "TENANT_NOT_FOUND full-page state",
-        "Empty state if no chunk data exists for document",
-        "Network/API error banner"
-      ],
-      "components": [
-        "ChunkingStrategyComparisonTable",
-        "StrategyMetricCards",
-        "OpenInspectorAction"
+        {
+          "condition": "400 MISSING_UPLOAD_SESSION_LABEL",
+          "ui": "blocking prompt for upload_session_label"
+        },
+        {
+          "condition": "404 TENANT_NOT_FOUND",
+          "ui": "tenant not found state"
+        },
+        {
+          "condition": "other fetch failure",
+          "ui": "error banner with retry"
+        }
       ]
     },
     {
-      "screen": "DocumentChunkInspector",
-      "purpose": "Inspect all chunks for a selected document and chunking strategy for debugging retrieval quality.",
+      "page_id": "document_chunk_create",
+      "title": "Add Document Chunk",
+      "purpose": "Store a parsed and embedded chunk for a known document as part of a manual or semi-manual ingest demo.",
       "data_requirements": [
-        "documentId from route",
-        "chunkingStrategy query param",
-        "chunk list with text/contextualText/token/page metadata"
-      ],
-      "api_endpoints": [
         {
-          "endpoint": "getDocumentChunks",
-          "usage": "Fetch chunks for selected strategy."
+          "name": "candidate_documents",
+          "source": "API (optional preload from listSessionDocuments when upload_session_label supplied)",
+          "shape": "array of session documents for picker"
+        },
+        {
+          "name": "document_id",
+          "source": "route query or user selection",
+          "shape": "string"
+        }
+      ],
+      "api_consumption": [
+        {
+          "operation_id": "listSessionDocuments",
+          "usage": "optional preload document picker when upload_session_label present"
+        },
+        {
+          "operation_id": "createDocumentChunk",
+          "usage": "form submit"
         }
       ],
       "user_actions": [
-        "Select/change chunking strategy",
-        "Review chunk text and metadata",
-        "Navigate back to comparison"
+        {
+          "action": "select_document",
+          "effect": "bind chosen document_id for chunk creation"
+        },
+        {
+          "action": "submit_chunk_form",
+          "effect": "create chunk and remain on page or return to previous context"
+        },
+        {
+          "action": "cancel",
+          "effect": "return to previous page"
+        }
       ],
       "loading_states": [
-        "Loading chunks for selected strategy"
+        "Optional document picker loading when preloading session docs.",
+        "Submit loading state during POST."
       ],
       "error_states": [
-        "VALIDATION_ERROR when chunkingStrategy missing/invalid",
-        "TENANT_NOT_FOUND full-page state",
-        "Empty state if no chunks returned",
-        "Network/API error banner"
+        {
+          "condition": "400 INVALID_REQUEST",
+          "ui": "field validation for required document_id, text, embedding_model, embedding, strategy, chunk_index"
+        },
+        {
+          "condition": "404 TENANT_OR_DOCUMENT_NOT_FOUND",
+          "ui": "document/tenant not found message"
+        },
+        {
+          "condition": "unable to preload document list",
+          "ui": "picker fallback to manual document_id entry"
+        }
       ],
-      "components": [
-        "ChunkingStrategySelector",
-        "ChunkList",
-        "ChunkCard",
-        "ChunkMetadataPanel"
+      "notes": [
+        "Because there is no GET /documents/{id}, this page must rely on a passed document_id or a previously/freshly loaded session document list for selection."
       ]
     },
     {
-      "screen": "DocumentSearchPlayground",
-      "purpose": "Interactive playground for non-agent-memory retrieval across uploaded/connector documents.",
+      "page_id": "document_search_vector",
+      "title": "Vector Document Search",
+      "purpose": "Primary document-search demo using semantic vector retrieval over stored chunks.",
       "data_requirements": [
-        "retrieval form fields: retrievalMode, queryText, queryEmbedding when required, chunkingStrategy, topK, optional numCandidates, optional documentTypes, optional hybridWeights",
-        "search results"
-      ],
-      "api_endpoints": [
         {
-          "endpoint": "searchDocumentChunks",
-          "usage": "Execute vector, lexical, or hybrid retrieval for non-agent-memory corpora."
+          "name": "search_form",
+          "source": "user input",
+          "shape": "query_embedding, top_k, num_candidates, chunking_strategy, embedding_model"
+        },
+        {
+          "name": "results",
+          "source": "API",
+          "shape": "ranked chunks with document context"
+        }
+      ],
+      "api_consumption": [
+        {
+          "operation_id": "searchDocumentChunksVector",
+          "usage": "search submit"
         }
       ],
       "user_actions": [
-        "Enter query text",
-        "Select retrieval mode",
-        "Provide query embedding when required by contract",
-        "Set chunking strategy and topK",
-        "Optional filter by document types",
-        "Submit search",
-        "Review ranked hits"
+        {
+          "action": "run_search",
+          "effect": "POST retrieval request and display ranked results"
+        },
+        {
+          "action": "adjust_top_k_or_strategy",
+          "effect": "rerun search"
+        },
+        {
+          "action": "copy_result_text",
+          "effect": "copy chunk text from result card"
+        }
       ],
       "loading_states": [
-        "Submitting search query"
+        "Disable search button and show result skeleton during search."
       ],
       "error_states": [
-        "VALIDATION_ERROR for missing queryEmbedding/chunking/topK/hybrid weights",
-        "TENANT_NOT_FOUND full-page state",
-        "Empty state when no results",
-        "Inline notice that embedding generation is outside API contract"
-      ],
-      "components": [
-        "DocumentSearchForm",
-        "RetrievalModeSelector",
-        "QueryEmbeddingInput",
-        "HybridWeightInputs",
-        "TopKSelector",
-        "DocumentTypeFilterChips",
-        "SearchResultsList",
-        "ResultScoreBreakdown"
+        {
+          "condition": "400 INVALID_REQUEST",
+          "ui": "validation errors for missing embedding/top_k/num_candidates/strategy/model"
+        },
+        {
+          "condition": "404 TENANT_NOT_FOUND",
+          "ui": "tenant not found state"
+        },
+        {
+          "condition": "search failure",
+          "ui": "inline error with retry"
+        }
       ]
     },
     {
-      "screen": "StructuredUnstructuredSearch",
-      "purpose": "Demonstrate combined structured and unstructured retrieval with metadata filters and semantic search.",
+      "page_id": "document_search_keyword_filtered",
+      "title": "Keyword + Metadata Retrieval",
+      "purpose": "Demonstrate structured-plus-unstructured retrieval using metadata constraints and keyword/phrase matching.",
       "data_requirements": [
-        "queryText",
-        "queryEmbedding",
-        "chunkingStrategy",
-        "topK",
-        "optional numCandidates",
-        "optional documentTypes",
-        "filters.author",
-        "filters.connectorName",
-        "filters.tags",
-        "filters.createdSourceAt",
-        "results"
-      ],
-      "api_endpoints": [
         {
-          "endpoint": "searchDocumentChunksWithStructuredFilters",
-          "usage": "Execute metadata-filtered semantic retrieval."
+          "name": "search_form",
+          "source": "user input",
+          "shape": "document_types optional, language required, tags optional, chunking_strategy, keyword_or_phrase"
+        },
+        {
+          "name": "documents",
+          "source": "API",
+          "shape": "grouped documents with matching chunks"
+        }
+      ],
+      "api_consumption": [
+        {
+          "operation_id": "searchDocumentChunksByKeywordAndMetadata",
+          "usage": "search submit"
         }
       ],
       "user_actions": [
-        "Enter query text",
-        "Provide query embedding",
-        "Set chunking strategy and topK",
-        "Apply author/connector/tag/date filters",
-        "Submit search",
-        "Review filtered ranked hits"
+        {
+          "action": "run_search",
+          "effect": "POST filtered retrieval and render grouped results"
+        },
+        {
+          "action": "edit_filters",
+          "effect": "rerun search with new metadata constraints"
+        }
       ],
       "loading_states": [
-        "Submitting filtered search"
+        "Result skeleton during search."
       ],
       "error_states": [
-        "VALIDATION_ERROR for missing embedding/invalid filters",
-        "TENANT_NOT_FOUND full-page state",
-        "Empty state when no results",
-        "Inline notice that only API-supported structured filters are available"
-      ],
-      "components": [
-        "StructuredFilterSearchForm",
-        "MetadataFilterPanel",
-        "DateRangePicker",
-        "TagInput",
-        "SearchResultsList"
+        {
+          "condition": "400 INVALID_REQUEST",
+          "ui": "validation for required language, keyword_or_phrase, chunking_strategy"
+        },
+        {
+          "condition": "404 TENANT_NOT_FOUND",
+          "ui": "tenant not found state"
+        },
+        {
+          "condition": "search failure",
+          "ui": "inline error with retry"
+        }
       ]
     },
     {
-      "screen": "AgentMemoryLibrary",
-      "purpose": "Review stored conversation-derived memory documents for a tenant.",
+      "page_id": "document_search_hybrid",
+      "title": "Hybrid Structured + Unstructured Retrieval",
+      "purpose": "Demonstrate semantic retrieval constrained by structured document metadata.",
       "data_requirements": [
-        "agent memory document list",
-        "optional sessionId filter",
-        "optional conversationId filter",
-        "pageSize"
-      ],
-      "api_endpoints": [
         {
-          "endpoint": "listAgentMemoryDocuments",
-          "usage": "Fetch filtered memory document list."
+          "name": "search_form",
+          "source": "user input",
+          "shape": "query_embedding, top_k, num_candidates, chunking_strategy, document_types optional, structured_filter attribute/value"
+        },
+        {
+          "name": "results",
+          "source": "API",
+          "shape": "ranked chunks with parent document structured_attributes"
+        }
+      ],
+      "api_consumption": [
+        {
+          "operation_id": "searchHybridStructuredUnstructured",
+          "usage": "search submit"
         }
       ],
       "user_actions": [
-        "Filter by sessionId",
-        "Filter by conversationId",
-        "Change page size",
-        "Open agent memory search"
+        {
+          "action": "run_search",
+          "effect": "POST hybrid retrieval and display results"
+        },
+        {
+          "action": "change_structured_filter",
+          "effect": "rerun search"
+        }
       ],
       "loading_states": [
-        "Initial memory list load",
-        "Refreshing filtered list"
+        "Result skeleton during search."
       ],
       "error_states": [
-        "TENANT_NOT_FOUND full-page state",
-        "VALIDATION_ERROR for invalid page size",
-        "Empty state when no memory documents exist",
-        "Network/API error banner"
-      ],
-      "components": [
-        "AgentMemoryFilterBar",
-        "AgentMemoryTable",
-        "PageSizeSelector",
-        "EmptyStatePanel"
+        {
+          "condition": "400 INVALID_REQUEST",
+          "ui": "validation for vector inputs, chunking_strategy, attribute/value"
+        },
+        {
+          "condition": "404 TENANT_NOT_FOUND",
+          "ui": "tenant not found state"
+        },
+        {
+          "condition": "search failure",
+          "ui": "inline error with retry"
+        }
       ]
     },
     {
-      "screen": "AgentMemorySearchPlayground",
-      "purpose": "Interactive semantic retrieval over conversation memory chunks.",
+      "page_id": "agent_memory",
+      "title": "Agent Memory",
+      "purpose": "Support the secondary use case of storing and retrieving conversation-derived memories for an agent session.",
       "data_requirements": [
-        "queryText",
-        "queryEmbedding",
-        "chunkingStrategy",
-        "topK",
-        "optional numCandidates",
-        "optional sessionIds",
-        "optional conversationIds",
-        "results"
-      ],
-      "api_endpoints": [
         {
-          "endpoint": "searchAgentMemory",
-          "usage": "Execute semantic retrieval over memory chunks."
+          "name": "create_form",
+          "source": "user input",
+          "shape": "session_id, turn_id optional, role optional, text, memory_type, embedding_model, embedding, metadata optional"
+        },
+        {
+          "name": "search_form",
+          "source": "user input",
+          "shape": "session_id, memory_types, query_embedding, top_k, num_candidates"
+        },
+        {
+          "name": "results",
+          "source": "API",
+          "shape": "ranked memory entries"
+        }
+      ],
+      "api_consumption": [
+        {
+          "operation_id": "createAgentMemoryEntry",
+          "usage": "create memory entry"
+        },
+        {
+          "operation_id": "searchAgentMemory",
+          "usage": "search memory"
         }
       ],
       "user_actions": [
-        "Enter memory retrieval query",
-        "Provide query embedding",
-        "Set chunking strategy and topK",
-        "Optionally constrain by sessionIds/conversationIds",
-        "Submit search",
-        "Review ranked memory hits"
+        {
+          "action": "create_memory_entry",
+          "effect": "POST memory record and clear/retain form"
+        },
+        {
+          "action": "search_memories",
+          "effect": "POST retrieval query and display ranked memories"
+        }
       ],
       "loading_states": [
-        "Submitting memory search"
+        "Separate loading states for create and search panels."
       ],
       "error_states": [
-        "VALIDATION_ERROR for missing embedding/invalid chunking or topK",
-        "TENANT_NOT_FOUND full-page state",
-        "Empty state when no results",
-        "Inline notice that embedding generation is outside API contract"
-      ],
-      "components": [
-        "AgentMemorySearchForm",
-        "SessionConversationScopeInputs",
-        "QueryEmbeddingInput",
-        "SearchResultsList",
-        "MemoryHitCard"
+        {
+          "condition": "400 INVALID_REQUEST on create",
+          "ui": "field validation"
+        },
+        {
+          "condition": "400 INVALID_REQUEST on search",
+          "ui": "validation for session_id, memory_types, query_embedding, top_k, num_candidates"
+        },
+        {
+          "condition": "404 TENANT_NOT_FOUND",
+          "ui": "tenant not found state"
+        },
+        {
+          "condition": "request failure",
+          "ui": "inline error in corresponding panel"
+        }
       ]
     },
     {
-      "screen": "GroundTruthSetCreator",
-      "purpose": "Create a named benchmark question set for later benchmark execution.",
+      "page_id": "benchmark_runs",
+      "title": "Benchmark Runs",
+      "purpose": "List and create benchmark run contexts for MongoDB, baselines, or side-by-side comparison.",
       "data_requirements": [
-        "name",
-        "description",
-        "questions[] with questionId, queryText, expectedAnswer, relevanceTargets[], tags[]"
-      ],
-      "api_endpoints": [
         {
-          "endpoint": "createGroundTruthSet",
-          "usage": "Persist benchmark question set."
+          "name": "benchmark_runs",
+          "source": "API",
+          "shape": "array of run summaries"
+        }
+      ],
+      "api_consumption": [
+        {
+          "operation_id": "listBenchmarkRuns",
+          "usage": "initial load and refresh"
+        },
+        {
+          "operation_id": "createBenchmarkRun",
+          "usage": "create run"
         }
       ],
       "user_actions": [
-        "Add/edit/remove draft questions client-side",
-        "Add relevance targets",
-        "Submit ground truth set",
-        "Navigate to created set viewer"
+        {
+          "action": "create_benchmark_run",
+          "effect": "POST new run then navigate to its questions page"
+        },
+        {
+          "action": "open_run_questions",
+          "effect": "navigate to benchmark questions"
+        },
+        {
+          "action": "open_run_comparison",
+          "effect": "navigate to comparison for existing run"
+        },
+        {
+          "action": "open_run_summary",
+          "effect": "navigate to summary for existing run"
+        }
       ],
       "loading_states": [
-        "Submitting ground truth set"
+        "Skeleton list on load.",
+        "Inline create form submitting state."
       ],
       "error_states": [
-        "VALIDATION_ERROR inline form errors",
-        "TENANT_NOT_FOUND full-page state",
-        "Network/API error banner"
-      ],
-      "components": [
-        "GroundTruthSetForm",
-        "QuestionListEditor",
-        "RelevanceTargetEditor",
-        "QuestionTagsInput"
+        {
+          "condition": "404 TENANT_NOT_FOUND",
+          "ui": "tenant not found state"
+        },
+        {
+          "condition": "400 INVALID_REQUEST on create",
+          "ui": "field validation"
+        },
+        {
+          "condition": "fetch/create failure",
+          "ui": "error banner with retry"
+        }
       ]
     },
     {
-      "screen": "GroundTruthSetViewer",
-      "purpose": "Load and review a named ground truth set before or after starting benchmark runs.",
+      "page_id": "benchmark_questions",
+      "title": "Benchmark Questions",
+      "purpose": "View and add customer-provided benchmark prompts and optional ground truth references for a selected run.",
       "data_requirements": [
-        "ground truth set name from route",
-        "ground truth set content"
-      ],
-      "api_endpoints": [
         {
-          "endpoint": "getGroundTruthSetByName",
-          "usage": "Load benchmark question set by name."
+          "name": "questions",
+          "source": "API",
+          "shape": "ordered list of benchmark questions"
+        }
+      ],
+      "api_consumption": [
+        {
+          "operation_id": "listBenchmarkQuestions",
+          "usage": "initial load and refresh"
+        },
+        {
+          "operation_id": "createBenchmarkQuestion",
+          "usage": "create question"
         }
       ],
       "user_actions": [
-        "Review questions and relevance targets",
-        "Navigate to create benchmark run"
+        {
+          "action": "add_question",
+          "effect": "POST benchmark question then refresh list"
+        },
+        {
+          "action": "open_question_results",
+          "effect": "navigate to benchmark question results with chosen system/top_k"
+        },
+        {
+          "action": "go_to_result_capture",
+          "effect": "navigate to results capture for current run"
+        }
       ],
       "loading_states": [
-        "Loading ground truth set"
+        "Skeleton list on load.",
+        "Submitting state for add question form."
       ],
       "error_states": [
-        "TENANT_NOT_FOUND full-page state",
-        "GROUND_TRUTH_SET_NOT_FOUND empty/error state",
-        "Network/API error banner"
-      ],
-      "components": [
-        "GroundTruthSetHeader",
-        "QuestionReviewList",
-        "RelevanceTargetsTable"
+        {
+          "condition": "404 BENCHMARK_RUN_NOT_FOUND",
+          "ui": "run not found state"
+        },
+        {
+          "condition": "400 INVALID_REQUEST on create",
+          "ui": "field validation"
+        },
+        {
+          "condition": "fetch/create failure",
+          "ui": "error banner with retry"
+        }
       ]
     },
     {
-      "screen": "BenchmarkRunsList",
-      "purpose": "Review benchmark runs and monitor asynchronous run completion.",
+      "page_id": "benchmark_results_capture",
+      "title": "Capture Benchmark Results",
+      "purpose": "Store ranked outputs and latency metrics for one or more benchmark questions and systems under test.",
       "data_requirements": [
-        "benchmark runs list",
-        "filters: systems, retrievalModes, chunkingStrategies, pageSize"
-      ],
-      "api_endpoints": [
         {
-          "endpoint": "listBenchmarkRuns",
-          "usage": "List and poll benchmark runs with filters."
+          "name": "questions",
+          "source": "API",
+          "shape": "benchmark questions for mapping results to question ids"
+        },
+        {
+          "name": "batch_results_form",
+          "source": "user input",
+          "shape": "array of result records"
+        }
+      ],
+      "api_consumption": [
+        {
+          "operation_id": "listBenchmarkQuestions",
+          "usage": "load question ids and labels for data entry"
+        },
+        {
+          "operation_id": "createBenchmarkResultsBatch",
+          "usage": "submit results batch"
         }
       ],
       "user_actions": [
-        "Filter by system",
-        "Filter by retrieval mode",
-        "Filter by chunking strategy",
-        "Change page size",
-        "Open create benchmark run",
-        "Open benchmark comparison",
-        "Open question analysis for a run",
-        "Poll/refresh run statuses"
+        {
+          "action": "add_result_row",
+          "effect": "append editable result row"
+        },
+        {
+          "action": "submit_results_batch",
+          "effect": "POST results and show inserted_count/result_ids"
+        },
+        {
+          "action": "navigate_to_comparison",
+          "effect": "open comparison after successful capture"
+        }
       ],
       "loading_states": [
-        "Initial run list load",
-        "Polling refresh state"
+        "Load questions skeleton.",
+        "Submitting state for batch POST."
       ],
       "error_states": [
-        "TENANT_NOT_FOUND full-page state",
-        "VALIDATION_ERROR for invalid filters/page size",
-        "Empty state when no runs exist",
-        "Network/API error banner"
+        {
+          "condition": "404 BENCHMARK_RUN_OR_QUESTION_NOT_FOUND",
+          "ui": "run/question context invalid"
+        },
+        {
+          "condition": "400 INVALID_REQUEST",
+          "ui": "row-level and form-level validation"
+        },
+        {
+          "condition": "fetch/submit failure",
+          "ui": "error banner with retry"
+        }
       ],
-      "components": [
-        "BenchmarkRunFilterBar",
-        "BenchmarkRunsTable",
-        "StatusBadge",
-        "PollingToggle",
-        "RefreshButton"
+      "notes": [
+        "This page captures results metadata only. It cannot invoke baseline or MongoDB retrieval execution unless those calls are performed elsewhere in the frontend using retrieval endpoints and then manually persisted here."
       ]
     },
     {
-      "screen": "CreateBenchmarkRun",
-      "purpose": "Define and optionally start a benchmark execution record for one system under test.",
+      "page_id": "benchmark_question_results",
+      "title": "Benchmark Question Results",
+      "purpose": "Inspect ranked outputs, scores, chunk evidence, and latency for a single question/system/top-K slice.",
       "data_requirements": [
-        "runName",
-        "groundTruthSetId optional",
-        "systemUnderTest",
-        "retrievalMode",
-        "chunkingStrategy optional",
-        "embeddingModel optional",
-        "topKValues",
-        "filters.documentTypes optional",
-        "filters.sourceCategory optional",
-        "startExecution"
-      ],
-      "api_endpoints": [
         {
-          "endpoint": "createBenchmarkRun",
-          "usage": "Create benchmark run and optionally trigger asynchronous execution."
+          "name": "system_name",
+          "source": "route query",
+          "shape": "enum"
+        },
+        {
+          "name": "top_k",
+          "source": "route query",
+          "shape": "integer"
+        },
+        {
+          "name": "results",
+          "source": "API",
+          "shape": "array of ranked result details with document/chunk context"
+        }
+      ],
+      "api_consumption": [
+        {
+          "operation_id": "getBenchmarkQuestionResults",
+          "usage": "load detail view"
         }
       ],
       "user_actions": [
-        "Configure benchmark parameters",
-        "Choose topK values",
-        "Optionally disable immediate execution",
-        "Submit run",
-        "Create multiple runs for side-by-side systems"
+        {
+          "action": "change_system_or_top_k",
+          "effect": "reload result detail"
+        },
+        {
+          "action": "back_to_questions",
+          "effect": "navigate to benchmark questions"
+        }
       ],
       "loading_states": [
-        "Submitting benchmark run"
+        "Detail skeleton while results load."
       ],
       "error_states": [
-        "VALIDATION_ERROR inline form errors",
-        "TENANT_NOT_FOUND full-page state",
-        "Network/API error banner"
-      ],
-      "components": [
-        "BenchmarkRunForm",
-        "SystemUnderTestSelector",
-        "RetrievalModeSelector",
-        "ChunkingStrategySelector",
-        "TopKMultiSelect",
-        "BenchmarkFilterFields"
+        {
+          "condition": "400 INVALID_REQUEST",
+          "ui": "require system_name and top_k"
+        },
+        {
+          "condition": "404 RESULT_CONTEXT_NOT_FOUND",
+          "ui": "no result set available for this question/system/top_k"
+        },
+        {
+          "condition": "fetch failure",
+          "ui": "error banner with retry"
+        }
       ]
     },
     {
-      "screen": "BenchmarkComparisonDashboard",
-      "purpose": "Compare aggregate precision, recall, and latency metrics side by side across runs.",
+      "page_id": "benchmark_comparison",
+      "title": "Benchmark Comparison",
+      "purpose": "Show side-by-side per-question relevance and latency comparison across systems for selected top-K values.",
       "data_requirements": [
-        "benchmark run aggregate comparisons"
-      ],
-      "api_endpoints": [
         {
-          "endpoint": "compareBenchmarkRuns",
-          "usage": "Load aggregate side-by-side comparison data."
+          "name": "top_k_values",
+          "source": "route query",
+          "shape": "comma-separated integers"
+        },
+        {
+          "name": "comparisons",
+          "source": "API",
+          "shape": "comparison rows by question/system/rank"
+        }
+      ],
+      "api_consumption": [
+        {
+          "operation_id": "getBenchmarkComparison",
+          "usage": "load comparison for selected top_k_values"
         }
       ],
       "user_actions": [
-        "Review metric comparisons",
-        "Open run question analysis from a selected row/card"
+        {
+          "action": "change_top_k_values",
+          "effect": "reload comparison"
+        },
+        {
+          "action": "drill_into_question_results",
+          "effect": "navigate to benchmark question detail for a chosen system/question"
+        }
       ],
       "loading_states": [
-        "Loading benchmark comparisons"
+        "Comparison table skeleton on load."
       ],
       "error_states": [
-        "TENANT_NOT_FOUND full-page state",
-        "Empty state when no comparable completed runs exist",
-        "Network/API error banner"
-      ],
-      "components": [
-        "BenchmarkComparisonTable",
-        "MetricComparisonCards",
-        "PrecisionRecallChart",
-        "LatencyChart"
+        {
+          "condition": "400 INVALID_TOP_K_VALUES",
+          "ui": "validation for top_k_values query"
+        },
+        {
+          "condition": "404 BENCHMARK_RUN_NOT_FOUND",
+          "ui": "run not found state"
+        },
+        {
+          "condition": "fetch failure",
+          "ui": "error banner with retry"
+        }
       ]
     },
     {
-      "screen": "BenchmarkQuestionAnalysis",
-      "purpose": "Inspect per-question outcomes for a selected benchmark run.",
+      "page_id": "benchmark_summary",
+      "title": "Benchmark Summary",
+      "purpose": "Show aggregate reporting by system, emphasizing latency and recall proxy for workshop readout.",
       "data_requirements": [
-        "benchmarkRunId from route",
-        "optional questionIds filter",
-        "question-level analysis rows"
-      ],
-      "api_endpoints": [
         {
-          "endpoint": "getBenchmarkRunQuestionAnalysis",
-          "usage": "Load per-question metrics and topK summaries for a run."
+          "name": "systems",
+          "source": "route query",
+          "shape": "comma-separated system names"
+        },
+        {
+          "name": "summary",
+          "source": "API",
+          "shape": "array of system summaries"
+        }
+      ],
+      "api_consumption": [
+        {
+          "operation_id": "getBenchmarkRunSummary",
+          "usage": "load summary for selected systems"
         }
       ],
       "user_actions": [
-        "Filter by question IDs",
-        "Review latency and precision/recall per question",
-        "Open hit details for a question"
-      ],
-      "loading_states": [
-        "Loading question analysis"
-      ],
-      "error_states": [
-        "TENANT_NOT_FOUND full-page state",
-        "BENCHMARK_RUN_NOT_FOUND error state",
-        "Empty state when no questions match filter",
-        "Network/API error banner"
-      ],
-      "components": [
-        "QuestionAnalysisFilter",
-        "QuestionAnalysisTable",
-        "LatencyBadge",
-        "OpenHitDetailsAction"
-      ]
-    },
-    {
-      "screen": "BenchmarkQuestionHitDetails",
-      "purpose": "Inspect actual returned chunk and document details for one benchmark question.",
-      "data_requirements": [
-        "benchmarkRunId",
-        "questionId",
-        "hit details list"
-      ],
-      "api_endpoints": [
         {
-          "endpoint": "getBenchmarkQuestionHits",
-          "usage": "Load chunk/document hit details for one benchmark question."
+          "action": "change_system_selection",
+          "effect": "reload summary"
+        },
+        {
+          "action": "open_comparison",
+          "effect": "navigate to benchmark comparison"
         }
       ],
-      "user_actions": [
-        "Review rank, score, relevance, chunk text, and document metadata",
-        "Navigate back to question analysis"
-      ],
       "loading_states": [
-        "Loading hit details"
+        "Summary cards/table skeleton on load."
       ],
       "error_states": [
-        "TENANT_NOT_FOUND full-page state",
-        "BENCHMARK_RESULT_NOT_FOUND error state",
-        "Network/API error banner"
-      ],
-      "components": [
-        "QuestionHitSummary",
-        "HitDetailsList",
-        "HitDetailCard",
-        "RelevanceIndicator"
+        {
+          "condition": "400 INVALID_SYSTEMS",
+          "ui": "validation for supported systems"
+        },
+        {
+          "condition": "404 BENCHMARK_RUN_NOT_FOUND",
+          "ui": "run not found state"
+        },
+        {
+          "condition": "fetch failure",
+          "ui": "error banner with retry"
+        }
       ]
     }
   ],
   "components": [
     {
-      "name": "PrimaryNavigationShell",
-      "purpose": "Global app shell with top-level navigation to landing and tenant creation."
+      "component_id": "app_shell",
+      "purpose": "Global navigation, tenant context switcher, and section layout.",
+      "used_on_pages": [
+        "tenant_list",
+        "tenant_create",
+        "tenant_home",
+        "session_documents",
+        "document_create",
+        "failed_documents",
+        "chunking_coverage",
+        "document_chunk_create",
+        "document_search_vector",
+        "document_search_keyword_filtered",
+        "document_search_hybrid",
+        "agent_memory",
+        "benchmark_runs",
+        "benchmark_questions",
+        "benchmark_results_capture",
+        "benchmark_question_results",
+        "benchmark_comparison",
+        "benchmark_summary"
+      ]
+    },
+    {
+      "component_id": "tenant_selector",
+      "purpose": "List or dropdown for selecting current tenant context.",
+      "used_on_pages": [
+        "tenant_list",
+        "app_shell"
+      ]
+    },
+    {
+      "component_id": "tenant_form",
+      "purpose": "Create tenant form with tenant_key, name, deployment_mode fields.",
+      "used_on_pages": [
+        "tenant_create"
+      ]
+    },
+    {
+      "component_id": "session_label_picker",
+      "purpose": "Capture/select upload_session_label required by session-scoped document pages.",
+      "used_on_pages": [
+        "tenant_home",
+        "session_documents",
+        "chunking_coverage",
+        "document_chunk_create"
+      ]
+    },
+    {
+      "component_id": "document_table",
+      "purpose": "Tabular display of session documents with ingest status and chunking runs.",
+      "used_on_pages": [
+        "session_documents"
+      ]
+    },
+    {
+      "component_id": "document_form",
+      "purpose": "Register document metadata and ingest status.",
+      "used_on_pages": [
+        "document_create"
+      ]
+    },
+    {
+      "component_id": "failed_document_list",
+      "purpose": "Display failed documents and nested ingest errors.",
+      "used_on_pages": [
+        "failed_documents"
+      ]
+    },
+    {
+      "component_id": "chunking_coverage_cards",
+      "purpose": "Visual summary of chunking strategies, coverage, total chunks, and last run.",
+      "used_on_pages": [
+        "chunking_coverage"
+      ]
+    },
+    {
+      "component_id": "document_picker",
+      "purpose": "Select a document from previously loaded session documents when creating a chunk.",
+      "used_on_pages": [
+        "document_chunk_create"
+      ]
+    },
+    {
+      "component_id": "document_chunk_form",
+      "purpose": "Manual entry form for chunk text, embedding vector, and chunk metadata.",
+      "used_on_pages": [
+        "document_chunk_create"
+      ]
+    },
+    {
+      "component_id": "vector_search_form",
+      "purpose": "Form for query_embedding, top_k, num_candidates, strategy, and model.",
+      "used_on_pages": [
+        "document_search_vector",
+        "document_search_hybrid"
+      ]
+    },
+    {
+      "component_id": "keyword_metadata_search_form",
+      "purpose": "Form for language, keyword_or_phrase, tags, document_types, and strategy.",
+      "used_on_pages": [
+        "document_search_keyword_filtered"
+      ]
     },
     {
-      "name": "TenantScopedLayout",
-      "purpose": "Layout wrapper for all tenant routes showing tenant context and section navigation."
+      "component_id": "structured_filter_form",
+      "purpose": "Capture single structured attribute name/value filter for hybrid retrieval.",
+      "used_on_pages": [
+        "document_search_hybrid"
+      ]
     },
     {
-      "name": "TenantHeader",
-      "purpose": "Displays tenant name, tenantKey, deployment mode, and status."
+      "component_id": "retrieval_results_list",
+      "purpose": "Render ranked chunk results with text, score, and document context.",
+      "used_on_pages": [
+        "document_search_vector",
+        "document_search_hybrid"
+      ]
     },
     {
-      "name": "WorkspaceOverviewCards",
-      "purpose": "Quick links and summary cards for documents, agent memory, and benchmarks."
+      "component_id": "grouped_keyword_results",
+      "purpose": "Render document-grouped keyword matches and matching chunks.",
+      "used_on_pages": [
+        "document_search_keyword_filtered"
+      ]
     },
     {
-      "name": "WorkspaceNavTiles",
-      "purpose": "Section entry tiles from workspace home."
+      "component_id": "agent_memory_create_form",
+      "purpose": "Form to create conversation-derived memory entries.",
+      "used_on_pages": [
+        "agent_memory"
+      ]
     },
     {
-      "name": "TenantKeyForm",
-      "purpose": "Collect tenantKey for workspace resolution."
+      "component_id": "agent_memory_search_form",
+      "purpose": "Form to submit session-scoped semantic memory search.",
+      "used_on_pages": [
+        "agent_memory"
+      ]
     },
     {
-      "name": "TenantLookupStatus",
-      "purpose": "Displays success/failure while resolving tenant."
+      "component_id": "agent_memory_results_list",
+      "purpose": "Display ranked memory search results.",
+      "used_on_pages": [
+        "agent_memory"
+      ]
     },
     {
-      "name": "CreateTenantForm",
-      "purpose": "Tenant creation form."
+      "component_id": "benchmark_run_list",
+      "purpose": "Display benchmark runs with quick actions.",
+      "used_on_pages": [
+        "benchmark_runs"
+      ]
     },
     {
-      "name": "DeploymentModeSelector",
-      "purpose": "Pick shared_pov or isolated_pov."
+      "component_id": "benchmark_run_form",
+      "purpose": "Create benchmark run with run type, baseline system, strategy, model, top_k values, notes.",
+      "used_on_pages": [
+        "benchmark_runs"
+      ]
     },
     {
-      "name": "FormErrorSummary",
-      "purpose": "Reusable validation/network error display for forms."
+      "component_id": "benchmark_question_list",
+      "purpose": "Ordered display of benchmark questions.",
+      "used_on_pages": [
+        "benchmark_questions",
+        "benchmark_results_capture"
+      ]
     },
     {
-      "name": "DocumentFilterBar",
-      "purpose": "Filter controls for document type and source category."
+      "component_id": "benchmark_question_form",
+      "purpose": "Create benchmark question with optional expected document/chunk ids.",
+      "used_on_pages": [
+        "benchmark_questions"
+      ]
     },
     {
-      "name": "DocumentTable",
-      "purpose": "Tabular display of document metadata and status."
+      "component_id": "benchmark_results_batch_editor",
+      "purpose": "Editable grid for entering multiple result rows across questions/systems/ranks.",
+      "used_on_pages": [
+        "benchmark_results_capture"
+      ]
     },
     {
-      "name": "PageSizeSelector",
-      "purpose": "Reusable page size selector for list screens."
+      "component_id": "benchmark_result_detail_list",
+      "purpose": "Detailed ranked results view with document and chunk evidence.",
+      "used_on_pages": [
+        "benchmark_question_results"
+      ]
     },
     {
-      "name": "EmptyStatePanel",
-      "purpose": "Reusable empty-state messaging and CTA panel."
+      "component_id": "benchmark_comparison_table",
+      "purpose": "Side-by-side comparison table by question/system/rank/top-k metrics.",
+      "used_on_pages": [
+        "benchmark_comparison"
+      ]
     },
     {
-      "name": "DocumentRegistrationForm",
-      "purpose": "Composite form for creating document records."
+      "component_id": "benchmark_summary_cards",
+      "purpose": "Aggregate system metrics cards/table for avg latency and recall proxy.",
+      "used_on_pages": [
+        "benchmark_summary"
+      ]
     },
     {
-      "name": "DocumentTypeSelector",
-      "purpose": "Select supported document type enum."
+      "component_id": "api_error_banner",
+      "purpose": "Reusable API error display with retry action.",
+      "used_on_pages": [
+        "all"
+      ]
     },
     {
-      "name": "SourceCategorySelector",
-      "purpose": "Select uploaded_file, connector_export, or agent_memory."
-    },
-    {
-      "name": "StructuredMetadataFields",
-      "purpose": "Inputs for author, createdSourceAt, connectorName, and externalIds."
-    },
-    {
-      "name": "TextExtractionFields",
-      "purpose": "Inputs for extraction state, raw text, page count, timestamps, and errors."
-    },
-    {
-      "name": "AgentMemoryMetadataFields",
-      "purpose": "Inputs for session/conversation/speakers/capturedAt when sourceCategory is agent_memory."
-    },
-    {
-      "name": "DuplicateConflictNotice",
-      "purpose": "Displays existing document summary when duplicate creation is blocked."
-    },
-    {
-      "name": "ProcessingStatusTable",
-      "purpose": "Shows processing states across documents."
-    },
-    {
-      "name": "PollingToggle",
-      "purpose": "Enable/disable polling on async monitoring screens."
-    },
-    {
-      "name": "RefreshButton",
-      "purpose": "Manual refresh trigger."
-    },
-    {
-      "name": "StatusBadge",
-      "purpose": "Visual status indicator for document and benchmark states."
-    },
-    {
-      "name": "ChunkingStrategyComparisonTable",
-      "purpose": "Displays chunk count/size summary across strategies."
-    },
-    {
-      "name": "StrategyMetricCards",
-      "purpose": "Highlights key chunking metrics per strategy."
-    },
-    {
-      "name": "OpenInspectorAction",
-      "purpose": "Action control to navigate into detailed chunk inspection."
-    },
-    {
-      "name": "ChunkingStrategySelector",
-      "purpose": "Select one chunking strategy for chunk view or search forms."
-    },
-    {
-      "name": "ChunkList",
-      "purpose": "Scrollable list of chunks for a document."
-    },
-    {
-      "name": "ChunkCard",
-      "purpose": "Displays chunk text and contextual text."
-    },
-    {
-      "name": "ChunkMetadataPanel",
-      "purpose": "Displays token count, char count, page range, section path, and embedding metadata."
-    },
-    {
-      "name": "DocumentSearchForm",
-      "purpose": "Search form for non-agent-memory retrieval."
-    },
-    {
-      "name": "RetrievalModeSelector",
-      "purpose": "Select vector, lexical, or hybrid retrieval."
-    },
-    {
-      "name": "QueryEmbeddingInput",
-      "purpose": "Manual/external embedding input component for endpoints that require queryEmbedding."
-    },
-    {
-      "name": "HybridWeightInputs",
-      "purpose": "Inputs for vector and lexical weights in hybrid mode."
-    },
-    {
-      "name": "TopKSelector",
-      "purpose": "Choose retrieval topK."
-    },
-    {
-      "name": "DocumentTypeFilterChips",
-      "purpose": "Optional document type filters for search."
-    },
-    {
-      "name": "SearchResultsList",
-      "purpose": "Reusable ranked result list for search screens."
-    },
-    {
-      "name": "ResultScoreBreakdown",
-      "purpose": "Displays vector/lexical/hybrid/final scores when available."
-    },
-    {
-      "name": "StructuredFilterSearchForm",
-      "purpose": "Form for combined structured/unstructured search."
-    },
-    {
-      "name": "MetadataFilterPanel",
-      "purpose": "Structured metadata filters supported by the API contract."
-    },
-    {
-      "name": "DateRangePicker",
-      "purpose": "Select createdSourceAt start/end range."
-    },
-    {
-      "name": "TagInput",
-      "purpose": "Enter one or more tags for filters or metadata."
-    },
-    {
-      "name": "AgentMemoryFilterBar",
-      "purpose": "Session/conversation filter controls for memory document list."
-    },
-    {
-      "name": "AgentMemoryTable",
-      "purpose": "Tabular view of memory documents and metadata."
-    },
-    {
-      "name": "AgentMemorySearchForm",
-      "purpose": "Search form for semantic retrieval over memory chunks."
-    },
-    {
-      "name": "SessionConversationScopeInputs",
-      "purpose": "Optional scoping inputs for memory search."
-    },
-    {
-      "name": "MemoryHitCard",
-      "purpose": "Displays returned memory chunk with session/conversation context."
-    },
-    {
-      "name": "GroundTruthSetForm",
-      "purpose": "Form container for creating benchmark question sets."
-    },
-    {
-      "name": "QuestionListEditor",
-      "purpose": "Client-side editor for adding/removing questions before submit."
-    },
-    {
-      "name": "RelevanceTargetEditor",
-      "purpose": "Editor for expected relevant document/chunk targets."
-    },
-    {
-      "name": "QuestionTagsInput",
-      "purpose": "Tag input for benchmark questions."
-    },
-    {
-      "name": "GroundTruthSetHeader",
-      "purpose": "Displays name, description, and created date of a question set."
-    },
-    {
-      "name": "QuestionReviewList",
-      "purpose": "Read-only list of questions and expected answers."
-    },
-    {
-      "name": "RelevanceTargetsTable",
-      "purpose": "Read-only rendering of relevance targets."
-    },
-    {
-      "name": "BenchmarkRunFilterBar",
-      "purpose": "Filter controls for benchmark runs list."
-    },
-    {
-      "name": "BenchmarkRunsTable",
-      "purpose": "Tabular list of benchmark runs with status and metrics."
-    },
-    {
-      "name": "BenchmarkRunForm",
-      "purpose": "Form for creating a benchmark run."
-    },
-    {
-      "name": "SystemUnderTestSelector",
-      "purpose": "Select mongodb_voyage, baseline_elastic_like, qdrant_like, or other."
-    },
-    {
-      "name": "TopKMultiSelect",
-      "purpose": "Choose benchmark topK values from supported list."
-    },
-    {
-      "name": "BenchmarkFilterFields",
-      "purpose": "Inputs for document type and source category filters."
-    },
-    {
-      "name": "BenchmarkComparisonTable",
-      "purpose": "Side-by-side aggregate metrics table across runs."
-    },
-    {
-      "name": "MetricComparisonCards",
-      "purpose": "Summary cards for precision, recall, and latency comparisons."
-    },
-    {
-      "name": "PrecisionRecallChart",
-      "purpose": "Charts precision@K and recall@K from aggregate metrics."
-    },
-    {
-      "name": "LatencyChart",
-      "purpose": "Charts avg and p95 latency comparison."
-    },
-    {
-      "name": "QuestionAnalysisFilter",
-      "purpose": "Optional filter by questionIds for run analysis."
-    },
-    {
-      "name": "QuestionAnalysisTable",
-      "purpose": "Displays per-question metrics and topK summaries."
-    },
-    {
-      "name": "LatencyBadge",
-      "purpose": "Highlights latency value for each benchmark question."
-    },
-    {
-      "name": "OpenHitDetailsAction",
-      "purpose": "Navigation control to question hit details."
-    },
-    {
-      "name": "QuestionHitSummary",
-      "purpose": "Header summary for selected benchmark question."
-    },
-    {
-      "name": "HitDetailsList",
-      "purpose": "List of returned hits for one question."
-    },
-    {
-      "name": "HitDetailCard",
-      "purpose": "Displays rank, score, relevance, chunk text, page range, and document metadata for a hit."
-    },
-    {
-      "name": "RelevanceIndicator",
-      "purpose": "Visual indicator for relevant/non-relevant benchmark hits."
-    },
-    {
-      "name": "UnsupportedCapabilityNotice",
-      "purpose": "Reusable message explaining actions outside the current API contract, including binary upload and server-side embedding generation."
+      "component_id": "empty_state_panel",
+      "purpose": "Reusable empty-state guidance for no data scenarios.",
+      "used_on_pages": [
+        "session_documents",
+        "failed_documents",
+        "benchmark_runs",
+        "benchmark_questions",
+        "benchmark_question_results",
+        "benchmark_comparison",
+        "benchmark_summary"
+      ]
     }
   ],
-  "cross_cutting_states": {
-    "loading_patterns": [
-      "Skeletons or spinners for full-page loads",
-      "Inline submit/loading indicators for forms",
-      "Polling indicators for processing and benchmark status screens"
-    ],
-    "error_patterns": [
-      "Full-page not found states for tenant-scoped 404s",
-      "Inline validation for 400 VALIDATION_ERROR responses",
-      "Conflict resolution panel for duplicate document 409",
-      "Retryable banner/toast for transient network/server failures"
-    ],
-    "empty_patterns": [
-      "No documents",
-      "No agent memory documents",
-      "No chunks for selected strategy",
-      "No search results",
-      "No benchmark runs or no completed comparable runs"
-    ],
-    "polling_patterns": [
-      "DocumentProcessingMonitor polls getDocumentProcessingStatus on interval until user stops or all selected documents are terminal",
-      "BenchmarkRunsList polls listBenchmarkRuns to refresh running/completed/failed statuses after new runs are created"
-    ]
-  },
-  "known_gaps_due_to_api_contract": [
-    "No binary file upload transport; frontend can only register metadata/sourceUri for documents.",
-    "No API to generate query embeddings server-side; search screens requiring queryEmbedding must rely on an external embedding provider or manual/test input.",
-    "No document update/delete APIs; document management UI is create/list/inspect only.",
-    "No ground truth set listing endpoint; users can create a set and load by known name, but cannot browse all sets unless the app separately tracks names client-side.",
-    "No benchmark run detail endpoint beyond question analysis/list/compare; detailed run metadata must come from list responses and route context.",
-    "No endpoint for direct chunk creation/materialization or ingestion orchestration details; frontend can only reflect persisted status and debug/query outcomes.",
-    "No document detail-by-id endpoint; screens needing document context must use route params plus list/search responses."
+  "constraints_and_gaps": [
+    {
+      "gap": "No endpoint exists to upload binary files directly.",
+      "frontend_implication": "Register Document should describe itself as metadata/source registration. If actual file bytes are handled elsewhere, the UI can only capture source_filename/source_uri/source_system metadata via createDocument."
+    },
+    {
+      "gap": "No endpoints exist to trigger parsing, chunking, embedding, or retry failed ingestion jobs.",
+      "frontend_implication": "The UI may show ingestion status and troubleshooting but must not promise start/retry automation beyond storing records such as documents and chunks."
+    },
+    {
+      "gap": "No standalone document detail/read endpoint exists.",
+      "frontend_implication": "Pages that need a document selector must source options from listSessionDocuments or user-provided ids."
+    },
+    {
+      "gap": "No API exists to execute external baseline systems or orchestrate side-by-side runs automatically.",
+      "frontend_implication": "Benchmark pages can capture externally generated results and compare stored metrics, but cannot run Elastic/OpenSearch/Qdrant from this contract."
+    },
+    {
+      "gap": "No API exists to calculate embeddings from raw text or questions.",
+      "frontend_implication": "Retrieval forms requiring query_embedding must either accept vectors directly or rely on a separate non-authoritative client-side/service integration that is explicitly outside this API contract."
+    }
   ]
 }
