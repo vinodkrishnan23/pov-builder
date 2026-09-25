@@ -1,0 +1,41 @@
+{
+  "caps": {
+    "benchmark_runs": 1,
+    "chunk_profiles": 1,
+    "chunks": 1,
+    "documents": 1,
+    "queries": 1,
+    "query_results": 1,
+    "tenants": 1
+  },
+  "correlation": {
+    "poc_id": "1790360041472",
+    "producer": "seed-validator",
+    "run_id": "run_01M3D0GEB3VQ84H312G637HXNZ",
+    "task_id": "task_01M3D0GEB3T1BEX1N84YMM63ZN",
+    "trace_id": "trace_01M3D0GEB3VQ84H312G637HXNZ"
+  },
+  "database_name": "1790360041472_8924ae6ef3121c5750b6",
+  "query_validation": {
+    "read_operations_executed": 0,
+    "runtime_executed": 0,
+    "static_search_validated": 0,
+    "static_vector_validated": 0,
+    "write_operations_executed": 0
+  },
+  "search_index_validation": {
+    "created": []
+  },
+  "seed_summary": {
+    "benchmark_runs": 1,
+    "chunk_profiles": 1,
+    "chunks": 1,
+    "documents": 1,
+    "queries": 1,
+    "query_results": 1,
+    "tenants": 1
+  },
+  "source_commit_sha": "04faa8159b44ad6abf57d85db680187084239f64",
+  "status": "succeeded",
+  "target_database_name": "1790360041472"
+}
