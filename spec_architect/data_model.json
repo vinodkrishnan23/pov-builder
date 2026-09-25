@@ -1,0 +1,433 @@
+{
+  "collections": [
+    {
+      "name": "tickets",
+      "description": "Internal issue or support/engineering tickets handled during triage.",
+      "traceability": {
+        "business_entities": [
+          "Ticket"
+        ],
+        "use_cases": [
+          "uc2"
+        ],
+        "functional_requirements": [
+          "fr2",
+          "fr3",
+          "fr4"
+        ]
+      },
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "ticket_number",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "priority",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "category",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "tags",
+          "type": "array<string>",
+          "required": false
+        },
+        {
+          "name": "reporter_name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "assignee_name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "updated_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "triage_notes",
+          "type": "array<object>",
+          "required": false,
+          "schema": [
+            {
+              "name": "created_at",
+              "type": "date",
+              "required": true
+            },
+            {
+              "name": "author_name",
+              "type": "string",
+              "required": false
+            },
+            {
+              "name": "note",
+              "type": "string",
+              "required": true
+            }
+          ],
+          "embedding_strategy": "embedded",
+          "embedding_reason": "Triage notes are naturally contained within a ticket and are typically fetched with the ticket during triage review."
+        },
+        {
+          "name": "ai_guidance",
+          "type": "object",
+          "required": false,
+          "schema": [
+            {
+              "name": "summary",
+              "type": "string",
+              "required": false
+            },
+            {
+              "name": "suggested_diagnosis",
+              "type": "string",
+              "required": false
+            },
+            {
+              "name": "suggested_route",
+              "type": "string",
+              "required": false
+            },
+            {
+              "name": "recommended_actions",
+              "type": "array<string>",
+              "required": false
+            },
+            {
+              "name": "generated_at",
+              "type": "date",
+              "required": false
+            },
+            {
+              "name": "model_name",
+              "type": "string",
+              "required": false
+            }
+          ],
+          "embedding_strategy": "embedded",
+          "embedding_reason": "The spec calls for AI guidance while processing a ticket; guidance is specific to a ticket and convenient to read with the ticket document."
+        },
+        {
+          "name": "similar_ticket_ids",
+          "type": "array<objectId>",
+          "required": false,
+          "reference": "tickets",
+          "embedding_strategy": "references",
+          "embedding_reason": "Similar historical tickets are separate ticket records and should remain independently queryable; store lightweight references from the current ticket to surfaced similar tickets."
+        },
+        {
+          "name": "resolution_summary",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "closed_at",
+          "type": "date",
+          "required": false
+        }
+      ],
+      "relationships": [
+        {
+          "type": "self-reference",
+          "field": "similar_ticket_ids",
+          "target_collection": "tickets",
+          "cardinality": "many-to-many",
+          "description": "Supports lookup and display of related historical tickets during triage."
+        }
+      ],
+      "indexes": [
+        {
+          "name": "uniq_ticket_number",
+          "kind": "regular",
+          "fields": [
+            "ticket_number"
+          ],
+          "reason": "Supports direct ticket lookup by business identifier during triage workflows."
+        },
+        {
+          "name": "status_updated_at",
+          "kind": "regular",
+          "fields": [
+            "status",
+            "updated_at"
+          ],
+          "reason": "Supports common triage queues such as reviewing open or recently updated tickets."
+        },
+        {
+          "name": "textual_ticket_lookup",
+          "kind": "search",
+          "fields": [
+            "title",
+            "description",
+            "resolution_summary",
+            "tags"
+          ],
+          "reason": "Supports similar-ticket lookup and keyword search over historical tickets, which is explicitly required by fr4 without assuming AI-driven retrieval."
+        }
+      ]
+    },
+    {
+      "name": "fixes",
+      "description": "A remediation or change whose stability needs to be confirmed.",
+      "traceability": {
+        "business_entities": [
+          "Fix"
+        ],
+        "use_cases": [
+          "uc1"
+        ],
+        "functional_requirements": [
+          "fr1"
+        ]
+      },
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "fix_key",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "system_area",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "implemented_at",
+          "type": "date",
+          "required": false
+        },
+        {
+          "name": "owner_name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "related_ticket_ids",
+          "type": "array<objectId>",
+          "required": false,
+          "reference": "tickets",
+          "embedding_strategy": "references",
+          "embedding_reason": "A fix may relate to one or more tickets, and tickets are independent business entities already modeled in their own collection."
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "updated_at",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "relationships": [
+        {
+          "type": "reference",
+          "field": "related_ticket_ids",
+          "target_collection": "tickets",
+          "cardinality": "one-to-many",
+          "description": "Links a fix to tickets that motivated or document the remediation."
+        }
+      ],
+      "indexes": [
+        {
+          "name": "uniq_fix_key",
+          "kind": "regular",
+          "fields": [
+            "fix_key"
+          ],
+          "reason": "Supports direct lookup of a fix to validate by business identifier."
+        },
+        {
+          "name": "status_updated_at",
+          "kind": "regular",
+          "fields": [
+            "status",
+            "updated_at"
+          ],
+          "reason": "Supports operational views of active or recently changed fixes awaiting or undergoing validation."
+        }
+      ]
+    },
+    {
+      "name": "fix_validations",
+      "description": "Validation runs or assessments used to confirm a fix holds under a generous timeout margin.",
+      "traceability": {
+        "business_entities": [
+          "Fix"
+        ],
+        "use_cases": [
+          "uc1"
+        ],
+        "functional_requirements": [
+          "fr1"
+        ]
+      },
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "fix_id",
+          "type": "objectId",
+          "required": true,
+          "reference": "fixes"
+        },
+        {
+          "name": "validation_name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "validator_name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "timeout_threshold_ms",
+          "type": "int",
+          "required": true
+        },
+        {
+          "name": "observed_duration_ms",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "result",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "holds_under_margin",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "name": "notes",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "validated_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "evidence",
+          "type": "object",
+          "required": false,
+          "schema": [
+            {
+              "name": "environment",
+              "type": "string",
+              "required": false
+            },
+            {
+              "name": "run_reference",
+              "type": "string",
+              "required": false
+            },
+            {
+              "name": "error_summary",
+              "type": "string",
+              "required": false
+            }
+          ],
+          "embedding_strategy": "embedded",
+          "embedding_reason": "Validation evidence is tightly coupled to a single validation record and not indicated as needing independent lifecycle management."
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "relationships": [
+        {
+          "type": "reference",
+          "field": "fix_id",
+          "target_collection": "fixes",
+          "cardinality": "many-to-one",
+          "description": "Each validation record belongs to one fix; a fix can have many validations over time."
+        }
+      ],
+      "indexes": [
+        {
+          "name": "fix_validated_at",
+          "kind": "regular",
+          "fields": [
+            "fix_id",
+            "validated_at"
+          ],
+          "reason": "Supports viewing validation history for a specific fix in time order."
+        },
+        {
+          "name": "fix_result_validated_at",
+          "kind": "regular",
+          "fields": [
+            "fix_id",
+            "result",
+            "validated_at"
+          ],
+          "reason": "Supports quickly determining whether a fix currently has passing or failing validations under the configured timeout margin."
+        }
+      ]
+    }
+  ]
+}
