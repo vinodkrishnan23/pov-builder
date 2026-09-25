@@ -1,0 +1,20 @@
+{
+  "correlation": {
+    "poc_id": "1790360041472",
+    "producer": "seed-validator",
+    "run_id": "run_01M3D0GEB3VQ84H312G637HXNZ",
+    "task_id": "task_01M3D0GEB3T1BEX1N84YMM63ZN",
+    "trace_id": "trace_01M3D0GEB3VQ84H312G637HXNZ"
+  },
+  "error": {
+    "code": "SEED_SCRIPT_INVALID",
+    "detail": {
+      "failure_class": "IMPLEMENTATION_FAILURE"
+    },
+    "failure_class": "IMPLEMENTATION_FAILURE",
+    "message": "seed.js has invalid JavaScript syntax",
+    "retryable": false
+  },
+  "source_commit_sha": "10cb5e21d5fc067b6fff29660004b395b2b30844",
+  "status": "failed"
+}
