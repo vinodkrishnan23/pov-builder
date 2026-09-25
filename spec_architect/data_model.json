@@ -1,0 +1,217 @@
+{
+  "collections": [
+    {
+      "name": "polling_architecture_reviews",
+      "description": "Captures the POV's core artifact: review/validation records for a polling architecture under discussion. This is the only clearly supported business entity implied by the approved requirements and current state.",
+      "traceability": {
+        "business_objectives": [
+          "bo1"
+        ],
+        "current_state": true,
+        "open_questions": [
+          "What does 'polling architecture' refer to in this context (application behavior, data ingestion, monitoring, or something else)?",
+          "How will success be measured for this POV?"
+        ]
+      },
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "required": true,
+          "description": "Short name for the architecture review effort."
+        },
+        {
+          "name": "architecture_type",
+          "type": "string",
+          "required": false,
+          "description": "Freeform classification of what 'polling architecture' refers to, because the spec leaves this undefined."
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true,
+          "description": "Lifecycle state of the review, e.g. proposed, in_review, validated, rejected."
+        },
+        {
+          "name": "summary",
+          "type": "string",
+          "required": false,
+          "description": "Short narrative of what is being reviewed and current findings."
+        },
+        {
+          "name": "validation_notes",
+          "type": "array<object>",
+          "required": false,
+          "description": "Time-ordered notes captured during validation.",
+          "items": {
+            "fields": [
+              {
+                "name": "noted_at",
+                "type": "date",
+                "required": true
+              },
+              {
+                "name": "author",
+                "type": "string",
+                "required": false
+              },
+              {
+                "name": "note",
+                "type": "string",
+                "required": true
+              }
+            ]
+          }
+        },
+        {
+          "name": "vector_search_recommendation",
+          "type": "object",
+          "required": false,
+          "description": "Records that Atlas Vector Search was suggested, without implying confirmed fit.",
+          "fields": [
+            {
+              "name": "suggested",
+              "type": "bool",
+              "required": true
+            },
+            {
+              "name": "rationale",
+              "type": "string",
+              "required": false
+            },
+            {
+              "name": "fit_status",
+              "type": "string",
+              "required": false,
+              "description": "Exploratory assessment such as suggested, evaluating, accepted, not_applicable."
+            }
+          ]
+        },
+        {
+          "name": "open_questions",
+          "type": "array<string>",
+          "required": false,
+          "description": "Question backlog specific to this review, derived from the spec's open questions."
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "updated_at",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "embedding_vs_references": {
+        "embedded": [
+          "validation_notes",
+          "vector_search_recommendation",
+          "open_questions"
+        ],
+        "referenced": [],
+        "rationale": "All substructures are tightly coupled to a single architecture review document, low-cardinality, and likely retrieved together during review workflows."
+      },
+      "relationships": []
+    },
+    {
+      "name": "knowledge_chunks",
+      "description": "Optional corpus of short text chunks used only because Atlas Vector Search is explicitly mentioned. This collection provides the minimal searchable content needed to evaluate semantic retrieval in the POV without inventing unsupported domain entities.",
+      "traceability": {
+        "ai_genai_requirements": [
+          "ai1"
+        ],
+        "mongodb_atlas_opportunities": [
+          "ma1"
+        ],
+        "open_questions": [
+          "Is Atlas Vector Search a firm requirement, a recommendation, or an exploratory suggestion?"
+        ]
+      },
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "review_id",
+          "type": "objectId",
+          "required": false,
+          "description": "Optional reference to the architecture review this chunk supports."
+        },
+        {
+          "name": "source_type",
+          "type": "string",
+          "required": true,
+          "description": "Origin of the text, e.g. transcript, architecture_note, decision_log."
+        },
+        {
+          "name": "source_id",
+          "type": "string",
+          "required": false,
+          "description": "External or logical identifier of the source artifact."
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "content",
+          "type": "string",
+          "required": true,
+          "description": "Chunk text used for semantic retrieval."
+        },
+        {
+          "name": "embedding",
+          "type": "array<float>",
+          "required": true,
+          "description": "Vector embedding for Atlas Vector Search indexing."
+        },
+        {
+          "name": "metadata",
+          "type": "object",
+          "required": false,
+          "fields": [
+            {
+              "name": "tags",
+              "type": "array<string>",
+              "required": false
+            },
+            {
+              "name": "created_at",
+              "type": "date",
+              "required": false
+            }
+          ]
+        }
+      ],
+      "embedding_vs_references": {
+        "embedded": [
+          "metadata"
+        ],
+        "referenced": [
+          "review_id -> polling_architecture_reviews._id"
+        ],
+        "rationale": "Chunks can scale independently and are queried separately through vector similarity search, so they should live in their own collection. Only a loose reference back to a review is needed."
+      },
+      "relationships": [
+        {
+          "type": "many_to_one",
+          "from_collection": "knowledge_chunks",
+          "from_field": "review_id",
+          "to_collection": "polling_architecture_reviews",
+          "to_field": "_id",
+          "required": false
+        }
+      ]
+    }
+  ]
+}
