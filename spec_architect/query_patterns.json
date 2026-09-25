@@ -1,0 +1,988 @@
+{
+  "QP1": {
+    "id": "QP1",
+    "name": "Get request-level execution log by request/correlation ID",
+    "serves": [
+      "UC1",
+      "UC2"
+    ],
+    "collections": [
+      "execution_requests"
+    ],
+    "for": "Retrieve the top-level execution log for a specific request, including request/response JSON, policy metadata, status, outcome, and summary metrics.",
+    "query": {
+      "collection": "execution_requests",
+      "operation": "findOne",
+      "filter": {
+        "deployment_id": "<deployment_id>",
+        "$or": [
+          {
+            "request_id": "<request_id>"
+          },
+          {
+            "correlation_id": "<request_id_or_correlation_id>"
+          }
+        ]
+      },
+      "projection": {
+        "_id": 0,
+        "deployment_id": 1,
+        "request_id": 1,
+        "correlation_id": 1,
+        "policy": 1,
+        "request_timestamp": 1,
+        "completion_timestamp": 1,
+        "status": 1,
+        "final_outcome": 1,
+        "outcome_reason_codes": 1,
+        "request_payload": 1,
+        "response_payload": 1,
+        "search_attributes": 1,
+        "metrics": 1,
+        "logging_enabled": 1,
+        "retention": 1,
+        "ingestion": 1
+      }
+    }
+  },
+  "QP2": {
+    "id": "QP2",
+    "name": "Get ordered rule/stage execution steps for a request",
+    "serves": [
+      "UC1",
+      "UC2"
+    ],
+    "collections": [
+      "execution_steps"
+    ],
+    "for": "Retrieve all internal rule/stage execution records for a request in execution order for UI drill-down or API consumption.",
+    "query": {
+      "collection": "execution_steps",
+      "operation": "find",
+      "filter": {
+        "deployment_id": "<deployment_id>",
+        "request_id": "<request_id>"
+      },
+      "projection": {
+        "_id": 0,
+        "deployment_id": 1,
+        "request_id": 1,
+        "step_sequence": 1,
+        "stage_type": 1,
+        "rule": 1,
+        "policy": 1,
+        "execution_timestamp": 1,
+        "step_status": 1,
+        "condition_expression": 1,
+        "input_snapshot": 1,
+        "output_snapshot": 1,
+        "variable_observations": 1,
+        "decision": 1,
+        "performance": 1,
+        "errors": 1
+      },
+      "sort": {
+        "step_sequence": 1
+      }
+    }
+  },
+  "QP3": {
+    "id": "QP3",
+    "name": "Get complete execution trace for a request",
+    "serves": [
+      "UC1",
+      "UC2"
+    ],
+    "collections": [
+      "execution_requests",
+      "execution_steps"
+    ],
+    "for": "Fetch a single request and all of its related step records in one response for audit screens or programmatic retrieval.",
+    "query": {
+      "collection": "execution_requests",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "deployment_id": "<deployment_id>",
+            "$or": [
+              {
+                "request_id": "<request_id>"
+              },
+              {
+                "correlation_id": "<request_id_or_correlation_id>"
+              }
+            ]
+          }
+        },
+        {
+          "$lookup": {
+            "from": "execution_steps",
+            "let": {
+              "rid": "$request_id",
+              "did": "$deployment_id"
+            },
+            "pipeline": [
+              {
+                "$match": {
+                  "$expr": {
+                    "$and": [
+                      {
+                        "$eq": [
+                          "$request_id",
+                          "$$rid"
+                        ]
+                      },
+                      {
+                        "$eq": [
+                          "$deployment_id",
+                          "$$did"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "$sort": {
+                  "step_sequence": 1
+                }
+              },
+              {
+                "$project": {
+                  "_id": 0,
+                  "step_sequence": 1,
+                  "stage_type": 1,
+                  "rule": 1,
+                  "policy": 1,
+                  "execution_timestamp": 1,
+                  "step_status": 1,
+                  "condition_expression": 1,
+                  "input_snapshot": 1,
+                  "output_snapshot": 1,
+                  "variable_observations": 1,
+                  "decision": 1,
+                  "performance": 1,
+                  "errors": 1
+                }
+              }
+            ],
+            "as": "execution_steps"
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "deployment_id": 1,
+            "request_id": 1,
+            "correlation_id": 1,
+            "policy": 1,
+            "request_timestamp": 1,
+            "completion_timestamp": 1,
+            "status": 1,
+            "final_outcome": 1,
+            "outcome_reason_codes": 1,
+            "request_payload": 1,
+            "response_payload": 1,
+            "search_attributes": 1,
+            "metrics": 1,
+            "logging_enabled": 1,
+            "retention": 1,
+            "ingestion": 1,
+            "execution_steps": 1
+          }
+        }
+      ]
+    }
+  },
+  "QP4": {
+    "id": "QP4",
+    "name": "Search execution requests by request attributes and outcome",
+    "serves": [
+      "UC4",
+      "UC5"
+    ],
+    "collections": [
+      "execution_requests"
+    ],
+    "for": "Search/filter request-level logs by date range, policy/version, status, final outcome, and curated request/response attributes for case discovery and reporting.",
+    "query": {
+      "collection": "execution_requests",
+      "operation": "find",
+      "filter": {
+        "deployment_id": "<deployment_id>",
+        "request_timestamp": {
+          "$gte": "<start_date>",
+          "$lt": "<end_date>"
+        },
+        "status": {
+          "$in": [
+            "<status_values>"
+          ]
+        },
+        "final_outcome": {
+          "$in": [
+            "<outcome_values>"
+          ]
+        },
+        "policy.policy_id": "<optional_policy_id>",
+        "policy.definition_version": "<optional_definition_version>",
+        "search_attributes.<attribute_name>": "<attribute_value>"
+      },
+      "projection": {
+        "_id": 0,
+        "request_id": 1,
+        "policy": 1,
+        "request_timestamp": 1,
+        "completion_timestamp": 1,
+        "status": 1,
+        "final_outcome": 1,
+        "outcome_reason_codes": 1,
+        "search_attributes": 1,
+        "metrics": 1
+      },
+      "sort": {
+        "request_timestamp": -1
+      },
+      "limit": "<page_size>"
+    }
+  },
+  "QP5": {
+    "id": "QP5",
+    "name": "Search execution steps by rule, stage, or observed variable content",
+    "serves": [
+      "UC4"
+    ],
+    "collections": [
+      "execution_steps"
+    ],
+    "for": "Find requests/steps where a specific rule executed, a stage had a given status, or a variable observation matched a name/value pair.",
+    "query": {
+      "collection": "execution_steps",
+      "operation": "find",
+      "filter": {
+        "deployment_id": "<deployment_id>",
+        "execution_timestamp": {
+          "$gte": "<start_date>",
+          "$lt": "<end_date>"
+        },
+        "stage_type": "<optional_stage_type>",
+        "step_status": "<optional_step_status>",
+        "rule.rule_name": "<optional_rule_name>",
+        "policy.policy_id": "<optional_policy_id>",
+        "variable_observations": {
+          "$elemMatch": {
+            "name": "<variable_name>",
+            "value": "<optional_variable_value>",
+            "matched": "<optional_boolean>"
+          }
+        }
+      },
+      "projection": {
+        "_id": 0,
+        "request_id": 1,
+        "step_sequence": 1,
+        "stage_type": 1,
+        "rule": 1,
+        "policy": 1,
+        "execution_timestamp": 1,
+        "step_status": 1,
+        "condition_expression": 1,
+        "variable_observations": 1,
+        "decision": 1,
+        "performance": 1,
+        "errors": 1
+      },
+      "sort": {
+        "execution_timestamp": -1
+      },
+      "limit": "<page_size>"
+    }
+  },
+  "QP6": {
+    "id": "QP6",
+    "name": "Find requests that executed a given rule or produced a given step decision",
+    "serves": [
+      "UC4",
+      "UC5"
+    ],
+    "collections": [
+      "execution_steps"
+    ],
+    "for": "Identify affected requests for a rule, rule version, reason code, or step-level decision outcome.",
+    "query": {
+      "collection": "execution_steps",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "deployment_id": "<deployment_id>",
+            "execution_timestamp": {
+              "$gte": "<start_date>",
+              "$lt": "<end_date>"
+            },
+            "rule.rule_name": "<optional_rule_name>",
+            "rule.rule_version": "<optional_rule_version>",
+            "decision.outcome": "<optional_decision_outcome>",
+            "decision.reason_code": "<optional_reason_code>"
+          }
+        },
+        {
+          "$group": {
+            "_id": {
+              "request_id": "$request_id",
+              "deployment_id": "$deployment_id"
+            },
+            "matched_steps": {
+              "$push": {
+                "step_sequence": "$step_sequence",
+                "rule": "$rule",
+                "step_status": "$step_status",
+                "decision": "$decision",
+                "execution_timestamp": "$execution_timestamp"
+              }
+            },
+            "first_execution_timestamp": {
+              "$min": "$execution_timestamp"
+            }
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "deployment_id": "$_id.deployment_id",
+            "request_id": "$_id.request_id",
+            "first_execution_timestamp": 1,
+            "matched_steps": 1
+          }
+        },
+        {
+          "$sort": {
+            "first_execution_timestamp": -1
+          }
+        },
+        {
+          "$limit": "<page_size>"
+        }
+      ]
+    }
+  },
+  "QP7": {
+    "id": "QP7",
+    "name": "Approval/outcome trend dashboard by time period",
+    "serves": [
+      "UC5",
+      "UC3"
+    ],
+    "collections": [
+      "execution_requests"
+    ],
+    "for": "Generate dashboard metrics such as counts and approval/rejection rates over time, optionally segmented by policy version or curated attributes.",
+    "query": {
+      "collection": "execution_requests",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "deployment_id": "<deployment_id>",
+            "request_timestamp": {
+              "$gte": "<start_date>",
+              "$lt": "<end_date>"
+            },
+            "policy.policy_id": "<optional_policy_id>",
+            "policy.definition_version": "<optional_definition_version>"
+          }
+        },
+        {
+          "$group": {
+            "_id": {
+              "period": {
+                "$dateTrunc": {
+                  "date": "$request_timestamp",
+                  "unit": "<day|week|month>"
+                }
+              },
+              "final_outcome": "$final_outcome",
+              "definition_version": "$policy.definition_version",
+              "segment": "$search_attributes.<optional_segment_attr>"
+            },
+            "request_count": {
+              "$sum": 1
+            }
+          }
+        },
+        {
+          "$group": {
+            "_id": {
+              "period": "$_id.period",
+              "definition_version": "$_id.definition_version",
+              "segment": "$_id.segment"
+            },
+            "outcomes": {
+              "$push": {
+                "final_outcome": "$_id.final_outcome",
+                "count": "$request_count"
+              }
+            },
+            "total_requests": {
+              "$sum": "$request_count"
+            },
+            "approved_count": {
+              "$sum": {
+                "$cond": [
+                  {
+                    "$eq": [
+                      "$_id.final_outcome",
+                      "approved"
+                    ]
+                  },
+                  "$request_count",
+                  0
+                ]
+              }
+            },
+            "rejected_count": {
+              "$sum": {
+                "$cond": [
+                  {
+                    "$eq": [
+                      "$_id.final_outcome",
+                      "rejected"
+                    ]
+                  },
+                  "$request_count",
+                  0
+                ]
+              }
+            }
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "period": "$_id.period",
+            "definition_version": "$_id.definition_version",
+            "segment": "$_id.segment",
+            "total_requests": 1,
+            "approved_count": 1,
+            "rejected_count": 1,
+            "approval_rate": {
+              "$cond": [
+                {
+                  "$gt": [
+                    "$total_requests",
+                    0
+                  ]
+                },
+                {
+                  "$divide": [
+                    "$approved_count",
+                    "$total_requests"
+                  ]
+                },
+                0
+              ]
+            },
+            "outcomes": 1
+          }
+        },
+        {
+          "$sort": {
+            "period": 1
+          }
+        }
+      ]
+    }
+  },
+  "QP8": {
+    "id": "QP8",
+    "name": "Compare policy definition versions by business outcomes",
+    "serves": [
+      "UC3",
+      "UC5"
+    ],
+    "collections": [
+      "execution_requests"
+    ],
+    "for": "Compare how different policy definition versions perform in terms of approval, rejection, failure, and processing duration.",
+    "query": {
+      "collection": "execution_requests",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "deployment_id": "<deployment_id>",
+            "request_timestamp": {
+              "$gte": "<start_date>",
+              "$lt": "<end_date>"
+            },
+            "policy.policy_id": "<policy_id>",
+            "policy.definition_version": {
+              "$in": [
+                "<definition_version_a>",
+                "<definition_version_b>"
+              ]
+            }
+          }
+        },
+        {
+          "$group": {
+            "_id": {
+              "definition_version": "$policy.definition_version",
+              "final_outcome": "$final_outcome",
+              "status": "$status"
+            },
+            "request_count": {
+              "$sum": 1
+            },
+            "avg_duration_ms": {
+              "$avg": "$metrics.duration_ms"
+            },
+            "avg_rule_execution_count": {
+              "$avg": "$metrics.rule_execution_count"
+            },
+            "total_errors": {
+              "$sum": {
+                "$ifNull": [
+                  "$metrics.error_count",
+                  0
+                ]
+              }
+            }
+          }
+        },
+        {
+          "$group": {
+            "_id": "$_id.definition_version",
+            "outcome_breakdown": {
+              "$push": {
+                "final_outcome": "$_id.final_outcome",
+                "status": "$_id.status",
+                "count": "$request_count"
+              }
+            },
+            "total_requests": {
+              "$sum": "$request_count"
+            },
+            "avg_duration_ms": {
+              "$avg": "$avg_duration_ms"
+            },
+            "avg_rule_execution_count": {
+              "$avg": "$avg_rule_execution_count"
+            },
+            "total_errors": {
+              "$sum": "$total_errors"
+            },
+            "approved_count": {
+              "$sum": {
+                "$cond": [
+                  {
+                    "$eq": [
+                      "$_id.final_outcome",
+                      "approved"
+                    ]
+                  },
+                  "$request_count",
+                  0
+                ]
+              }
+            },
+            "rejected_count": {
+              "$sum": {
+                "$cond": [
+                  {
+                    "$eq": [
+                      "$_id.final_outcome",
+                      "rejected"
+                    ]
+                  },
+                  "$request_count",
+                  0
+                ]
+              }
+            }
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "definition_version": "$_id",
+            "total_requests": 1,
+            "approved_count": 1,
+            "rejected_count": 1,
+            "approval_rate": {
+              "$cond": [
+                {
+                  "$gt": [
+                    "$total_requests",
+                    0
+                  ]
+                },
+                {
+                  "$divide": [
+                    "$approved_count",
+                    "$total_requests"
+                  ]
+                },
+                0
+              ]
+            },
+            "avg_duration_ms": 1,
+            "avg_rule_execution_count": 1,
+            "total_errors": 1,
+            "outcome_breakdown": 1
+          }
+        },
+        {
+          "$sort": {
+            "definition_version": 1
+          }
+        }
+      ]
+    }
+  },
+  "QP9": {
+    "id": "QP9",
+    "name": "Segmented outcome analytics by customer attributes",
+    "serves": [
+      "UC5",
+      "UC3"
+    ],
+    "collections": [
+      "execution_requests"
+    ],
+    "for": "Produce reports such as approval/success rates by age band, geography, segment, product, or other curated search attributes.",
+    "query": {
+      "collection": "execution_requests",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "deployment_id": "<deployment_id>",
+            "request_timestamp": {
+              "$gte": "<start_date>",
+              "$lt": "<end_date>"
+            },
+            "policy.policy_id": "<optional_policy_id>",
+            "policy.definition_version": "<optional_definition_version>"
+          }
+        },
+        {
+          "$group": {
+            "_id": {
+              "segment": "$search_attributes.<segment_attribute>",
+              "final_outcome": "$final_outcome"
+            },
+            "count": {
+              "$sum": 1
+            }
+          }
+        },
+        {
+          "$group": {
+            "_id": "$_id.segment",
+            "total_requests": {
+              "$sum": "$count"
+            },
+            "approved_count": {
+              "$sum": {
+                "$cond": [
+                  {
+                    "$eq": [
+                      "$_id.final_outcome",
+                      "approved"
+                    ]
+                  },
+                  "$count",
+                  0
+                ]
+              }
+            },
+            "rejected_count": {
+              "$sum": {
+                "$cond": [
+                  {
+                    "$eq": [
+                      "$_id.final_outcome",
+                      "rejected"
+                    ]
+                  },
+                  "$count",
+                  0
+                ]
+              }
+            },
+            "outcomes": {
+              "$push": {
+                "final_outcome": "$_id.final_outcome",
+                "count": "$count"
+              }
+            }
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "segment": "$_id",
+            "total_requests": 1,
+            "approved_count": 1,
+            "rejected_count": 1,
+            "approval_rate": {
+              "$cond": [
+                {
+                  "$gt": [
+                    "$total_requests",
+                    0
+                  ]
+                },
+                {
+                  "$divide": [
+                    "$approved_count",
+                    "$total_requests"
+                  ]
+                },
+                0
+              ]
+            },
+            "outcomes": 1
+          }
+        },
+        {
+          "$sort": {
+            "segment": 1
+          }
+        }
+      ]
+    }
+  },
+  "QP10": {
+    "id": "QP10",
+    "name": "Step-level performance and failure analysis by rule",
+    "serves": [
+      "UC5",
+      "UC3"
+    ],
+    "collections": [
+      "execution_steps"
+    ],
+    "for": "Analyze which rules/stages are slowest, fail most often, or generate the most warnings/errors.",
+    "query": {
+      "collection": "execution_steps",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "deployment_id": "<deployment_id>",
+            "execution_timestamp": {
+              "$gte": "<start_date>",
+              "$lt": "<end_date>"
+            },
+            "policy.policy_id": "<optional_policy_id>",
+            "policy.definition_version": "<optional_definition_version>"
+          }
+        },
+        {
+          "$group": {
+            "_id": {
+              "rule_name": "$rule.rule_name",
+              "rule_version": "$rule.rule_version",
+              "stage_type": "$stage_type"
+            },
+            "execution_count": {
+              "$sum": 1
+            },
+            "failed_count": {
+              "$sum": {
+                "$cond": [
+                  {
+                    "$eq": [
+                      "$step_status",
+                      "failed"
+                    ]
+                  },
+                  1,
+                  0
+                ]
+              }
+            },
+            "warning_count": {
+              "$sum": {
+                "$cond": [
+                  {
+                    "$eq": [
+                      "$step_status",
+                      "warning"
+                    ]
+                  },
+                  1,
+                  0
+                ]
+              }
+            },
+            "avg_duration_ms": {
+              "$avg": "$performance.duration_ms"
+            },
+            "max_duration_ms": {
+              "$max": "$performance.duration_ms"
+            },
+            "total_lookup_count": {
+              "$sum": {
+                "$ifNull": [
+                  "$performance.lookup_count",
+                  0
+                ]
+              }
+            },
+            "error_instances": {
+              "$sum": {
+                "$size": {
+                  "$ifNull": [
+                    "$errors",
+                    []
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "rule_name": "$_id.rule_name",
+            "rule_version": "$_id.rule_version",
+            "stage_type": "$_id.stage_type",
+            "execution_count": 1,
+            "failed_count": 1,
+            "warning_count": 1,
+            "failure_rate": {
+              "$cond": [
+                {
+                  "$gt": [
+                    "$execution_count",
+                    0
+                  ]
+                },
+                {
+                  "$divide": [
+                    "$failed_count",
+                    "$execution_count"
+                  ]
+                },
+                0
+              ]
+            },
+            "avg_duration_ms": 1,
+            "max_duration_ms": 1,
+            "total_lookup_count": 1,
+            "error_instances": 1
+          }
+        },
+        {
+          "$sort": {
+            "failed_count": -1,
+            "avg_duration_ms": -1
+          }
+        }
+      ]
+    }
+  },
+  "QP11": {
+    "id": "QP11",
+    "name": "Inspect deployment logging, retention, and access configuration",
+    "serves": [
+      "UC1",
+      "UC2"
+    ],
+    "collections": [
+      "deployment_configs"
+    ],
+    "for": "Retrieve deployment-level logging settings, retention defaults, purge mode, and access-control metadata relevant to execution-log operations.",
+    "query": {
+      "collection": "deployment_configs",
+      "operation": "findOne",
+      "filter": {
+        "deployment_id": "<deployment_id>"
+      },
+      "projection": {
+        "_id": 0,
+        "deployment_id": 1,
+        "deployment_name": 1,
+        "environment": 1,
+        "hosting_model": 1,
+        "logging": 1,
+        "access_control": 1,
+        "created_at": 1,
+        "updated_at": 1
+      }
+    }
+  },
+  "QP12": {
+    "id": "QP12",
+    "name": "Operational visibility into logging enabled/disabled coverage",
+    "serves": [
+      "UC5"
+    ],
+    "collections": [
+      "execution_requests",
+      "deployment_configs"
+    ],
+    "for": "Show how many requests were logged with logging enabled versus disabled by deployment/environment for operational review.",
+    "query": {
+      "collection": "execution_requests",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "request_timestamp": {
+              "$gte": "<start_date>",
+              "$lt": "<end_date>"
+            }
+          }
+        },
+        {
+          "$group": {
+            "_id": {
+              "deployment_id": "$deployment_id",
+              "logging_enabled": "$logging_enabled"
+            },
+            "request_count": {
+              "$sum": 1
+            }
+          }
+        },
+        {
+          "$lookup": {
+            "from": "deployment_configs",
+            "localField": "_id.deployment_id",
+            "foreignField": "deployment_id",
+            "as": "deployment"
+          }
+        },
+        {
+          "$unwind": {
+            "path": "$deployment",
+            "preserveNullAndEmptyArrays": true
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "deployment_id": "$_id.deployment_id",
+            "logging_enabled": "$_id.logging_enabled",
+            "request_count": 1,
+            "deployment_name": "$deployment.deployment_name",
+            "environment": "$deployment.environment",
+            "hosting_model": "$deployment.hosting_model",
+            "default_logging_enabled": "$deployment.logging.enabled"
+          }
+        },
+        {
+          "$sort": {
+            "deployment_id": 1,
+            "logging_enabled": -1
+          }
+        }
+      ]
+    }
+  }
+}
