@@ -1,0 +1,20 @@
+{
+  "correlation": {
+    "poc_id": "1790241012873",
+    "producer": "seed-validator",
+    "run_id": "run_01M3CXGK5SV60KESMVADAYPQP4",
+    "task_id": "task_01M3CXGK5SHX131TYK85CDEX12",
+    "trace_id": "trace_01M3CXGK5SV60KESMVADAYPQP4"
+  },
+  "error": {
+    "code": "VALIDATION_FAILED",
+    "detail": {
+      "failure_class": "IMPLEMENTATION_FAILURE"
+    },
+    "failure_class": "IMPLEMENTATION_FAILURE",
+    "message": "Missing declared index on dashboard_metric_snapshots: {\"metric_type\":1,\"time_granularity\":1,\"bucket_start\":1,\"product_line\":1,\"priority\":1,\"team_id\":1}",
+    "retryable": false
+  },
+  "source_commit_sha": "ca3a10ddb1f8fc6c03a53f84e801c1a2d8aef033",
+  "status": "failed"
+}
