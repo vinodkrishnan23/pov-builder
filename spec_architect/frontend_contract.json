@@ -1,0 +1,341 @@
+{
+  "app_name": "POV Builder Frontend Contract",
+  "routes": [
+    {
+      "path": "/",
+      "page_id": "triage-queue-page",
+      "title": "Triage Queue",
+      "is_default": true
+    },
+    {
+      "path": "/tickets/:ticketNumber",
+      "page_id": "ticket-triage-page",
+      "title": "Ticket Triage Detail",
+      "is_default": false
+    },
+    {
+      "path": "/fix-validations",
+      "page_id": "fix-validation-page",
+      "title": "Fix Validation",
+      "is_default": false
+    }
+  ],
+  "pages": [
+    {
+      "page_id": "triage-queue-page",
+      "route_path": "/",
+      "purpose": "Let internal triage agents view the active/recently updated ticket queue and select a ticket to triage.",
+      "primary_personas": [
+        "Internal triage agent"
+      ],
+      "data_requirements": [
+        {
+          "name": "triage_queue_tickets",
+          "description": "List of active or recently updated tickets filtered by required since_date and optional limit.",
+          "source": "API"
+        },
+        {
+          "name": "since_date_filter",
+          "description": "User-provided or app-default ISO-8601 timestamp required by the API.",
+          "source": "UI state"
+        }
+      ],
+      "api_dependencies": [
+        {
+          "operationId": "listTriageQueueTickets",
+          "method": "GET",
+          "path": "/tickets",
+          "usage": "Fetch queue tickets for display.",
+          "request_mapping": {
+            "query": {
+              "since_date": "required from UI/app default",
+              "limit": "optional from UI/app default"
+            }
+          }
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "set_since_date",
+          "description": "Adjust the lower bound timestamp for recently updated tickets."
+        },
+        {
+          "action": "set_limit",
+          "description": "Adjust maximum number of tickets returned within API bounds 1-200."
+        },
+        {
+          "action": "refresh_queue",
+          "description": "Re-fetch the queue with current filters."
+        },
+        {
+          "action": "open_ticket",
+          "description": "Navigate to /tickets/:ticketNumber for a selected ticket."
+        }
+      ],
+      "loading_states": [
+        {
+          "state": "initial_loading",
+          "description": "Show page skeleton/table loader while first queue request is in progress."
+        },
+        {
+          "state": "filter_refresh_loading",
+          "description": "Keep current rows visible with inline loading indicator while refetching after filter changes."
+        }
+      ],
+      "error_states": [
+        {
+          "state": "invalid_query",
+          "when": "API returns 400 INVALID_QUERY_PARAMETER.",
+          "ui_response": "Show inline form validation/error banner explaining since_date must be valid ISO-8601 and limit must be within bounds."
+        },
+        {
+          "state": "load_failed",
+          "when": "Queue request fails for any non-400 reason or network error.",
+          "ui_response": "Show retryable error panel."
+        },
+        {
+          "state": "empty_queue",
+          "when": "API returns count 0.",
+          "ui_response": "Show empty state indicating no tickets matched the selected since_date."
+        }
+      ],
+      "components_used": [
+        "AppShell",
+        "TopNav",
+        "PageHeader",
+        "TriageQueueFilters",
+        "TicketTable",
+        "StatusBadge",
+        "PriorityBadge",
+        "UpdatedAtCell",
+        "LoadingTableSkeleton",
+        "InlineErrorBanner",
+        "RetryPanel",
+        "EmptyStatePanel"
+      ]
+    },
+    {
+      "page_id": "ticket-triage-page",
+      "route_path": "/tickets/:ticketNumber",
+      "purpose": "Provide a destination for triaging a selected ticket, while transparently reflecting that the current backend contract does not expose ticket detail, AI guidance, similar-ticket lookup, or triage update APIs.",
+      "primary_personas": [
+        "Internal triage agent"
+      ],
+      "data_requirements": [
+        {
+          "name": "ticket_number",
+          "description": "Ticket identifier from route parameter.",
+          "source": "Route param"
+        },
+        {
+          "name": "selected_ticket_summary",
+          "description": "Optional ticket summary passed from queue navigation state only; not reload-safe.",
+          "source": "Navigation state"
+        },
+        {
+          "name": "ticket_detail",
+          "description": "Needed to support full triage workflow, but no API endpoint exists in current contract.",
+          "source": "Unavailable"
+        },
+        {
+          "name": "ai_guidance",
+          "description": "Needed for AI-assisted triage, but no API endpoint exists in current contract.",
+          "source": "Unavailable"
+        },
+        {
+          "name": "similar_tickets",
+          "description": "Needed for similar-ticket lookup, but no API endpoint exists in current contract.",
+          "source": "Unavailable"
+        }
+      ],
+      "api_dependencies": [],
+      "user_actions": [
+        {
+          "action": "return_to_queue",
+          "description": "Navigate back to the triage queue."
+        },
+        {
+          "action": "view_ticket_number",
+          "description": "See the selected ticket number and any queue summary passed in navigation state."
+        }
+      ],
+      "loading_states": [
+        {
+          "state": "no_loading_required",
+          "description": "No API-driven loading on this page under current contract."
+        }
+      ],
+      "error_states": [
+        {
+          "state": "missing_backend_capabilities",
+          "when": "User expects ticket detail, AI guidance, or similar tickets.",
+          "ui_response": "Show explicit unsupported-feature panel stating these capabilities are in POV scope but not available from the current API contract."
+        },
+        {
+          "state": "direct_navigation_without_context",
+          "when": "User lands directly on the route without navigation state.",
+          "ui_response": "Show ticket number from URL and explain that no backend detail endpoint exists to hydrate the page."
+        }
+      ],
+      "components_used": [
+        "AppShell",
+        "TopNav",
+        "PageHeader",
+        "TicketSummaryCard",
+        "UnsupportedFeaturePanel",
+        "BackLink"
+      ]
+    },
+    {
+      "page_id": "fix-validation-page",
+      "route_path": "/fix-validations",
+      "purpose": "Represent the fix-validation use case in navigation, while making clear that the current API contract exposes no endpoints to list fixes, create validations, configure timeout margin, or view validation results.",
+      "primary_personas": [
+        "Engineer or QA validator"
+      ],
+      "data_requirements": [
+        {
+          "name": "fixes",
+          "description": "Would be needed to choose a fix to validate, but no endpoint exists.",
+          "source": "Unavailable"
+        },
+        {
+          "name": "fix_validation_runs",
+          "description": "Would be needed to review or initiate validations, but no endpoint exists.",
+          "source": "Unavailable"
+        },
+        {
+          "name": "timeout_margin_settings",
+          "description": "Would be needed to support generous timeout margin configuration, but no endpoint exists.",
+          "source": "Unavailable"
+        }
+      ],
+      "api_dependencies": [],
+      "user_actions": [
+        {
+          "action": "read_scope_note",
+          "description": "Review message about missing backend support for this workflow."
+        },
+        {
+          "action": "navigate_to_queue",
+          "description": "Optionally return to triage queue."
+        }
+      ],
+      "loading_states": [
+        {
+          "state": "no_loading_required",
+          "description": "No fetches possible with current API contract."
+        }
+      ],
+      "error_states": [
+        {
+          "state": "workflow_not_implementable",
+          "when": "User attempts to perform fix validation tasks.",
+          "ui_response": "Show unsupported-feature panel enumerating missing API endpoints for fixes and fix_validations."
+        }
+      ],
+      "components_used": [
+        "AppShell",
+        "TopNav",
+        "PageHeader",
+        "UnsupportedFeaturePanel",
+        "BackLink"
+      ]
+    }
+  ],
+  "components": [
+    {
+      "component_id": "AppShell",
+      "type": "layout",
+      "description": "Global application frame with navigation and page content area."
+    },
+    {
+      "component_id": "TopNav",
+      "type": "navigation",
+      "description": "Top-level navigation linking to Triage Queue and Fix Validation."
+    },
+    {
+      "component_id": "PageHeader",
+      "type": "display",
+      "description": "Consistent page title and description area."
+    },
+    {
+      "component_id": "TriageQueueFilters",
+      "type": "form",
+      "description": "Controls for since_date and limit with client-side validation matching API rules."
+    },
+    {
+      "component_id": "TicketTable",
+      "type": "data_display",
+      "description": "Tabular list of tickets with clickable rows."
+    },
+    {
+      "component_id": "StatusBadge",
+      "type": "data_display",
+      "description": "Displays ticket status."
+    },
+    {
+      "component_id": "PriorityBadge",
+      "type": "data_display",
+      "description": "Displays priority, including null-safe fallback."
+    },
+    {
+      "component_id": "UpdatedAtCell",
+      "type": "data_display",
+      "description": "Formats updated_at timestamps."
+    },
+    {
+      "component_id": "LoadingTableSkeleton",
+      "type": "feedback",
+      "description": "Skeleton rows shown while ticket list loads."
+    },
+    {
+      "component_id": "InlineErrorBanner",
+      "type": "feedback",
+      "description": "Inline validation or API error messaging."
+    },
+    {
+      "component_id": "RetryPanel",
+      "type": "feedback",
+      "description": "Error panel with retry action."
+    },
+    {
+      "component_id": "EmptyStatePanel",
+      "type": "feedback",
+      "description": "Empty-result state for no matching tickets."
+    },
+    {
+      "component_id": "TicketSummaryCard",
+      "type": "data_display",
+      "description": "Shows basic ticket information if passed from queue navigation state."
+    },
+    {
+      "component_id": "UnsupportedFeaturePanel",
+      "type": "feedback",
+      "description": "Explains that a user story is in POV scope but not implementable with current API exposure."
+    },
+    {
+      "component_id": "BackLink",
+      "type": "navigation",
+      "description": "Simple return navigation link/button."
+    }
+  ],
+  "constraints": [
+    {
+      "type": "api_authority",
+      "description": "Frontend must only call endpoints present in the API contract. No ticket detail, AI guidance, similar-ticket lookup, fix, or fix_validation endpoints currently exist."
+    },
+    {
+      "type": "required_query_parameter",
+      "description": "GET /tickets requires since_date; frontend must always supply it."
+    },
+    {
+      "type": "query_validation",
+      "description": "limit must stay within 1-200; since_date must be valid ISO-8601 date-time."
+    },
+    {
+      "type": "graceful_scope_gap_handling",
+      "description": "Where POV scope exceeds API support, UI must communicate unsupported capability rather than implying functionality."
+    }
+  ]
+}
