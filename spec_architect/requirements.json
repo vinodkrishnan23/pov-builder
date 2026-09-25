@@ -1,0 +1,537 @@
+{
+  "metadata": {
+    "source": "InitialPOVSpec + authoritative data model + query patterns + API contract + frontend contract",
+    "note": "The InitialPOVSpec contains no substantive business/domain requirements; traceability therefore centers on intake completeness review, clarification management, and operational triage workflows explicitly supported by the designed artifacts."
+  },
+  "initial_spec_traceability": {
+    "executive_summary_capture": {
+      "initial_spec_source": [
+        "executive_summary"
+      ],
+      "description": "Persist the incomplete intake context and its summary for later review.",
+      "collections": [
+        "pov_intake"
+      ],
+      "fields": [
+        "executive_summary",
+        "raw_initial_pov_spec",
+        "review_result",
+        "source_note",
+        "created_at",
+        "updated_at"
+      ],
+      "query_patterns": [
+        "qp_list_recent_intakes",
+        "qp_get_intake_detail"
+      ],
+      "api_endpoints": [
+        "createPovIntake",
+        "listRecentPovIntakes",
+        "getPovIntakeDetail",
+        "updatePovIntake"
+      ],
+      "frontend_pages": [
+        "new_intake",
+        "recent_intakes",
+        "dashboard",
+        "intake_detail"
+      ]
+    },
+    "open_questions_management": {
+      "initial_spec_source": [
+        "open_questions"
+      ],
+      "description": "Track clarification questions arising from incomplete source material and expose them for single-intake and cross-intake review.",
+      "collections": [
+        "pov_intake"
+      ],
+      "fields": [
+        "open_questions",
+        "status",
+        "updated_at",
+        "executive_summary"
+      ],
+      "query_patterns": [
+        "qp_list_open_questions_for_intake",
+        "qp_list_unresolved_questions_across_intakes",
+        "qp_list_intakes_by_status",
+        "qp_get_intake_detail"
+      ],
+      "api_endpoints": [
+        "createPovIntake",
+        "listPovIntakesByStatus",
+        "getPovIntakeDetail",
+        "updatePovIntake",
+        "listOpenQuestionsForIntake",
+        "listUnresolvedQuestionsAcrossIntakes"
+      ],
+      "frontend_pages": [
+        "new_intake",
+        "status_queue",
+        "intake_detail",
+        "intake_open_questions",
+        "unresolved_questions"
+      ]
+    },
+    "assumptions_capture": {
+      "initial_spec_source": [
+        "assumptions"
+      ],
+      "description": "Persist documented assumptions even when the source intake is incomplete.",
+      "collections": [
+        "pov_intake"
+      ],
+      "fields": [
+        "assumptions"
+      ],
+      "query_patterns": [
+        "qp_get_intake_detail"
+      ],
+      "api_endpoints": [
+        "createPovIntake",
+        "getPovIntakeDetail",
+        "updatePovIntake"
+      ],
+      "frontend_pages": [
+        "new_intake",
+        "intake_detail"
+      ]
+    },
+    "success_criteria_capture": {
+      "initial_spec_source": [
+        "success_criteria"
+      ],
+      "description": "Persist any success criteria provided, even if empty in the current source.",
+      "collections": [
+        "pov_intake"
+      ],
+      "fields": [
+        "success_criteria"
+      ],
+      "query_patterns": [
+        "qp_get_intake_detail"
+      ],
+      "api_endpoints": [
+        "createPovIntake",
+        "getPovIntakeDetail",
+        "updatePovIntake"
+      ],
+      "frontend_pages": [
+        "new_intake",
+        "intake_detail"
+      ]
+    },
+    "workflow_status_tracking": {
+      "initial_spec_source": [
+        "approved_requirements",
+        "open_questions",
+        "executive_summary"
+      ],
+      "description": "Classify each intake as `incomplete`, `needs_clarification`, or `ready_for_redesign` for operational workflow management.",
+      "collections": [
+        "pov_intake"
+      ],
+      "fields": [
+        "status",
+        "updated_at",
+        "created_at"
+      ],
+      "query_patterns": [
+        "qp_list_intakes_by_status",
+        "qp_summary_counts_by_status",
+        "qp_list_recent_intakes",
+        "qp_list_unresolved_questions_across_intakes"
+      ],
+      "api_endpoints": [
+        "createPovIntake",
+        "listRecentPovIntakes",
+        "listPovIntakesByStatus",
+        "getPovIntakeStatusSummary",
+        "updatePovIntake"
+      ],
+      "frontend_pages": [
+        "dashboard",
+        "recent_intakes",
+        "status_queue",
+        "intake_detail",
+        "intake_open_questions",
+        "unresolved_questions"
+      ]
+    },
+    "raw_artifact_preservation": {
+      "initial_spec_source": [
+        "raw InitialPOVSpec object implied by provided artifact"
+      ],
+      "description": "Store the original intake artifact exactly as provided so reviewers can inspect the source material later.",
+      "collections": [
+        "pov_intake"
+      ],
+      "fields": [
+        "raw_initial_pov_spec",
+        "review_result"
+      ],
+      "query_patterns": [
+        "qp_get_intake_detail"
+      ],
+      "api_endpoints": [
+        "createPovIntake",
+        "getPovIntakeDetail",
+        "updatePovIntake"
+      ],
+      "frontend_pages": [
+        "new_intake",
+        "intake_detail"
+      ]
+    },
+    "operational_review_of_recent_submissions": {
+      "initial_spec_source": [
+        "executive_summary",
+        "open_questions"
+      ],
+      "description": "Support operational triage of newly submitted or recently updated intake artifacts.",
+      "collections": [
+        "pov_intake"
+      ],
+      "fields": [
+        "executive_summary",
+        "status",
+        "created_at",
+        "updated_at",
+        "source_note"
+      ],
+      "query_patterns": [
+        "qp_list_recent_intakes",
+        "qp_summary_counts_by_status"
+      ],
+      "api_endpoints": [
+        "listRecentPovIntakes",
+        "getPovIntakeStatusSummary"
+      ],
+      "frontend_pages": [
+        "dashboard",
+        "recent_intakes"
+      ]
+    },
+    "clarification_queue_across_records": {
+      "initial_spec_source": [
+        "open_questions"
+      ],
+      "description": "Expose unresolved clarification work across all incomplete or clarification-needed records.",
+      "collections": [
+        "pov_intake"
+      ],
+      "fields": [
+        "status",
+        "open_questions",
+        "updated_at",
+        "executive_summary"
+      ],
+      "query_patterns": [
+        "qp_list_unresolved_questions_across_intakes"
+      ],
+      "api_endpoints": [
+        "listUnresolvedQuestionsAcrossIntakes"
+      ],
+      "frontend_pages": [
+        "unresolved_questions"
+      ]
+    },
+    "intake_lifecycle_administration": {
+      "initial_spec_source": [
+        "executive_summary",
+        "open_questions"
+      ],
+      "description": "Allow reviewers to create, update, and delete intake records representing incomplete POV submissions.",
+      "collections": [
+        "pov_intake"
+      ],
+      "fields": [
+        "_id",
+        "executive_summary",
+        "raw_initial_pov_spec",
+        "review_result",
+        "status",
+        "open_questions",
+        "assumptions",
+        "success_criteria",
+        "source_note",
+        "created_at",
+        "updated_at"
+      ],
+      "query_patterns": [
+        "qp_get_intake_detail"
+      ],
+      "api_endpoints": [
+        "createPovIntake",
+        "getPovIntakeDetail",
+        "updatePovIntake",
+        "deletePovIntake"
+      ],
+      "frontend_pages": [
+        "new_intake",
+        "intake_detail"
+      ]
+    }
+  },
+  "initial_spec_gaps": {
+    "business_problem": {
+      "provided": false,
+      "supported_artifacts": [],
+      "note": "No business problem content was provided in InitialPOVSpec, so no domain requirement traceability exists."
+    },
+    "current_state": {
+      "provided": false,
+      "supported_artifacts": [],
+      "note": "No current-state requirement was available to map."
+    },
+    "desired_future_state": {
+      "provided": false,
+      "supported_artifacts": [],
+      "note": "No future-state requirement was available to map."
+    },
+    "business_objectives": {
+      "provided": false,
+      "supported_artifacts": [],
+      "note": "Empty in InitialPOVSpec."
+    },
+    "personas": {
+      "provided": false,
+      "supported_artifacts": [],
+      "note": "No personas were provided; UI/API are therefore framed generically around reviewer/operator usage."
+    },
+    "user_journeys": {
+      "provided": false,
+      "supported_artifacts": [],
+      "note": "No explicit journeys in InitialPOVSpec; workflows are inferred only from the authoritative artifacts."
+    },
+    "use_cases": {
+      "provided": false,
+      "supported_artifacts": [],
+      "note": "No explicit use cases were provided."
+    },
+    "functional_requirements": {
+      "provided": false,
+      "supported_artifacts": [],
+      "note": "No formal functional requirements were present beyond handling the incomplete intake artifact."
+    },
+    "ai_genai_requirements": {
+      "provided": false,
+      "supported_artifacts": [],
+      "note": "No AI/GenAI behavior is authoritatively specified."
+    },
+    "business_entities": {
+      "provided": false,
+      "supported_artifacts": [],
+      "note": "No domain entities beyond the intake artifact are justified."
+    },
+    "integrations": {
+      "provided": false,
+      "supported_artifacts": [],
+      "note": "No third-party integrations were provided."
+    },
+    "mongodb_atlas_opportunities": {
+      "provided": false,
+      "supported_artifacts": [],
+      "note": "No specific Atlas feature requirements were stated beyond basic persistence."
+    },
+    "pov_scope": {
+      "provided": false,
+      "supported_artifacts": [],
+      "note": "Scope is effectively constrained by the designed artifacts to intake/review workflow only."
+    },
+    "success_criteria": {
+      "provided": true,
+      "supported_artifacts": [
+        "pov_intake.success_criteria field",
+        "createPovIntake",
+        "getPovIntakeDetail",
+        "updatePovIntake",
+        "new_intake",
+        "intake_detail"
+      ],
+      "note": "The field exists and is persisted, but the supplied InitialPOVSpec contained no actual success criteria values."
+    }
+  },
+  "artifact_crosswalk": {
+    "collections": {
+      "pov_intake": {
+        "supports_requirements": [
+          "executive_summary_capture",
+          "open_questions_management",
+          "assumptions_capture",
+          "success_criteria_capture",
+          "workflow_status_tracking",
+          "raw_artifact_preservation",
+          "operational_review_of_recent_submissions",
+          "clarification_queue_across_records",
+          "intake_lifecycle_administration"
+        ]
+      }
+    },
+    "query_patterns": {
+      "qp_list_recent_intakes": {
+        "supports_requirements": [
+          "executive_summary_capture",
+          "workflow_status_tracking",
+          "operational_review_of_recent_submissions"
+        ]
+      },
+      "qp_list_intakes_by_status": {
+        "supports_requirements": [
+          "open_questions_management",
+          "workflow_status_tracking"
+        ]
+      },
+      "qp_get_intake_detail": {
+        "supports_requirements": [
+          "executive_summary_capture",
+          "open_questions_management",
+          "assumptions_capture",
+          "success_criteria_capture",
+          "raw_artifact_preservation",
+          "intake_lifecycle_administration"
+        ]
+      },
+      "qp_list_open_questions_for_intake": {
+        "supports_requirements": [
+          "open_questions_management"
+        ]
+      },
+      "qp_list_unresolved_questions_across_intakes": {
+        "supports_requirements": [
+          "open_questions_management",
+          "workflow_status_tracking",
+          "clarification_queue_across_records"
+        ]
+      },
+      "qp_summary_counts_by_status": {
+        "supports_requirements": [
+          "workflow_status_tracking",
+          "operational_review_of_recent_submissions"
+        ]
+      }
+    },
+    "api_endpoints": {
+      "createPovIntake": {
+        "supports_requirements": [
+          "executive_summary_capture",
+          "open_questions_management",
+          "assumptions_capture",
+          "success_criteria_capture",
+          "workflow_status_tracking",
+          "raw_artifact_preservation",
+          "intake_lifecycle_administration"
+        ]
+      },
+      "listRecentPovIntakes": {
+        "supports_requirements": [
+          "executive_summary_capture",
+          "workflow_status_tracking",
+          "operational_review_of_recent_submissions"
+        ]
+      },
+      "listPovIntakesByStatus": {
+        "supports_requirements": [
+          "open_questions_management",
+          "workflow_status_tracking"
+        ]
+      },
+      "getPovIntakeDetail": {
+        "supports_requirements": [
+          "executive_summary_capture",
+          "open_questions_management",
+          "assumptions_capture",
+          "success_criteria_capture",
+          "raw_artifact_preservation",
+          "intake_lifecycle_administration"
+        ]
+      },
+      "updatePovIntake": {
+        "supports_requirements": [
+          "executive_summary_capture",
+          "open_questions_management",
+          "assumptions_capture",
+          "success_criteria_capture",
+          "workflow_status_tracking",
+          "raw_artifact_preservation",
+          "intake_lifecycle_administration"
+        ]
+      },
+      "listOpenQuestionsForIntake": {
+        "supports_requirements": [
+          "open_questions_management"
+        ]
+      },
+      "listUnresolvedQuestionsAcrossIntakes": {
+        "supports_requirements": [
+          "open_questions_management",
+          "clarification_queue_across_records"
+        ]
+      },
+      "getPovIntakeStatusSummary": {
+        "supports_requirements": [
+          "workflow_status_tracking",
+          "operational_review_of_recent_submissions"
+        ]
+      },
+      "deletePovIntake": {
+        "supports_requirements": [
+          "intake_lifecycle_administration"
+        ]
+      }
+    },
+    "frontend_pages": {
+      "dashboard": {
+        "supports_requirements": [
+          "workflow_status_tracking",
+          "operational_review_of_recent_submissions"
+        ]
+      },
+      "recent_intakes": {
+        "supports_requirements": [
+          "executive_summary_capture",
+          "operational_review_of_recent_submissions"
+        ]
+      },
+      "new_intake": {
+        "supports_requirements": [
+          "executive_summary_capture",
+          "open_questions_management",
+          "assumptions_capture",
+          "success_criteria_capture",
+          "workflow_status_tracking",
+          "raw_artifact_preservation",
+          "intake_lifecycle_administration"
+        ]
+      },
+      "status_queue": {
+        "supports_requirements": [
+          "open_questions_management",
+          "workflow_status_tracking"
+        ]
+      },
+      "intake_detail": {
+        "supports_requirements": [
+          "executive_summary_capture",
+          "open_questions_management",
+          "assumptions_capture",
+          "success_criteria_capture",
+          "workflow_status_tracking",
+          "raw_artifact_preservation",
+          "intake_lifecycle_administration"
+        ]
+      },
+      "intake_open_questions": {
+        "supports_requirements": [
+          "open_questions_management"
+        ]
+      },
+      "unresolved_questions": {
+        "supports_requirements": [
+          "open_questions_management",
+          "clarification_queue_across_records"
+        ]
+      }
+    }
+  }
+}
