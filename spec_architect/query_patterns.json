@@ -1,0 +1,311 @@
+{
+  "qp1_get_review_by_id": {
+    "id": "qp1_get_review_by_id",
+    "name": "Get polling architecture review by id",
+    "serves": [
+      "bo1",
+      "fr1"
+    ],
+    "collections": [
+      "polling_architecture_reviews"
+    ],
+    "query": {
+      "collection": "polling_architecture_reviews",
+      "operation": "findOne",
+      "filter": {
+        "_id": "<reviewId>"
+      },
+      "projection": {
+        "title": 1,
+        "architecture_type": 1,
+        "status": 1,
+        "summary": 1,
+        "validation_notes": 1,
+        "vector_search_recommendation": 1,
+        "open_questions": 1,
+        "created_at": 1,
+        "updated_at": 1
+      }
+    },
+    "purpose": "Retrieve the full review record for a specific polling architecture validation effort."
+  },
+  "qp2_list_reviews_by_status": {
+    "id": "qp2_list_reviews_by_status",
+    "name": "List polling architecture reviews by status",
+    "serves": [
+      "bo1",
+      "fr1"
+    ],
+    "collections": [
+      "polling_architecture_reviews"
+    ],
+    "query": {
+      "collection": "polling_architecture_reviews",
+      "operation": "find",
+      "filter": {
+        "status": "<status>"
+      },
+      "projection": {
+        "title": 1,
+        "architecture_type": 1,
+        "status": 1,
+        "summary": 1,
+        "vector_search_recommendation.fit_status": 1,
+        "updated_at": 1
+      },
+      "sort": {
+        "updated_at": -1
+      },
+      "limit": "<pageSize>"
+    },
+    "purpose": "List review efforts filtered by lifecycle state such as in_review or validated."
+  },
+  "qp3_list_recent_reviews": {
+    "id": "qp3_list_recent_reviews",
+    "name": "List recent polling architecture reviews",
+    "serves": [
+      "bo1",
+      "fr1"
+    ],
+    "collections": [
+      "polling_architecture_reviews"
+    ],
+    "query": {
+      "collection": "polling_architecture_reviews",
+      "operation": "find",
+      "filter": {},
+      "projection": {
+        "title": 1,
+        "architecture_type": 1,
+        "status": 1,
+        "summary": 1,
+        "updated_at": 1
+      },
+      "sort": {
+        "updated_at": -1
+      },
+      "limit": "<pageSize>"
+    },
+    "purpose": "Show the most recently updated polling architecture reviews being validated."
+  },
+  "qp4_search_review_notes_text": {
+    "id": "qp4_search_review_notes_text",
+    "name": "Search validation notes and summary text",
+    "serves": [
+      "bo1",
+      "fr1"
+    ],
+    "collections": [
+      "polling_architecture_reviews"
+    ],
+    "query": {
+      "collection": "polling_architecture_reviews",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "$or": [
+              {
+                "summary": {
+                  "$regex": "<searchText>",
+                  "$options": "i"
+                }
+              },
+              {
+                "validation_notes.note": {
+                  "$regex": "<searchText>",
+                  "$options": "i"
+                }
+              },
+              {
+                "open_questions": {
+                  "$regex": "<searchText>",
+                  "$options": "i"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "$project": {
+            "title": 1,
+            "architecture_type": 1,
+            "status": 1,
+            "summary": 1,
+            "validation_notes": 1,
+            "open_questions": 1,
+            "updated_at": 1
+          }
+        },
+        {
+          "$sort": {
+            "updated_at": -1
+          }
+        },
+        {
+          "$limit": "<pageSize>"
+        }
+      ]
+    },
+    "purpose": "Find reviews containing relevant keywords in summaries, validation notes, or open questions."
+  },
+  "qp5_get_reviews_with_vector_search_recommendation": {
+    "id": "qp5_get_reviews_with_vector_search_recommendation",
+    "name": "List reviews with Atlas Vector Search recommendation status",
+    "serves": [
+      "ai1",
+      "ma1"
+    ],
+    "collections": [
+      "polling_architecture_reviews"
+    ],
+    "query": {
+      "collection": "polling_architecture_reviews",
+      "operation": "find",
+      "filter": {
+        "vector_search_recommendation.suggested": true
+      },
+      "projection": {
+        "title": 1,
+        "status": 1,
+        "vector_search_recommendation": 1,
+        "updated_at": 1
+      },
+      "sort": {
+        "updated_at": -1
+      }
+    },
+    "purpose": "Identify review efforts where Atlas Vector Search was suggested and inspect recommendation fit status."
+  },
+  "qp6_vector_search_knowledge_chunks": {
+    "id": "qp6_vector_search_knowledge_chunks",
+    "name": "Semantic search across knowledge chunks",
+    "serves": [
+      "ai1",
+      "ma1"
+    ],
+    "collections": [
+      "knowledge_chunks"
+    ],
+    "query": {
+      "collection": "knowledge_chunks",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$vectorSearch": {
+            "index": "knowledge_chunks_vector_index",
+            "path": "embedding",
+            "queryVector": "<embeddingVector>",
+            "numCandidates": "<numCandidates>",
+            "limit": "<limit>",
+            "filter": {
+              "review_id": "<optionalReviewId>"
+            }
+          }
+        },
+        {
+          "$project": {
+            "review_id": 1,
+            "source_type": 1,
+            "source_id": 1,
+            "title": 1,
+            "content": 1,
+            "metadata": 1,
+            "score": {
+              "$meta": "vectorSearchScore"
+            }
+          }
+        }
+      ]
+    },
+    "purpose": "Use Atlas Vector Search to retrieve semantically similar content supporting the architecture review POV."
+  },
+  "qp7_get_review_with_supporting_chunks": {
+    "id": "qp7_get_review_with_supporting_chunks",
+    "name": "Get review with linked knowledge chunks",
+    "serves": [
+      "bo1",
+      "ai1"
+    ],
+    "collections": [
+      "polling_architecture_reviews",
+      "knowledge_chunks"
+    ],
+    "query": {
+      "collection": "polling_architecture_reviews",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "_id": "<reviewId>"
+          }
+        },
+        {
+          "$lookup": {
+            "from": "knowledge_chunks",
+            "localField": "_id",
+            "foreignField": "review_id",
+            "as": "supporting_chunks"
+          }
+        },
+        {
+          "$project": {
+            "title": 1,
+            "architecture_type": 1,
+            "status": 1,
+            "summary": 1,
+            "validation_notes": 1,
+            "vector_search_recommendation": 1,
+            "open_questions": 1,
+            "supporting_chunks.source_type": 1,
+            "supporting_chunks.source_id": 1,
+            "supporting_chunks.title": 1,
+            "supporting_chunks.content": 1,
+            "supporting_chunks.metadata": 1,
+            "created_at": 1,
+            "updated_at": 1
+          }
+        }
+      ]
+    },
+    "purpose": "Retrieve one architecture review together with any linked knowledge chunks used to support validation."
+  },
+  "qp8_summarize_review_statuses": {
+    "id": "qp8_summarize_review_statuses",
+    "name": "Summarize review counts by status",
+    "serves": [
+      "bo1",
+      "fr1"
+    ],
+    "collections": [
+      "polling_architecture_reviews"
+    ],
+    "query": {
+      "collection": "polling_architecture_reviews",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$group": {
+            "_id": "$status",
+            "count": {
+              "$sum": 1
+            }
+          }
+        },
+        {
+          "$project": {
+            "status": "$_id",
+            "count": 1,
+            "_id": 0
+          }
+        },
+        {
+          "$sort": {
+            "count": -1
+          }
+        }
+      ]
+    },
+    "purpose": "Provide a status distribution of polling architecture reviews for quick progress tracking."
+  }
+}
