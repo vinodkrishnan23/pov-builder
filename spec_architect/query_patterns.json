@@ -1,0 +1,183 @@
+{
+  "qp_list_recent_intakes": {
+    "id": "qp_list_recent_intakes",
+    "name": "List recent POV intake submissions",
+    "serves": "Traceable only to the provided intake artifact context and need to review incomplete submissions; no explicit use case/user story exists in InitialPOVSpec.",
+    "collections": [
+      "pov_intake"
+    ],
+    "for": "Retrieve recent POV intake records for operational review.",
+    "query": {
+      "collection": "pov_intake",
+      "operation": "find",
+      "filter": {},
+      "projection": {
+        "executive_summary": 1,
+        "status": 1,
+        "created_at": 1,
+        "updated_at": 1,
+        "source_note": 1
+      },
+      "sort": {
+        "created_at": -1
+      },
+      "limit": 50
+    }
+  },
+  "qp_list_intakes_by_status": {
+    "id": "qp_list_intakes_by_status",
+    "name": "List POV intakes by status",
+    "serves": "Traceable to the need implied by open_questions/review context to manage incomplete and clarification-needed POVs; no explicit use case/user story exists in InitialPOVSpec.",
+    "collections": [
+      "pov_intake"
+    ],
+    "for": "Retrieve POV intake records filtered by workflow status, most recently updated first.",
+    "query": {
+      "collection": "pov_intake",
+      "operation": "find",
+      "filter": {
+        "status": "<status>"
+      },
+      "projection": {
+        "executive_summary": 1,
+        "status": 1,
+        "updated_at": 1,
+        "open_questions": 1
+      },
+      "sort": {
+        "updated_at": -1
+      },
+      "limit": 50
+    }
+  },
+  "qp_get_intake_detail": {
+    "id": "qp_get_intake_detail",
+    "name": "Get POV intake detail",
+    "serves": "Traceable to the provided incomplete intake artifact and open questions requiring detailed review; no explicit use case/user story exists in InitialPOVSpec.",
+    "collections": [
+      "pov_intake"
+    ],
+    "for": "Fetch the full intake record, including raw spec, review result, assumptions, open questions, and success criteria, for a single POV submission.",
+    "query": {
+      "collection": "pov_intake",
+      "operation": "findOne",
+      "filter": {
+        "_id": "<pov_intake_id>"
+      }
+    }
+  },
+  "qp_list_open_questions_for_intake": {
+    "id": "qp_list_open_questions_for_intake",
+    "name": "List open questions for a POV intake",
+    "serves": "Traceable to InitialPOVSpec.open_questions.",
+    "collections": [
+      "pov_intake"
+    ],
+    "for": "Return only the open questions and their statuses for a specific intake so reviewers can see what clarification is still needed.",
+    "query": {
+      "collection": "pov_intake",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "_id": "<pov_intake_id>"
+          }
+        },
+        {
+          "$project": {
+            "_id": 1,
+            "status": 1,
+            "open_questions": 1
+          }
+        }
+      ]
+    }
+  },
+  "qp_list_unresolved_questions_across_intakes": {
+    "id": "qp_list_unresolved_questions_across_intakes",
+    "name": "List unresolved clarification questions across POV intakes",
+    "serves": "Traceable to InitialPOVSpec.open_questions and the authoritative embedded open_questions model.",
+    "collections": [
+      "pov_intake"
+    ],
+    "for": "Find all open questions still unresolved across incomplete or clarification-needed POV submissions.",
+    "query": {
+      "collection": "pov_intake",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "status": {
+              "$in": [
+                "incomplete",
+                "needs_clarification"
+              ]
+            }
+          }
+        },
+        {
+          "$unwind": "$open_questions"
+        },
+        {
+          "$match": {
+            "open_questions.status": {
+              "$ne": "resolved"
+            }
+          }
+        },
+        {
+          "$project": {
+            "pov_intake_id": "$_id",
+            "executive_summary": 1,
+            "intake_status": "$status",
+            "updated_at": 1,
+            "question": "$open_questions.question",
+            "category": "$open_questions.category",
+            "question_status": "$open_questions.status",
+            "notes": "$open_questions.notes"
+          }
+        },
+        {
+          "$sort": {
+            "updated_at": -1
+          }
+        }
+      ]
+    }
+  },
+  "qp_summary_counts_by_status": {
+    "id": "qp_summary_counts_by_status",
+    "name": "Summarize POV intakes by status",
+    "serves": "Traceable to the review workflow implied by the intake artifact status field in the authoritative data model; no explicit use case/user story exists in InitialPOVSpec.",
+    "collections": [
+      "pov_intake"
+    ],
+    "for": "Provide an operational summary of how many POV intakes are incomplete, need clarification, or are ready for redesign.",
+    "query": {
+      "collection": "pov_intake",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$group": {
+            "_id": "$status",
+            "count": {
+              "$sum": 1
+            }
+          }
+        },
+        {
+          "$project": {
+            "status": "$_id",
+            "count": 1,
+            "_id": 0
+          }
+        },
+        {
+          "$sort": {
+            "status": 1
+          }
+        }
+      ]
+    }
+  }
+}
