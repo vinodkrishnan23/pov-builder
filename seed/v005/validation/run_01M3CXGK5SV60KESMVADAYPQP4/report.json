@@ -1,0 +1,37 @@
+{
+  "caps": {
+    "dashboard_metric_snapshots": 1,
+    "support_teams": 1,
+    "tickets": 1
+  },
+  "correlation": {
+    "poc_id": "1790241012873",
+    "producer": "seed-validator",
+    "run_id": "run_01M3CXGK5SV60KESMVADAYPQP4",
+    "task_id": "task_01M3CXGK5SHX131TYK85CDEX12",
+    "trace_id": "trace_01M3CXGK5SV60KESMVADAYPQP4"
+  },
+  "database_name": "1790241012873_72973559a8c0aece64c9",
+  "query_validation": {
+    "read_operations_executed": 4,
+    "runtime_executed": 6,
+    "static_vector_validated": 1,
+    "write_operations_executed": 2
+  },
+  "search_index_validation": {
+    "created": [
+      {
+        "collection": "tickets",
+        "name": "ticket_embedding_vector"
+      }
+    ]
+  },
+  "seed_summary": {
+    "dashboard_metric_snapshots": 1,
+    "support_teams": 1,
+    "tickets": 1
+  },
+  "source_commit_sha": "c0ba0e1893fb2c7b0bcd262da02476e87b602c54",
+  "status": "succeeded",
+  "target_database_name": "1790241012873"
+}
