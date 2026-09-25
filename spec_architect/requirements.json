@@ -1,0 +1,986 @@
+{
+  "business_objectives": {
+    "bo1": {
+      "description": "Control rapid growth of execution-log data and avoid uncontrolled database size expansion.",
+      "collections": [
+        "customers",
+        "execution_requests",
+        "execution_steps"
+      ],
+      "query_patterns": [
+        "qp8_customer_logging_configuration_lookup"
+      ],
+      "api_endpoints": [
+        "getCustomerLoggingConfig",
+        "updateCustomerLoggingConfig",
+        "createExecutionRequest",
+        "appendExecutionStep"
+      ],
+      "frontend_pages": [
+        "loggingConfigurationPage"
+      ]
+    },
+    "bo2": {
+      "description": "Enable analytics on rule execution data to understand policy impact, such as changes in approval rates after rule-definition changes.",
+      "collections": [
+        "policy_definitions",
+        "execution_requests",
+        "execution_steps"
+      ],
+      "query_patterns": [
+        "qp4_compare_policy_versions_outcomes",
+        "qp5_rule_level_comparison_between_policy_versions"
+      ],
+      "api_endpoints": [
+        "comparePolicyVersionOutcomes",
+        "comparePolicyVersionRules",
+        "getPolicyDefinition",
+        "listPolicyDefinitions"
+      ],
+      "frontend_pages": [
+        "policyComparisonSetupPage",
+        "policyComparisonResultsPage",
+        "policyDefinitionListPage",
+        "policyDefinitionDetailPage"
+      ]
+    },
+    "bo3": {
+      "description": "Provide reports and dashboards over execution-log data for business users to derive insights and improve solutions.",
+      "collections": [
+        "execution_requests",
+        "execution_steps",
+        "policy_definitions"
+      ],
+      "query_patterns": [
+        "qp6_dashboard_request_outcomes_timeseries",
+        "qp7_dashboard_rule_performance_summary",
+        "qp10_request_channel_and_source_summary"
+      ],
+      "api_endpoints": [
+        "getRequestOutcomesTimeseries",
+        "getRulePerformanceSummary",
+        "getChannelSourceSummary",
+        "listPolicyDefinitions"
+      ],
+      "frontend_pages": [
+        "dashboardOverviewPage"
+      ]
+    },
+    "bo4": {
+      "description": "Demonstrate MongoDB value for this use case so Newgen can internally validate fit, then pursue productization and go-to-market if successful.",
+      "collections": [
+        "customers",
+        "policy_definitions",
+        "execution_requests",
+        "execution_steps",
+        "admin_users"
+      ],
+      "query_patterns": [
+        "qp1_get_request_audit_trail",
+        "qp2_list_requests_with_filters",
+        "qp3_search_steps_by_rule_or_payload",
+        "qp4_compare_policy_versions_outcomes",
+        "qp5_rule_level_comparison_between_policy_versions",
+        "qp6_dashboard_request_outcomes_timeseries",
+        "qp7_dashboard_rule_performance_summary",
+        "qp8_customer_logging_configuration_lookup",
+        "qp9_authorize_log_viewer",
+        "qp10_request_channel_and_source_summary"
+      ],
+      "api_endpoints": [
+        "authorizeLogViewer",
+        "getCustomerLoggingConfig",
+        "updateCustomerLoggingConfig",
+        "getRequestAuditTrail",
+        "listExecutionRequests",
+        "searchExecutionSteps",
+        "comparePolicyVersionOutcomes",
+        "comparePolicyVersionRules",
+        "getRequestOutcomesTimeseries",
+        "getRulePerformanceSummary",
+        "getChannelSourceSummary",
+        "getPolicyDefinition",
+        "listPolicyDefinitions",
+        "createExecutionRequest",
+        "appendExecutionStep",
+        "updateExecutionRequestStatus"
+      ],
+      "frontend_pages": [
+        "requestSearchPage",
+        "requestAuditTrailPage",
+        "executionStepSearchPage",
+        "policyComparisonSetupPage",
+        "policyComparisonResultsPage",
+        "dashboardOverviewPage",
+        "policyDefinitionListPage",
+        "policyDefinitionDetailPage",
+        "loggingConfigurationPage"
+      ]
+    }
+  },
+  "functional_requirements": {
+    "fr1": {
+      "description": "Capture detailed execution logs for each request, including the data passed, outcomes, and rule-level execution steps for auditability.",
+      "collections": [
+        "execution_requests",
+        "execution_steps"
+      ],
+      "query_patterns": [
+        "qp1_get_request_audit_trail"
+      ],
+      "api_endpoints": [
+        "createExecutionRequest",
+        "appendExecutionStep",
+        "updateExecutionRequestStatus",
+        "getRequestAuditTrail"
+      ],
+      "frontend_pages": [
+        "requestAuditTrailPage"
+      ]
+    },
+    "fr2": {
+      "description": "Store both JSON input and JSON output for each logged execution record.",
+      "collections": [
+        "execution_requests",
+        "execution_steps"
+      ],
+      "query_patterns": [
+        "qp1_get_request_audit_trail"
+      ],
+      "api_endpoints": [
+        "createExecutionRequest",
+        "appendExecutionStep",
+        "updateExecutionRequestStatus",
+        "getRequestAuditTrail"
+      ],
+      "frontend_pages": [
+        "requestAuditTrailPage"
+      ]
+    },
+    "fr3": {
+      "description": "Support multiple log records per request, with one record per rule execution step and potentially many rows for a single request.",
+      "collections": [
+        "execution_steps",
+        "execution_requests"
+      ],
+      "query_patterns": [
+        "qp1_get_request_audit_trail"
+      ],
+      "api_endpoints": [
+        "appendExecutionStep",
+        "getRequestAuditTrail"
+      ],
+      "frontend_pages": [
+        "requestAuditTrailPage"
+      ]
+    },
+    "fr4": {
+      "description": "Support variable numbers of rule executions per request based on policy complexity.",
+      "collections": [
+        "execution_steps",
+        "execution_requests"
+      ],
+      "query_patterns": [
+        "qp1_get_request_audit_trail"
+      ],
+      "api_endpoints": [
+        "appendExecutionStep",
+        "updateExecutionRequestStatus",
+        "getRequestAuditTrail"
+      ],
+      "frontend_pages": [
+        "requestAuditTrailPage"
+      ]
+    },
+    "fr5": {
+      "description": "Support nested and complex JSON structures, including arrays, in logged request/response data.",
+      "collections": [
+        "execution_requests",
+        "execution_steps"
+      ],
+      "query_patterns": [
+        "qp1_get_request_audit_trail",
+        "qp2_list_requests_with_filters",
+        "qp3_search_steps_by_rule_or_payload"
+      ],
+      "api_endpoints": [
+        "createExecutionRequest",
+        "appendExecutionStep",
+        "getRequestAuditTrail",
+        "listExecutionRequests",
+        "searchExecutionSteps"
+      ],
+      "frontend_pages": [
+        "requestAuditTrailPage",
+        "requestSearchPage",
+        "executionStepSearchPage"
+      ]
+    },
+    "fr6": {
+      "description": "Ingest execution logs asynchronously so rule execution does not wait on logging persistence.",
+      "collections": [
+        "customers",
+        "execution_requests",
+        "execution_steps"
+      ],
+      "query_patterns": [
+        "qp8_customer_logging_configuration_lookup"
+      ],
+      "api_endpoints": [
+        "createExecutionRequest",
+        "appendExecutionStep",
+        "updateExecutionRequestStatus"
+      ],
+      "frontend_pages": [
+        "loggingConfigurationPage"
+      ]
+    },
+    "fr7": {
+      "description": "Support incremental logging for every rule execution rather than waiting for the full request flow to complete.",
+      "collections": [
+        "execution_steps",
+        "execution_requests"
+      ],
+      "query_patterns": [],
+      "api_endpoints": [
+        "appendExecutionStep",
+        "updateExecutionRequestStatus"
+      ],
+      "frontend_pages": []
+    },
+    "fr8": {
+      "description": "Handle concurrent execution traffic, such as 20 or 50 concurrent calls at the same time.",
+      "collections": [
+        "execution_requests",
+        "execution_steps"
+      ],
+      "query_patterns": [],
+      "api_endpoints": [
+        "createExecutionRequest",
+        "appendExecutionStep",
+        "updateExecutionRequestStatus"
+      ],
+      "frontend_pages": []
+    },
+    "fr9": {
+      "description": "Provide a UI within the product to view execution logs.",
+      "collections": [
+        "execution_requests",
+        "execution_steps"
+      ],
+      "query_patterns": [
+        "qp1_get_request_audit_trail",
+        "qp2_list_requests_with_filters",
+        "qp3_search_steps_by_rule_or_payload"
+      ],
+      "api_endpoints": [
+        "getRequestAuditTrail",
+        "listExecutionRequests",
+        "searchExecutionSteps"
+      ],
+      "frontend_pages": [
+        "requestSearchPage",
+        "requestAuditTrailPage",
+        "executionStepSearchPage"
+      ]
+    },
+    "fr10": {
+      "description": "Provide APIs so implementation and delivery teams can consume execution-log data in custom ways for customer-specific analysis and representation.",
+      "collections": [
+        "execution_requests",
+        "execution_steps"
+      ],
+      "query_patterns": [
+        "qp2_list_requests_with_filters",
+        "qp3_search_steps_by_rule_or_payload"
+      ],
+      "api_endpoints": [
+        "listExecutionRequests",
+        "searchExecutionSteps",
+        "getRequestAuditTrail"
+      ],
+      "frontend_pages": [
+        "requestSearchPage",
+        "executionStepSearchPage",
+        "requestAuditTrailPage"
+      ]
+    },
+    "fr11": {
+      "description": "Allow retrieval of all rule-execution details for a request using a request/correlation ID.",
+      "collections": [
+        "execution_requests",
+        "execution_steps"
+      ],
+      "query_patterns": [
+        "qp1_get_request_audit_trail"
+      ],
+      "api_endpoints": [
+        "getRequestAuditTrail"
+      ],
+      "frontend_pages": [
+        "requestAuditTrailPage"
+      ]
+    },
+    "fr12": {
+      "description": "Restrict access to detailed rule/policy execution data to admins or a small selected user group.",
+      "collections": [
+        "admin_users",
+        "customers"
+      ],
+      "query_patterns": [
+        "qp9_authorize_log_viewer"
+      ],
+      "api_endpoints": [
+        "authorizeLogViewer",
+        "getRequestAuditTrail",
+        "listExecutionRequests",
+        "searchExecutionSteps",
+        "comparePolicyVersionOutcomes",
+        "comparePolicyVersionRules",
+        "getRequestOutcomesTimeseries",
+        "getRulePerformanceSummary",
+        "getChannelSourceSummary"
+      ],
+      "frontend_pages": [
+        "customerOverviewRedirect",
+        "requestSearchPage",
+        "requestAuditTrailPage",
+        "executionStepSearchPage",
+        "policyComparisonSetupPage",
+        "policyComparisonResultsPage",
+        "dashboardOverviewPage"
+      ]
+    },
+    "fr13": {
+      "description": "Support policies as top-level objects containing multiple rules with consolidated inputs across rules.",
+      "collections": [
+        "policy_definitions"
+      ],
+      "query_patterns": [
+        "qp4_compare_policy_versions_outcomes"
+      ],
+      "api_endpoints": [
+        "getPolicyDefinition",
+        "listPolicyDefinitions",
+        "comparePolicyVersionOutcomes"
+      ],
+      "frontend_pages": [
+        "policyDefinitionListPage",
+        "policyDefinitionDetailPage",
+        "policyComparisonSetupPage",
+        "policyComparisonResultsPage"
+      ]
+    },
+    "fr14": {
+      "description": "Support large input payloads with many variables required by a policy.",
+      "collections": [
+        "execution_requests"
+      ],
+      "query_patterns": [
+        "qp1_get_request_audit_trail",
+        "qp2_list_requests_with_filters"
+      ],
+      "api_endpoints": [
+        "createExecutionRequest",
+        "getRequestAuditTrail",
+        "listExecutionRequests"
+      ],
+      "frontend_pages": [
+        "requestAuditTrailPage",
+        "requestSearchPage"
+      ]
+    },
+    "fr15": {
+      "description": "Support optional database lookups during rule execution when configured by a policy/rule.",
+      "collections": [
+        "policy_definitions",
+        "execution_steps"
+      ],
+      "query_patterns": [
+        "qp1_get_request_audit_trail",
+        "qp3_search_steps_by_rule_or_payload",
+        "qp5_rule_level_comparison_between_policy_versions",
+        "qp7_dashboard_rule_performance_summary"
+      ],
+      "api_endpoints": [
+        "appendExecutionStep",
+        "searchExecutionSteps",
+        "comparePolicyVersionRules",
+        "getRulePerformanceSummary",
+        "getPolicyDefinition"
+      ],
+      "frontend_pages": [
+        "requestAuditTrailPage",
+        "executionStepSearchPage",
+        "policyDefinitionDetailPage",
+        "policyComparisonResultsPage",
+        "dashboardOverviewPage"
+      ]
+    },
+    "fr16": {
+      "description": "Allow rules to be exposed and invoked from customer applications such as mobile apps, portals, account opening, or loan processing systems.",
+      "collections": [
+        "execution_requests"
+      ],
+      "query_patterns": [
+        "qp2_list_requests_with_filters",
+        "qp10_request_channel_and_source_summary"
+      ],
+      "api_endpoints": [
+        "createExecutionRequest",
+        "listExecutionRequests",
+        "getChannelSourceSummary"
+      ],
+      "frontend_pages": [
+        "requestSearchPage",
+        "dashboardOverviewPage"
+      ]
+    },
+    "fr17": {
+      "description": "Support fast filtering and searching over execution logs, including searches on values inside logged data.",
+      "collections": [
+        "execution_requests",
+        "execution_steps"
+      ],
+      "query_patterns": [
+        "qp2_list_requests_with_filters",
+        "qp3_search_steps_by_rule_or_payload"
+      ],
+      "api_endpoints": [
+        "listExecutionRequests",
+        "searchExecutionSteps"
+      ],
+      "frontend_pages": [
+        "requestSearchPage",
+        "executionStepSearchPage"
+      ]
+    },
+    "fr18": {
+      "description": "Support retention/purging controls for execution logs, driven by customer decisions and product recommendations.",
+      "collections": [
+        "customers",
+        "execution_requests"
+      ],
+      "query_patterns": [
+        "qp8_customer_logging_configuration_lookup"
+      ],
+      "api_endpoints": [
+        "getCustomerLoggingConfig",
+        "updateCustomerLoggingConfig"
+      ],
+      "frontend_pages": [
+        "loggingConfigurationPage"
+      ]
+    },
+    "fr19": {
+      "description": "Allow execution logging to be disabled for customers who do not require it.",
+      "collections": [
+        "customers"
+      ],
+      "query_patterns": [
+        "qp8_customer_logging_configuration_lookup"
+      ],
+      "api_endpoints": [
+        "getCustomerLoggingConfig",
+        "updateCustomerLoggingConfig",
+        "createExecutionRequest",
+        "appendExecutionStep"
+      ],
+      "frontend_pages": [
+        "loggingConfigurationPage"
+      ]
+    },
+    "fr20": {
+      "description": "Support high rule counts per request, with current use cases around 500 rules and potential for much higher volumes.",
+      "collections": [
+        "execution_requests",
+        "execution_steps"
+      ],
+      "query_patterns": [
+        "qp1_get_request_audit_trail"
+      ],
+      "api_endpoints": [
+        "createExecutionRequest",
+        "appendExecutionStep",
+        "updateExecutionRequestStatus",
+        "getRequestAuditTrail"
+      ],
+      "frontend_pages": [
+        "requestAuditTrailPage"
+      ]
+    },
+    "fr21": {
+      "description": "The future solution should preserve existing product flexibility across customer deployment environments and domains.",
+      "collections": [
+        "customers"
+      ],
+      "query_patterns": [
+        "qp8_customer_logging_configuration_lookup"
+      ],
+      "api_endpoints": [
+        "getCustomerLoggingConfig",
+        "updateCustomerLoggingConfig"
+      ],
+      "frontend_pages": [
+        "loggingConfigurationPage"
+      ]
+    }
+  },
+  "ai_genai_requirements": {
+    "ai1": {
+      "description": "Explore using LLMs to surface insights from execution-log data.",
+      "collections": [
+        "execution_requests",
+        "execution_steps",
+        "policy_definitions"
+      ],
+      "query_patterns": [
+        "qp1_get_request_audit_trail",
+        "qp4_compare_policy_versions_outcomes",
+        "qp5_rule_level_comparison_between_policy_versions",
+        "qp6_dashboard_request_outcomes_timeseries",
+        "qp7_dashboard_rule_performance_summary",
+        "qp10_request_channel_and_source_summary"
+      ],
+      "api_endpoints": [
+        "getRequestAuditTrail",
+        "comparePolicyVersionOutcomes",
+        "comparePolicyVersionRules",
+        "getRequestOutcomesTimeseries",
+        "getRulePerformanceSummary",
+        "getChannelSourceSummary"
+      ],
+      "frontend_pages": [
+        "requestAuditTrailPage",
+        "policyComparisonResultsPage",
+        "dashboardOverviewPage"
+      ],
+      "notes": "Exploratory only. No dedicated LLM endpoint or persistence model exists in the authoritative artifacts; AI would consume existing APIs read-only."
+    },
+    "ai2": {
+      "description": "Potentially generate recommendations on policy/rule changes based on historical execution outcomes.",
+      "collections": [
+        "policy_definitions",
+        "execution_requests",
+        "execution_steps"
+      ],
+      "query_patterns": [
+        "qp4_compare_policy_versions_outcomes",
+        "qp5_rule_level_comparison_between_policy_versions"
+      ],
+      "api_endpoints": [
+        "comparePolicyVersionOutcomes",
+        "comparePolicyVersionRules",
+        "getPolicyDefinition"
+      ],
+      "frontend_pages": [
+        "policyComparisonResultsPage",
+        "policyDefinitionDetailPage"
+      ],
+      "notes": "Exploratory only. Existing comparison endpoints provide the factual inputs a recommendation layer would use."
+    }
+  },
+  "use_cases": {
+    "uc1": {
+      "description": "Audit rule execution for a business request.",
+      "collections": [
+        "execution_requests",
+        "execution_steps",
+        "admin_users",
+        "customers"
+      ],
+      "query_patterns": [
+        "qp1_get_request_audit_trail",
+        "qp9_authorize_log_viewer"
+      ],
+      "api_endpoints": [
+        "authorizeLogViewer",
+        "getRequestAuditTrail"
+      ],
+      "frontend_pages": [
+        "requestAuditTrailPage",
+        "requestSearchPage"
+      ]
+    },
+    "uc2": {
+      "description": "Search and filter execution logs.",
+      "collections": [
+        "execution_requests",
+        "execution_steps",
+        "admin_users",
+        "customers"
+      ],
+      "query_patterns": [
+        "qp2_list_requests_with_filters",
+        "qp3_search_steps_by_rule_or_payload",
+        "qp9_authorize_log_viewer"
+      ],
+      "api_endpoints": [
+        "authorizeLogViewer",
+        "listExecutionRequests",
+        "searchExecutionSteps"
+      ],
+      "frontend_pages": [
+        "requestSearchPage",
+        "executionStepSearchPage"
+      ]
+    },
+    "uc3": {
+      "description": "Analyze policy changes over time.",
+      "collections": [
+        "policy_definitions",
+        "execution_requests",
+        "execution_steps",
+        "admin_users",
+        "customers"
+      ],
+      "query_patterns": [
+        "qp4_compare_policy_versions_outcomes",
+        "qp5_rule_level_comparison_between_policy_versions",
+        "qp9_authorize_log_viewer"
+      ],
+      "api_endpoints": [
+        "authorizeLogViewer",
+        "comparePolicyVersionOutcomes",
+        "comparePolicyVersionRules",
+        "getPolicyDefinition",
+        "listPolicyDefinitions"
+      ],
+      "frontend_pages": [
+        "policyComparisonSetupPage",
+        "policyComparisonResultsPage",
+        "policyDefinitionListPage",
+        "policyDefinitionDetailPage"
+      ]
+    },
+    "uc4": {
+      "description": "Generate dashboards and reports from execution data.",
+      "collections": [
+        "execution_requests",
+        "execution_steps",
+        "policy_definitions",
+        "admin_users",
+        "customers"
+      ],
+      "query_patterns": [
+        "qp6_dashboard_request_outcomes_timeseries",
+        "qp7_dashboard_rule_performance_summary",
+        "qp10_request_channel_and_source_summary",
+        "qp9_authorize_log_viewer"
+      ],
+      "api_endpoints": [
+        "authorizeLogViewer",
+        "getRequestOutcomesTimeseries",
+        "getRulePerformanceSummary",
+        "getChannelSourceSummary",
+        "listPolicyDefinitions"
+      ],
+      "frontend_pages": [
+        "dashboardOverviewPage"
+      ]
+    },
+    "uc5": {
+      "description": "Expose rule execution to customer channels.",
+      "collections": [
+        "customers",
+        "execution_requests"
+      ],
+      "query_patterns": [
+        "qp8_customer_logging_configuration_lookup",
+        "qp10_request_channel_and_source_summary"
+      ],
+      "api_endpoints": [
+        "getCustomerLoggingConfig",
+        "updateCustomerLoggingConfig",
+        "createExecutionRequest",
+        "updateExecutionRequestStatus",
+        "getChannelSourceSummary"
+      ],
+      "frontend_pages": [
+        "loggingConfigurationPage",
+        "dashboardOverviewPage"
+      ]
+    }
+  },
+  "user_journeys": {
+    "uj1": {
+      "description": "Investigate a request outcome.",
+      "collections": [
+        "execution_requests",
+        "execution_steps",
+        "admin_users",
+        "customers"
+      ],
+      "query_patterns": [
+        "qp9_authorize_log_viewer",
+        "qp2_list_requests_with_filters",
+        "qp1_get_request_audit_trail"
+      ],
+      "api_endpoints": [
+        "authorizeLogViewer",
+        "listExecutionRequests",
+        "getRequestAuditTrail"
+      ],
+      "frontend_pages": [
+        "requestSearchPage",
+        "requestAuditTrailPage"
+      ]
+    },
+    "uj2": {
+      "description": "Evaluate MongoDB-backed capability for productization.",
+      "collections": [
+        "customers",
+        "policy_definitions",
+        "execution_requests",
+        "execution_steps",
+        "admin_users"
+      ],
+      "query_patterns": [
+        "qp1_get_request_audit_trail",
+        "qp2_list_requests_with_filters",
+        "qp3_search_steps_by_rule_or_payload",
+        "qp4_compare_policy_versions_outcomes",
+        "qp5_rule_level_comparison_between_policy_versions",
+        "qp6_dashboard_request_outcomes_timeseries",
+        "qp7_dashboard_rule_performance_summary",
+        "qp8_customer_logging_configuration_lookup",
+        "qp9_authorize_log_viewer",
+        "qp10_request_channel_and_source_summary"
+      ],
+      "api_endpoints": [
+        "authorizeLogViewer",
+        "getCustomerLoggingConfig",
+        "updateCustomerLoggingConfig",
+        "getRequestAuditTrail",
+        "listExecutionRequests",
+        "searchExecutionSteps",
+        "comparePolicyVersionOutcomes",
+        "comparePolicyVersionRules",
+        "getRequestOutcomesTimeseries",
+        "getRulePerformanceSummary",
+        "getChannelSourceSummary",
+        "getPolicyDefinition",
+        "listPolicyDefinitions",
+        "createExecutionRequest",
+        "appendExecutionStep",
+        "updateExecutionRequestStatus"
+      ],
+      "frontend_pages": [
+        "requestSearchPage",
+        "requestAuditTrailPage",
+        "executionStepSearchPage",
+        "policyComparisonSetupPage",
+        "policyComparisonResultsPage",
+        "dashboardOverviewPage",
+        "policyDefinitionListPage",
+        "policyDefinitionDetailPage",
+        "loggingConfigurationPage"
+      ]
+    }
+  },
+  "integrations": {
+    "int1": {
+      "description": "Integrate with Kafka or a similar queuing system for asynchronous log ingestion.",
+      "collections": [
+        "execution_requests",
+        "execution_steps",
+        "customers"
+      ],
+      "query_patterns": [
+        "qp8_customer_logging_configuration_lookup"
+      ],
+      "api_endpoints": [
+        "createExecutionRequest",
+        "appendExecutionStep",
+        "updateExecutionRequestStatus"
+      ],
+      "frontend_pages": []
+    },
+    "int2": {
+      "description": "Support current deployment compatibility with Oracle, SQL Server, and Postgres environments.",
+      "collections": [],
+      "query_patterns": [],
+      "api_endpoints": [],
+      "frontend_pages": [],
+      "notes": "Contextual business integration requirement from the spec; no direct Oracle/SQL Server/Postgres integration is designed in the authoritative MongoDB POV artifacts."
+    },
+    "int3": {
+      "description": "Integrate with customer applications and channels including web, mobile, portals, and operational banking systems.",
+      "collections": [
+        "execution_requests"
+      ],
+      "query_patterns": [
+        "qp10_request_channel_and_source_summary",
+        "qp2_list_requests_with_filters"
+      ],
+      "api_endpoints": [
+        "createExecutionRequest",
+        "listExecutionRequests",
+        "getChannelSourceSummary"
+      ],
+      "frontend_pages": [
+        "requestSearchPage",
+        "dashboardOverviewPage"
+      ]
+    },
+    "int4": {
+      "description": "Support deployment in customer-managed cloud environments across AWS, Azure, and potentially other clouds.",
+      "collections": [
+        "customers"
+      ],
+      "query_patterns": [
+        "qp8_customer_logging_configuration_lookup"
+      ],
+      "api_endpoints": [
+        "getCustomerLoggingConfig",
+        "updateCustomerLoggingConfig"
+      ],
+      "frontend_pages": [
+        "loggingConfigurationPage"
+      ],
+      "notes": "Represented operationally through deployment context configuration rather than cloud-specific service integrations."
+    }
+  },
+  "success_criteria": {
+    "sc1": {
+      "description": "MongoDB demo shows how it can add value to the execution logging use case compared with the current approach.",
+      "supported_by": [
+        "document-based request and step storage",
+        "JSON-aware search on request and step payloads",
+        "policy comparison analytics",
+        "dashboard aggregations",
+        "customer-level logging configuration"
+      ],
+      "collections": [
+        "customers",
+        "policy_definitions",
+        "execution_requests",
+        "execution_steps"
+      ],
+      "query_patterns": [
+        "qp1_get_request_audit_trail",
+        "qp2_list_requests_with_filters",
+        "qp3_search_steps_by_rule_or_payload",
+        "qp4_compare_policy_versions_outcomes",
+        "qp5_rule_level_comparison_between_policy_versions",
+        "qp6_dashboard_request_outcomes_timeseries",
+        "qp7_dashboard_rule_performance_summary",
+        "qp10_request_channel_and_source_summary"
+      ],
+      "api_endpoints": [
+        "getRequestAuditTrail",
+        "listExecutionRequests",
+        "searchExecutionSteps",
+        "comparePolicyVersionOutcomes",
+        "comparePolicyVersionRules",
+        "getRequestOutcomesTimeseries",
+        "getRulePerformanceSummary",
+        "getChannelSourceSummary",
+        "getCustomerLoggingConfig",
+        "updateCustomerLoggingConfig"
+      ],
+      "frontend_pages": [
+        "requestSearchPage",
+        "requestAuditTrailPage",
+        "executionStepSearchPage",
+        "policyComparisonResultsPage",
+        "dashboardOverviewPage",
+        "loggingConfigurationPage"
+      ]
+    },
+    "sc2": {
+      "description": "The demo meets Newgen's success criteria well enough to be presented to internal product leadership.",
+      "collections": [
+        "customers",
+        "policy_definitions",
+        "execution_requests",
+        "execution_steps",
+        "admin_users"
+      ],
+      "query_patterns": [
+        "qp1_get_request_audit_trail",
+        "qp2_list_requests_with_filters",
+        "qp3_search_steps_by_rule_or_payload",
+        "qp4_compare_policy_versions_outcomes",
+        "qp5_rule_level_comparison_between_policy_versions",
+        "qp6_dashboard_request_outcomes_timeseries",
+        "qp7_dashboard_rule_performance_summary",
+        "qp8_customer_logging_configuration_lookup",
+        "qp9_authorize_log_viewer",
+        "qp10_request_channel_and_source_summary"
+      ],
+      "api_endpoints": [
+        "authorizeLogViewer",
+        "getRequestAuditTrail",
+        "listExecutionRequests",
+        "searchExecutionSteps",
+        "comparePolicyVersionOutcomes",
+        "comparePolicyVersionRules",
+        "getRequestOutcomesTimeseries",
+        "getRulePerformanceSummary",
+        "getChannelSourceSummary",
+        "getCustomerLoggingConfig",
+        "updateCustomerLoggingConfig"
+      ],
+      "frontend_pages": [
+        "requestSearchPage",
+        "requestAuditTrailPage",
+        "executionStepSearchPage",
+        "policyComparisonResultsPage",
+        "dashboardOverviewPage",
+        "loggingConfigurationPage"
+      ]
+    },
+    "sc3": {
+      "description": "Internal product leadership agrees the approach adds customer value and should become a product feature.",
+      "collections": [
+        "customers",
+        "policy_definitions",
+        "execution_requests",
+        "execution_steps"
+      ],
+      "query_patterns": [
+        "qp4_compare_policy_versions_outcomes",
+        "qp6_dashboard_request_outcomes_timeseries",
+        "qp7_dashboard_rule_performance_summary",
+        "qp10_request_channel_and_source_summary"
+      ],
+      "api_endpoints": [
+        "comparePolicyVersionOutcomes",
+        "getRequestOutcomesTimeseries",
+        "getRulePerformanceSummary",
+        "getChannelSourceSummary"
+      ],
+      "frontend_pages": [
+        "policyComparisonResultsPage",
+        "dashboardOverviewPage"
+      ]
+    },
+    "sc4": {
+      "description": "Newgen is able to productize/package the capability and define go-to-market plans for existing and new customers.",
+      "collections": [
+        "customers",
+        "admin_users",
+        "policy_definitions",
+        "execution_requests",
+        "execution_steps"
+      ],
+      "query_patterns": [
+        "qp8_customer_logging_configuration_lookup",
+        "qp9_authorize_log_viewer"
+      ],
+      "api_endpoints": [
+        "getCustomerLoggingConfig",
+        "updateCustomerLoggingConfig",
+        "authorizeLogViewer",
+        "createExecutionRequest",
+        "appendExecutionStep",
+        "updateExecutionRequestStatus"
+      ],
+      "frontend_pages": [
+        "loggingConfigurationPage",
+        "customerOverviewRedirect"
+      ]
+    }
+  }
+}
