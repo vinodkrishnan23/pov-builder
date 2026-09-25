@@ -1,11 +1,14 @@
 {
   "QP1": {
     "id": "QP1",
-    "name": "List tenant documents for workshop session",
+    "name": "Create document metadata record for live or seeded upload",
     "serves": [
-      "UC1",
-      "FR2",
-      "FR3",
+      "UC1"
+    ],
+    "traceability": [
+      "FR1",
+      "FR4",
+      "FR7",
       "SC1"
     ],
     "collections": [
@@ -13,70 +16,121 @@
     ],
     "query": {
       "collection": "documents",
-      "operation": "find",
-      "filter": {
+      "operation": "insertOne",
+      "document": {
         "tenant_id": "<tenantId>",
-        "upload_session_label": "<sessionLabel>"
-      },
-      "projection": {
-        "_id": 1,
-        "document_type": 1,
-        "title": 1,
-        "source_filename": 1,
-        "source_system": 1,
-        "ingest_status": 1,
-        "chunking_runs": 1,
-        "created_at": 1,
-        "updated_at": 1
-      },
-      "sort": {
-        "created_at": -1
-      },
-      "limit": "<pageSize>"
+        "source_type": "<live_upload|seeded|baseline_import>",
+        "title": "<title>",
+        "file_name": "<fileName>",
+        "mime_type": "<mimeType>",
+        "file_size_bytes": "<fileSizeBytes>",
+        "storage": {
+          "provider": "<s3|gcs|azure_blob|local|none>",
+          "uri": "<objectUri>"
+        },
+        "metadata": {
+          "source_system": "<sourceSystem>",
+          "uploaded_by": "<user>",
+          "tags": [
+            "<tag1>"
+          ],
+          "language": "<lang>",
+          "page_count": "<pageCount>"
+        },
+        "extraction": {
+          "status": "pending"
+        },
+        "created_at": "<now>"
+      }
     },
-    "purpose": "Show uploaded customer documents for a tenant/session and their current ingestion state during the live workshop."
+    "purpose": "Register an uploaded document and its storage/extraction metadata so it can enter the retrieval pipeline."
   },
   "QP2": {
     "id": "QP2",
-    "name": "Inspect document ingestion failures",
+    "name": "Update document extraction status and extracted text",
     "serves": [
-      "UC1",
+      "UC1"
+    ],
+    "traceability": [
       "FR2",
-      "FR7"
+      "FR4"
     ],
     "collections": [
       "documents"
     ],
     "query": {
       "collection": "documents",
-      "operation": "find",
+      "operation": "updateOne",
       "filter": {
-        "tenant_id": "<tenantId>",
-        "ingest_status": "failed"
+        "_id": "<documentId>",
+        "tenant_id": "<tenantId>"
       },
-      "projection": {
-        "_id": 1,
-        "title": 1,
-        "source_filename": 1,
-        "document_type": 1,
-        "ingest_status": 1,
-        "ingest_errors": 1,
-        "updated_at": 1
-      },
-      "sort": {
-        "updated_at": -1
+      "update": {
+        "$set": {
+          "extraction.status": "<processing|completed|failed>",
+          "extraction.extracted_text": "<fullExtractedText>",
+          "extraction.content_preview": "<previewText>",
+          "extraction.error_message": "<errorIfAny>",
+          "extraction.processed_at": "<now>"
+        }
       }
     },
-    "purpose": "Troubleshoot uploaded documents that failed parse/chunk/embed steps."
+    "purpose": "Track extraction progress and store extracted text/preview for arbitrary uploaded documents, including failures."
   },
   "QP3": {
     "id": "QP3",
-    "name": "Tenant-scoped vector retrieval over document chunks",
+    "name": "Insert chunk embeddings for a document and chunking strategy",
     "serves": [
       "UC1",
+      "UC3"
+    ],
+    "traceability": [
+      "FR4",
+      "FR6",
       "AI1",
-      "SC4",
-      "SC5"
+      "SC6"
+    ],
+    "collections": [
+      "document_chunks"
+    ],
+    "query": {
+      "collection": "document_chunks",
+      "operation": "insertMany",
+      "documents": [
+        {
+          "tenant_id": "<tenantId>",
+          "document_id": "<documentId>",
+          "chunking_strategy": "<fixed_length|recursive|semantic|contextual>",
+          "chunk_index": "<n>",
+          "text": "<chunkText>",
+          "token_count": "<tokenCount>",
+          "page_span": {
+            "start_page": "<p1>",
+            "end_page": "<p2>"
+          },
+          "embedding_model": "<embeddingModel>",
+          "embedding": "<vector>",
+          "embedding_dimensions": "<dims>",
+          "created_at": "<now>"
+        }
+      ]
+    },
+    "purpose": "Persist document chunks and their embeddings so multiple chunking strategies can be benchmarked and searched."
+  },
+  "QP4": {
+    "id": "QP4",
+    "name": "Vector search document chunks within a tenant and chunking strategy",
+    "serves": [
+      "UC1"
+    ],
+    "traceability": [
+      "FR1",
+      "FR4",
+      "FR5",
+      "AI1",
+      "AI4",
+      "SC5",
+      "SC7"
     ],
     "collections": [
       "document_chunks",
@@ -88,30 +142,25 @@
       "pipeline": [
         {
           "$vectorSearch": {
-            "index": "document_chunks_vector_index",
+            "index": "document_chunks_vector_idx",
             "path": "embedding",
             "queryVector": "<queryEmbedding>",
             "numCandidates": "<numCandidates>",
             "limit": "<topK>",
             "filter": {
               "tenant_id": "<tenantId>",
-              "chunking_strategy": "<chunkingStrategy>",
-              "embedding_model": "<embeddingModel>"
+              "chunking_strategy": "<strategy>"
             }
           }
         },
         {
           "$project": {
             "_id": 1,
-            "tenant_id": 1,
             "document_id": 1,
             "chunking_strategy": 1,
             "chunk_index": 1,
             "text": 1,
-            "page_start": 1,
-            "page_end": 1,
-            "section_title": 1,
-            "embedding_model": 1,
+            "page_span": 1,
             "score": {
               "$meta": "vectorSearchScore"
             }
@@ -129,33 +178,186 @@
           "$unwind": "$document"
         },
         {
+          "$match": {
+            "document.tenant_id": "<tenantId>",
+            "document.extraction.status": "completed"
+          }
+        },
+        {
           "$project": {
             "_id": 1,
             "document_id": 1,
             "document_title": "$document.title",
-            "source_filename": "$document.source_filename",
-            "document_type": "$document.document_type",
-            "chunking_strategy": 1,
+            "file_name": "$document.file_name",
             "chunk_index": 1,
             "text": 1,
-            "page_start": 1,
-            "page_end": 1,
-            "section_title": 1,
-            "embedding_model": 1,
+            "page_span": 1,
             "score": 1
           }
         }
       ]
     },
-    "purpose": "Retrieve the most semantically relevant chunks for a user question, scoped to one tenant and a chosen chunking strategy/model."
+    "purpose": "Retrieve the most relevant document chunks for a user question, scoped to one tenant and a selected chunking strategy."
   },
-  "QP4": {
-    "id": "QP4",
-    "name": "Keyword or metadata-filtered chunk retrieval",
+  "QP5": {
+    "id": "QP5",
+    "name": "Keyword/text search over extracted document content and metadata",
+    "serves": [
+      "UC1"
+    ],
+    "traceability": [
+      "FR1",
+      "FR2",
+      "BO1"
+    ],
+    "collections": [
+      "documents"
+    ],
+    "query": {
+      "collection": "documents",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "tenant_id": "<tenantId>",
+            "extraction.status": "completed"
+          }
+        },
+        {
+          "$search": {
+            "index": "documents_text_idx",
+            "compound": {
+              "should": [
+                {
+                  "text": {
+                    "query": "<searchText>",
+                    "path": [
+                      "title",
+                      "file_name",
+                      "metadata.tags",
+                      "extraction.extracted_text",
+                      "extraction.content_preview"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "$project": {
+            "title": 1,
+            "file_name": 1,
+            "metadata.tags": 1,
+            "extraction.content_preview": 1,
+            "score": {
+              "$meta": "searchScore"
+            }
+          }
+        },
+        {
+          "$limit": "<topK>"
+        }
+      ]
+    },
+    "purpose": "Support document search behavior using text search over extracted content and metadata, complementing vector retrieval."
+  },
+  "QP6": {
+    "id": "QP6",
+    "name": "Hybrid structured plus unstructured document retrieval",
+    "serves": [
+      "UC1"
+    ],
+    "traceability": [
+      "BO1",
+      "FR1",
+      "FR2",
+      "AI4"
+    ],
+    "collections": [
+      "documents",
+      "document_chunks"
+    ],
+    "query": {
+      "collection": "document_chunks",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$vectorSearch": {
+            "index": "document_chunks_vector_idx",
+            "path": "embedding",
+            "queryVector": "<queryEmbedding>",
+            "numCandidates": "<numCandidates>",
+            "limit": "<vectorLimit>",
+            "filter": {
+              "tenant_id": "<tenantId>",
+              "chunking_strategy": "<strategy>"
+            }
+          }
+        },
+        {
+          "$project": {
+            "_id": 1,
+            "document_id": 1,
+            "text": 1,
+            "score": {
+              "$meta": "vectorSearchScore"
+            }
+          }
+        },
+        {
+          "$lookup": {
+            "from": "documents",
+            "localField": "document_id",
+            "foreignField": "_id",
+            "as": "document"
+          }
+        },
+        {
+          "$unwind": "$document"
+        },
+        {
+          "$match": {
+            "document.tenant_id": "<tenantId>",
+            "document.extraction.status": "completed",
+            "document.metadata.language": "<optionalLanguage>",
+            "document.metadata.tags": {
+              "$in": [
+                "<optionalTag>"
+              ]
+            },
+            "document.source_type": "<optionalSourceType>"
+          }
+        },
+        {
+          "$project": {
+            "_id": 1,
+            "document_id": 1,
+            "chunk_text": "$text",
+            "document_title": "$document.title",
+            "document_tags": "$document.metadata.tags",
+            "language": "$document.metadata.language",
+            "score": 1
+          }
+        },
+        {
+          "$limit": "<topK>"
+        }
+      ]
+    },
+    "purpose": "Demonstrate combining structured metadata filters with unstructured vector retrieval for mixed search use cases."
+  },
+  "QP7": {
+    "id": "QP7",
+    "name": "Fetch document and all chunks for result inspection",
     "serves": [
       "UC1",
-      "UC3",
-      "BO1"
+      "UC3"
+    ],
+    "traceability": [
+      "FR1",
+      "SC1",
+      "SC6"
     ],
     "collections": [
       "documents",
@@ -167,14 +369,8 @@
       "pipeline": [
         {
           "$match": {
-            "tenant_id": "<tenantId>",
-            "document_type": {
-              "$in": "<documentTypesArray>"
-            },
-            "metadata.language": "<language>",
-            "metadata.tags": {
-              "$in": "<tagsArray>"
-            }
+            "_id": "<documentId>",
+            "tenant_id": "<tenantId>"
           }
         },
         {
@@ -204,7 +400,7 @@
                       {
                         "$eq": [
                           "$chunking_strategy",
-                          "<chunkingStrategy>"
+                          "<strategy>"
                         ]
                       }
                     ]
@@ -212,121 +408,523 @@
                 }
               },
               {
-                "$match": {
-                  "text": {
-                    "$regex": "<keywordOrPhrase>",
-                    "$options": "i"
-                  }
+                "$sort": {
+                  "chunk_index": 1
                 }
               },
               {
                 "$project": {
-                  "_id": 1,
-                  "document_id": 1,
                   "chunk_index": 1,
                   "text": 1,
-                  "section_title": 1,
-                  "page_start": 1,
-                  "page_end": 1
+                  "page_span": 1,
+                  "token_count": 1,
+                  "embedding_model": 1
                 }
               }
             ],
-            "as": "matching_chunks"
-          }
-        },
-        {
-          "$match": {
-            "matching_chunks.0": {
-              "$exists": true
-            }
+            "as": "chunks"
           }
         },
         {
           "$project": {
-            "_id": 1,
             "title": 1,
-            "document_type": 1,
-            "source_filename": 1,
+            "file_name": 1,
             "metadata": 1,
-            "matching_chunks": 1
+            "extraction.content_preview": 1,
+            "chunks": 1
           }
         }
       ]
     },
-    "purpose": "Explore retrieval constrained by structured metadata plus chunk text matching, supporting structured-plus-unstructured demonstrations."
+    "purpose": "Inspect a retrieved document and its chunk breakdown for demo explainability and chunking comparison."
   },
-  "QP5": {
-    "id": "QP5",
-    "name": "Hybrid structured plus unstructured retrieval",
+  "QP8": {
+    "id": "QP8",
+    "name": "Store agent memory record with embedding",
     "serves": [
-      "UC3",
-      "BO1",
-      "FR1"
+      "UC2"
+    ],
+    "traceability": [
+      "FR3",
+      "AI2"
     ],
     "collections": [
-      "document_chunks",
-      "documents"
+      "agent_memory"
     ],
     "query": {
-      "collection": "document_chunks",
+      "collection": "agent_memory",
+      "operation": "insertOne",
+      "document": {
+        "tenant_id": "<tenantId>",
+        "session_id": "<sessionId>",
+        "memory_type": "<conversation_turn|summary|fact|tool_output|context_doc>",
+        "speaker_role": "<user|assistant|system|tool>",
+        "content": "<memoryContent>",
+        "embedding_model": "<embeddingModel>",
+        "embedding": "<vector>",
+        "embedding_dimensions": "<dims>",
+        "source_event_time": "<eventTime>",
+        "metadata": {
+          "agent_id": "<agentId>",
+          "conversation_id": "<conversationId>",
+          "turn_index": "<turnIndex>",
+          "tags": [
+            "<tag1>"
+          ]
+        },
+        "created_at": "<now>"
+      }
+    },
+    "purpose": "Persist conversational context or derived memory so it can be retrieved for agent workflows."
+  },
+  "QP9": {
+    "id": "QP9",
+    "name": "Vector search agent memory by tenant and optional session",
+    "serves": [
+      "UC2"
+    ],
+    "traceability": [
+      "FR3",
+      "FR5",
+      "AI1",
+      "AI2",
+      "AI4",
+      "SC5"
+    ],
+    "collections": [
+      "agent_memory"
+    ],
+    "query": {
+      "collection": "agent_memory",
       "operation": "aggregate",
       "pipeline": [
         {
           "$vectorSearch": {
-            "index": "document_chunks_vector_index",
+            "index": "agent_memory_vector_idx",
             "path": "embedding",
             "queryVector": "<queryEmbedding>",
             "numCandidates": "<numCandidates>",
             "limit": "<topK>",
             "filter": {
               "tenant_id": "<tenantId>",
-              "chunking_strategy": "<chunkingStrategy>"
-            }
-          }
-        },
-        {
-          "$lookup": {
-            "from": "documents",
-            "localField": "document_id",
-            "foreignField": "_id",
-            "as": "document"
-          }
-        },
-        {
-          "$unwind": "$document"
-        },
-        {
-          "$match": {
-            "document.metadata.structured_attributes.<attributeName>": "<attributeValue>",
-            "document.document_type": {
-              "$in": "<documentTypesArray>"
+              "session_id": "<optionalSessionId>"
             }
           }
         },
         {
           "$project": {
             "_id": 1,
-            "document_id": 1,
-            "chunk_index": 1,
-            "text": 1,
+            "session_id": 1,
+            "memory_type": 1,
+            "speaker_role": 1,
+            "content": 1,
+            "source_event_time": 1,
+            "metadata": 1,
             "score": {
               "$meta": "vectorSearchScore"
-            },
-            "document_title": "$document.title",
-            "document_type": "$document.document_type",
-            "structured_attributes": "$document.metadata.structured_attributes"
+            }
+          }
+        },
+        {
+          "$sort": {
+            "score": -1,
+            "source_event_time": -1
           }
         }
       ]
     },
-    "purpose": "Demonstrate semantic retrieval over chunks while enforcing structured business filters from the parent document metadata."
+    "purpose": "Retrieve the most relevant memory items for an agent request, optionally constrained to one session."
   },
-  "QP6": {
-    "id": "QP6",
-    "name": "Compare chunking strategy coverage for uploaded documents",
+  "QP10": {
+    "id": "QP10",
+    "name": "Retrieve recent agent memory timeline for a session",
+    "serves": [
+      "UC2"
+    ],
+    "traceability": [
+      "FR3",
+      "AI2"
+    ],
+    "collections": [
+      "agent_memory"
+    ],
+    "query": {
+      "collection": "agent_memory",
+      "operation": "find",
+      "filter": {
+        "tenant_id": "<tenantId>",
+        "session_id": "<sessionId>"
+      },
+      "projection": {
+        "memory_type": 1,
+        "speaker_role": 1,
+        "content": 1,
+        "source_event_time": 1,
+        "metadata.turn_index": 1
+      },
+      "sort": {
+        "source_event_time": -1,
+        "metadata.turn_index": -1
+      },
+      "limit": "<n>"
+    },
+    "purpose": "Fetch the latest conversation or memory timeline to provide recency context alongside semantic retrieval."
+  },
+  "QP11": {
+    "id": "QP11",
+    "name": "Create benchmark query with ground truth and top-K cutoffs",
+    "serves": [
+      "UC3"
+    ],
+    "traceability": [
+      "AI5",
+      "FR7",
+      "SC1",
+      "SC3",
+      "SC4"
+    ],
+    "collections": [
+      "benchmark_queries"
+    ],
+    "query": {
+      "collection": "benchmark_queries",
+      "operation": "insertOne",
+      "document": {
+        "tenant_id": "<tenantId>",
+        "query_text": "<benchmarkQuestion>",
+        "query_type": "<document_search|agent_memory>",
+        "provided_during_session": "<true|false>",
+        "ground_truth": {
+          "relevant_document_ids": [
+            "<docId1>"
+          ],
+          "relevant_chunk_ids": [
+            "<chunkId1>"
+          ],
+          "relevant_memory_ids": [
+            "<memoryId1>"
+          ],
+          "notes": "<notes>"
+        },
+        "evaluation_cutoffs": [
+          1,
+          5,
+          10,
+          20
+        ],
+        "created_at": "<now>"
+      }
+    },
+    "purpose": "Capture benchmark prompts and expected relevant results, including live prompts provided during the session."
+  },
+  "QP12": {
+    "id": "QP12",
+    "name": "List benchmark queries for a tenant and workload",
+    "serves": [
+      "UC3"
+    ],
+    "traceability": [
+      "AI5",
+      "SC3",
+      "SC4"
+    ],
+    "collections": [
+      "benchmark_queries"
+    ],
+    "query": {
+      "collection": "benchmark_queries",
+      "operation": "find",
+      "filter": {
+        "tenant_id": "<tenantId>",
+        "query_type": "<document_search|agent_memory>"
+      },
+      "projection": {
+        "query_text": 1,
+        "provided_during_session": 1,
+        "ground_truth": 1,
+        "evaluation_cutoffs": 1,
+        "created_at": 1
+      },
+      "sort": {
+        "created_at": -1
+      }
+    },
+    "purpose": "Retrieve the benchmark question set used to drive side-by-side evaluation."
+  },
+  "QP13": {
+    "id": "QP13",
+    "name": "Create benchmark run for a system under test",
+    "serves": [
+      "UC3"
+    ],
+    "traceability": [
+      "FR8",
+      "BO5",
+      "SC2",
+      "SC3",
+      "SC4"
+    ],
+    "collections": [
+      "benchmark_runs"
+    ],
+    "query": {
+      "collection": "benchmark_runs",
+      "operation": "insertOne",
+      "document": {
+        "tenant_id": "<tenantId>",
+        "run_name": "<runName>",
+        "workload_type": "<document_search|agent_memory|mixed>",
+        "system_under_test": "<mongodb_voyage|elastic|opensearch|qdrant|pinecone|other>",
+        "baseline_group": "<comparisonGroup>",
+        "configuration": {
+          "embedding_model": "<embeddingModel>",
+          "chunking_strategy": "<optionalStrategy>",
+          "top_k_values": [
+            1,
+            5,
+            10,
+            20
+          ],
+          "reranking_enabled": "<true|false>"
+        },
+        "query_set_id": "<querySetId>",
+        "started_at": "<now>",
+        "status": "running",
+        "notes": "<notes>"
+      }
+    },
+    "purpose": "Record a benchmark execution configuration for MongoDB/Voyage or a baseline system in side-by-side testing."
+  },
+  "QP14": {
+    "id": "QP14",
+    "name": "Store per-query benchmark result with ranked outputs and metrics",
+    "serves": [
+      "UC3"
+    ],
+    "traceability": [
+      "SC2",
+      "SC3",
+      "SC4",
+      "AI4",
+      "AI5"
+    ],
+    "collections": [
+      "benchmark_results"
+    ],
+    "query": {
+      "collection": "benchmark_results",
+      "operation": "insertOne",
+      "document": {
+        "run_id": "<runId>",
+        "tenant_id": "<tenantId>",
+        "benchmark_query_id": "<benchmarkQueryId>",
+        "latency_ms": "<latencyMs>",
+        "top_k_results": [
+          {
+            "rank": 1,
+            "result_type": "<document_chunk|agent_memory>",
+            "result_id": "<resultId>",
+            "document_id": "<optionalDocumentId>",
+            "score": "<score>",
+            "snippet": "<snippet>"
+          }
+        ],
+        "metrics": {
+          "precision_at_k": {
+            "1": "<p1>",
+            "5": "<p5>",
+            "10": "<p10>",
+            "20": "<p20>"
+          },
+          "recall_at_k": {
+            "1": "<r1>",
+            "5": "<r5>",
+            "10": "<r10>",
+            "20": "<r20>"
+          },
+          "mrr": "<mrr>",
+          "ndcg": "<ndcg>"
+        },
+        "created_at": "<now>"
+      }
+    },
+    "purpose": "Persist the ranked results and measured quality/latency for each benchmark query in a run."
+  },
+  "QP15": {
+    "id": "QP15",
+    "name": "Complete benchmark run with summary metrics",
+    "serves": [
+      "UC3"
+    ],
+    "traceability": [
+      "BO5",
+      "SC2",
+      "SC3",
+      "SC4",
+      "SC5"
+    ],
+    "collections": [
+      "benchmark_runs"
+    ],
+    "query": {
+      "collection": "benchmark_runs",
+      "operation": "updateOne",
+      "filter": {
+        "_id": "<runId>",
+        "tenant_id": "<tenantId>"
+      },
+      "update": {
+        "$set": {
+          "completed_at": "<now>",
+          "status": "completed",
+          "summary_metrics": {
+            "precision_at_k": {
+              "1": "<avgP1>",
+              "5": "<avgP5>",
+              "10": "<avgP10>",
+              "20": "<avgP20>"
+            },
+            "recall_at_k": {
+              "1": "<avgR1>",
+              "5": "<avgR5>",
+              "10": "<avgR10>",
+              "20": "<avgR20>"
+            },
+            "avg_latency_ms": "<avgLatency>",
+            "p95_latency_ms": "<p95Latency>",
+            "result_count": "<numQueries>"
+          }
+        }
+      }
+    },
+    "purpose": "Finalize a benchmark run with aggregate precision, recall, and latency metrics for reporting."
+  },
+  "QP16": {
+    "id": "QP16",
+    "name": "Compare benchmark runs side by side by system and chunking strategy",
+    "serves": [
+      "UC3"
+    ],
+    "traceability": [
+      "FR6",
+      "FR8",
+      "BO5",
+      "SC2",
+      "SC3",
+      "SC4",
+      "SC6"
+    ],
+    "collections": [
+      "benchmark_runs"
+    ],
+    "query": {
+      "collection": "benchmark_runs",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "tenant_id": "<tenantId>",
+            "status": "completed",
+            "workload_type": "<document_search|agent_memory|mixed>",
+            "baseline_group": "<comparisonGroup>"
+          }
+        },
+        {
+          "$project": {
+            "run_name": 1,
+            "system_under_test": 1,
+            "chunking_strategy": "$configuration.chunking_strategy",
+            "embedding_model": "$configuration.embedding_model",
+            "top_k_values": "$configuration.top_k_values",
+            "reranking_enabled": "$configuration.reranking_enabled",
+            "avg_latency_ms": "$summary_metrics.avg_latency_ms",
+            "p95_latency_ms": "$summary_metrics.p95_latency_ms",
+            "precision_at_k": "$summary_metrics.precision_at_k",
+            "recall_at_k": "$summary_metrics.recall_at_k"
+          }
+        },
+        {
+          "$sort": {
+            "system_under_test": 1,
+            "chunking_strategy": 1,
+            "avg_latency_ms": 1
+          }
+        }
+      ]
+    },
+    "purpose": "Show side-by-side benchmark outcomes across MongoDB and baseline systems, including chunking strategy effects."
+  },
+  "QP17": {
+    "id": "QP17",
+    "name": "Drill into per-query benchmark results for a run",
+    "serves": [
+      "UC3"
+    ],
+    "traceability": [
+      "SC2",
+      "SC3",
+      "SC4",
+      "AI4",
+      "AI5"
+    ],
+    "collections": [
+      "benchmark_results",
+      "benchmark_queries"
+    ],
+    "query": {
+      "collection": "benchmark_results",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "run_id": "<runId>",
+            "tenant_id": "<tenantId>"
+          }
+        },
+        {
+          "$lookup": {
+            "from": "benchmark_queries",
+            "localField": "benchmark_query_id",
+            "foreignField": "_id",
+            "as": "query"
+          }
+        },
+        {
+          "$unwind": "$query"
+        },
+        {
+          "$project": {
+            "benchmark_query_id": 1,
+            "query_text": "$query.query_text",
+            "query_type": "$query.query_type",
+            "latency_ms": 1,
+            "precision_at_k": "$metrics.precision_at_k",
+            "recall_at_k": "$metrics.recall_at_k",
+            "mrr": "$metrics.mrr",
+            "ndcg": "$metrics.ndcg",
+            "top_k_results": 1
+          }
+        },
+        {
+          "$sort": {
+            "latency_ms": -1
+          }
+        }
+      ]
+    },
+    "purpose": "Inspect query-by-query benchmark behavior to understand failures, latency outliers, and retrieval quality."
+  },
+  "QP18": {
+    "id": "QP18",
+    "name": "Summarize document ingestion and extraction readiness for a tenant",
     "serves": [
       "UC1",
-      "FR8"
+      "UC3"
+    ],
+    "traceability": [
+      "FR4",
+      "FR7",
+      "SC1"
     ],
     "collections": [
       "documents"
@@ -337,503 +935,31 @@
       "pipeline": [
         {
           "$match": {
-            "tenant_id": "<tenantId>",
-            "upload_session_label": "<sessionLabel>"
-          }
-        },
-        {
-          "$project": {
-            "title": 1,
-            "source_filename": 1,
-            "ingest_status": 1,
-            "chunking_runs": 1
-          }
-        },
-        {
-          "$unwind": {
-            "path": "$chunking_runs",
-            "preserveNullAndEmptyArrays": true
+            "tenant_id": "<tenantId>"
           }
         },
         {
           "$group": {
             "_id": {
-              "chunking_strategy": "$chunking_runs.chunking_strategy"
+              "source_type": "$source_type",
+              "status": "$extraction.status"
             },
-            "documentsCovered": {
+            "document_count": {
               "$sum": 1
             },
-            "totalChunks": {
-              "$sum": {
-                "$ifNull": [
-                  "$chunking_runs.chunk_count",
-                  0
-                ]
-              }
-            },
-            "lastRunAt": {
-              "$max": "$chunking_runs.run_timestamp"
+            "total_bytes": {
+              "$sum": "$file_size_bytes"
             }
           }
         },
         {
           "$sort": {
-            "_id.chunking_strategy": 1
+            "_id.source_type": 1,
+            "_id.status": 1
           }
         }
       ]
     },
-    "purpose": "Summarize which chunking strategies were run and how many chunks/documents each produced for the workshop dataset."
-  },
-  "QP7": {
-    "id": "QP7",
-    "name": "Retrieve agent memory context by semantic similarity",
-    "serves": [
-      "UC2",
-      "FR9"
-    ],
-    "collections": [
-      "agent_memory_entries"
-    ],
-    "query": {
-      "collection": "agent_memory_entries",
-      "operation": "aggregate",
-      "pipeline": [
-        {
-          "$vectorSearch": {
-            "index": "agent_memory_vector_index",
-            "path": "embedding",
-            "queryVector": "<queryEmbedding>",
-            "numCandidates": "<numCandidates>",
-            "limit": "<topK>",
-            "filter": {
-              "tenant_id": "<tenantId>",
-              "session_id": "<sessionId>",
-              "memory_type": {
-                "$in": "<memoryTypesArray>"
-              }
-            }
-          }
-        },
-        {
-          "$project": {
-            "_id": 1,
-            "session_id": 1,
-            "turn_id": 1,
-            "role": 1,
-            "text": 1,
-            "memory_type": 1,
-            "created_at": 1,
-            "metadata": 1,
-            "score": {
-              "$meta": "vectorSearchScore"
-            }
-          }
-        },
-        {
-          "$sort": {
-            "score": -1,
-            "created_at": -1
-          }
-        }
-      ]
-    },
-    "purpose": "Fetch the most relevant prior conversation or derived memory entries for an agent workflow."
-  },
-  "QP8": {
-    "id": "QP8",
-    "name": "List benchmark runs for a tenant",
-    "serves": [
-      "UJ1",
-      "FR4",
-      "FR5",
-      "SC2"
-    ],
-    "collections": [
-      "benchmark_runs"
-    ],
-    "query": {
-      "collection": "benchmark_runs",
-      "operation": "find",
-      "filter": {
-        "tenant_id": "<tenantId>"
-      },
-      "projection": {
-        "_id": 1,
-        "name": 1,
-        "run_type": 1,
-        "baseline_system": 1,
-        "chunking_strategy": 1,
-        "embedding_model": 1,
-        "top_k_values": 1,
-        "started_at": 1,
-        "completed_at": 1
-      },
-      "sort": {
-        "started_at": -1
-      }
-    },
-    "purpose": "Show available evaluation runs and side-by-side comparison contexts for the tenant."
-  },
-  "QP9": {
-    "id": "QP9",
-    "name": "Fetch benchmark questions for a run",
-    "serves": [
-      "UJ1",
-      "FR6",
-      "SC3",
-      "SC5"
-    ],
-    "collections": [
-      "benchmark_questions"
-    ],
-    "query": {
-      "collection": "benchmark_questions",
-      "operation": "find",
-      "filter": {
-        "benchmark_run_id": "<benchmarkRunId>"
-      },
-      "projection": {
-        "_id": 1,
-        "sequence_number": 1,
-        "question_text": 1,
-        "ground_truth_notes": 1,
-        "expected_document_ids": 1,
-        "expected_chunk_ids": 1
-      },
-      "sort": {
-        "sequence_number": 1
-      }
-    },
-    "purpose": "Load the customer-provided benchmark prompts and optional expected answers for a specific evaluation run."
-  },
-  "QP10": {
-    "id": "QP10",
-    "name": "Get ranked retrieval results for one benchmark question",
-    "serves": [
-      "FR5",
-      "FR6",
-      "SC2",
-      "SC3",
-      "SC4",
-      "SC5"
-    ],
-    "collections": [
-      "benchmark_results",
-      "documents",
-      "document_chunks"
-    ],
-    "query": {
-      "collection": "benchmark_results",
-      "operation": "aggregate",
-      "pipeline": [
-        {
-          "$match": {
-            "benchmark_run_id": "<benchmarkRunId>",
-            "benchmark_question_id": "<benchmarkQuestionId>",
-            "system_name": "<systemName>",
-            "rank": {
-              "$lte": "<topK>"
-            }
-          }
-        },
-        {
-          "$lookup": {
-            "from": "documents",
-            "localField": "retrieved_document_id",
-            "foreignField": "_id",
-            "as": "document"
-          }
-        },
-        {
-          "$lookup": {
-            "from": "document_chunks",
-            "localField": "retrieved_chunk_id",
-            "foreignField": "_id",
-            "as": "chunk"
-          }
-        },
-        {
-          "$project": {
-            "_id": 1,
-            "system_name": 1,
-            "retrieval_mode": 1,
-            "rank": 1,
-            "score": 1,
-            "latency_ms": 1,
-            "is_relevant": 1,
-            "evaluation_notes": 1,
-            "document": {
-              "$first": "$document"
-            },
-            "chunk": {
-              "$first": "$chunk"
-            }
-          }
-        },
-        {
-          "$sort": {
-            "rank": 1
-          }
-        }
-      ]
-    },
-    "purpose": "Inspect the ranked outputs, scores, and latency for a single benchmark question and system under test."
-  },
-  "QP11": {
-    "id": "QP11",
-    "name": "Side-by-side benchmark comparison across systems",
-    "serves": [
-      "UJ1",
-      "FR5",
-      "SC2",
-      "SC4",
-      "SC6"
-    ],
-    "collections": [
-      "benchmark_results",
-      "benchmark_questions"
-    ],
-    "query": {
-      "collection": "benchmark_results",
-      "operation": "aggregate",
-      "pipeline": [
-        {
-          "$match": {
-            "benchmark_run_id": "<benchmarkRunId>",
-            "rank": {
-              "$in": "<topKValuesArray>"
-            }
-          }
-        },
-        {
-          "$group": {
-            "_id": {
-              "benchmark_question_id": "$benchmark_question_id",
-              "system_name": "$system_name",
-              "rank": "$rank"
-            },
-            "avg_latency_ms": {
-              "$avg": "$latency_ms"
-            },
-            "relevant_hits": {
-              "$sum": {
-                "$cond": [
-                  {
-                    "$eq": [
-                      "$is_relevant",
-                      true
-                    ]
-                  },
-                  1,
-                  0
-                ]
-              }
-            },
-            "total_hits": {
-              "$sum": 1
-            }
-          }
-        },
-        {
-          "$addFields": {
-            "precision_at_k": {
-              "$cond": [
-                {
-                  "$gt": [
-                    "$total_hits",
-                    0
-                  ]
-                },
-                {
-                  "$divide": [
-                    "$relevant_hits",
-                    "$total_hits"
-                  ]
-                },
-                0
-              ]
-            }
-          }
-        },
-        {
-          "$lookup": {
-            "from": "benchmark_questions",
-            "localField": "_id.benchmark_question_id",
-            "foreignField": "_id",
-            "as": "question"
-          }
-        },
-        {
-          "$project": {
-            "benchmark_question_id": "$_id.benchmark_question_id",
-            "system_name": "$_id.system_name",
-            "rank": "$_id.rank",
-            "avg_latency_ms": 1,
-            "relevant_hits": 1,
-            "total_hits": 1,
-            "precision_at_k": 1,
-            "question_text": {
-              "$first": "$question.question_text"
-            }
-          }
-        },
-        {
-          "$sort": {
-            "benchmark_question_id": 1,
-            "system_name": 1,
-            "rank": 1
-          }
-        }
-      ]
-    },
-    "purpose": "Compare MongoDB and baseline systems on relevance and latency for each benchmark question and top-K cutoff."
-  },
-  "QP12": {
-    "id": "QP12",
-    "name": "Run-level benchmark summary metrics",
-    "serves": [
-      "FR5",
-      "AI5",
-      "SC4",
-      "SC5",
-      "SC6",
-      "SC7"
-    ],
-    "collections": [
-      "benchmark_results",
-      "benchmark_questions"
-    ],
-    "query": {
-      "collection": "benchmark_results",
-      "operation": "aggregate",
-      "pipeline": [
-        {
-          "$match": {
-            "benchmark_run_id": "<benchmarkRunId>",
-            "system_name": {
-              "$in": "<systemsArray>"
-            }
-          }
-        },
-        {
-          "$group": {
-            "_id": {
-              "system_name": "$system_name",
-              "question_id": "$benchmark_question_id"
-            },
-            "best_rank": {
-              "$min": "$rank"
-            },
-            "avg_latency_ms_per_question": {
-              "$avg": "$latency_ms"
-            },
-            "relevant_retrievals": {
-              "$sum": {
-                "$cond": [
-                  {
-                    "$eq": [
-                      "$is_relevant",
-                      true
-                    ]
-                  },
-                  1,
-                  0
-                ]
-              }
-            }
-          }
-        },
-        {
-          "$group": {
-            "_id": "$_id.system_name",
-            "question_count": {
-              "$sum": 1
-            },
-            "avg_latency_ms": {
-              "$avg": "$avg_latency_ms_per_question"
-            },
-            "questions_with_relevant_hit": {
-              "$sum": {
-                "$cond": [
-                  {
-                    "$gt": [
-                      "$relevant_retrievals",
-                      0
-                    ]
-                  },
-                  1,
-                  0
-                ]
-              }
-            }
-          }
-        },
-        {
-          "$lookup": {
-            "from": "benchmark_questions",
-            "pipeline": [
-              {
-                "$match": {
-                  "benchmark_run_id": "<benchmarkRunId>"
-                }
-              },
-              {
-                "$count": "total_questions"
-              }
-            ],
-            "as": "question_counts"
-          }
-        },
-        {
-          "$project": {
-            "system_name": "$_id",
-            "question_count": 1,
-            "avg_latency_ms": 1,
-            "questions_with_relevant_hit": 1,
-            "total_questions": {
-              "$ifNull": [
-                {
-                  "$first": "$question_counts.total_questions"
-                },
-                0
-              ]
-            },
-            "recall_proxy": {
-              "$cond": [
-                {
-                  "$gt": [
-                    {
-                      "$ifNull": [
-                        {
-                          "$first": "$question_counts.total_questions"
-                        },
-                        0
-                      ]
-                    },
-                    0
-                  ]
-                },
-                {
-                  "$divide": [
-                    "$questions_with_relevant_hit",
-                    {
-                      "$first": "$question_counts.total_questions"
-                    }
-                  ]
-                },
-                0
-              ]
-            }
-          }
-        },
-        {
-          "$sort": {
-            "avg_latency_ms": 1
-          }
-        }
-      ]
-    },
-    "purpose": "Summarize overall run performance by system, including latency and a question-level recall proxy for workshop reporting."
+    "purpose": "Show how many live or seeded documents are ready for retrieval and benchmarking, including extraction status."
   }
 }
