@@ -1,0 +1,424 @@
+{
+  "collections": [
+    {
+      "name": "user_reports",
+      "description": "Captures a user-reported stuck UI incident for later recheck/investigation. Traces to business entity 'User report', use case uc1, and functional requirement fr1.",
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "reported_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "reporter_type",
+          "type": "string",
+          "required": true,
+          "allowed_values": [
+            "end_user",
+            "unknown"
+          ],
+          "traceability": [
+            "personas.p1"
+          ]
+        },
+        {
+          "name": "reporter_identifier",
+          "type": "string",
+          "required": false,
+          "traceability": [
+            "personas.p1",
+            "open_questions"
+          ]
+        },
+        {
+          "name": "summary",
+          "type": "string",
+          "required": true,
+          "traceability": [
+            "business_entities[User report]",
+            "use_cases.uc1"
+          ]
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": false,
+          "traceability": [
+            "business_entities[User report]"
+          ]
+        },
+        {
+          "name": "application_area",
+          "type": "string",
+          "required": false,
+          "traceability": [
+            "open_questions"
+          ]
+        },
+        {
+          "name": "ui_screen",
+          "type": "string",
+          "required": false,
+          "traceability": [
+            "open_questions"
+          ]
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true,
+          "allowed_values": [
+            "reported",
+            "under_recheck",
+            "rechecked",
+            "closed"
+          ],
+          "traceability": [
+            "use_cases.uc1",
+            "functional_requirements.fr1"
+          ]
+        },
+        {
+          "name": "incident_id",
+          "type": "objectId",
+          "required": false,
+          "traceability": [
+            "business_entities[UI incident]"
+          ]
+        },
+        {
+          "name": "latest_recheck_at",
+          "type": "date",
+          "required": false,
+          "traceability": [
+            "functional_requirements.fr1"
+          ]
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "updated_at",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "embedding_vs_references": {
+        "embedded": [],
+        "references": [
+          {
+            "field": "incident_id",
+            "references_collection": "ui_incidents",
+            "why": "A report may be associated with a canonical incident record that is updated over time. Keeping incident data separate avoids duplicating investigation state if multiple reports point to the same incident."
+          }
+        ]
+      },
+      "relationships": [
+        {
+          "type": "many-to-one",
+          "from_collection": "user_reports",
+          "to_collection": "ui_incidents",
+          "via": "incident_id"
+        },
+        {
+          "type": "one-to-many",
+          "from_collection": "user_reports",
+          "to_collection": "rechecks",
+          "via": "report_id"
+        }
+      ]
+    },
+    {
+      "name": "ui_incidents",
+      "description": "Represents a stuck UI occurrence being tracked for recheck. Traces to business entity 'UI incident' and use case uc1.",
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "first_reported_at",
+          "type": "date",
+          "required": true,
+          "traceability": [
+            "business_entities[UI incident]",
+            "business_entities[User report]"
+          ]
+        },
+        {
+          "name": "last_reported_at",
+          "type": "date",
+          "required": true,
+          "traceability": [
+            "business_entities[UI incident]"
+          ]
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true,
+          "allowed_values": [
+            "open",
+            "under_recheck",
+            "rechecked",
+            "closed"
+          ],
+          "traceability": [
+            "use_cases.uc1",
+            "functional_requirements.fr1"
+          ]
+        },
+        {
+          "name": "summary",
+          "type": "string",
+          "required": true,
+          "traceability": [
+            "business_entities[UI incident]"
+          ]
+        },
+        {
+          "name": "application_area",
+          "type": "string",
+          "required": false,
+          "traceability": [
+            "open_questions"
+          ]
+        },
+        {
+          "name": "ui_screen",
+          "type": "string",
+          "required": false,
+          "traceability": [
+            "open_questions"
+          ]
+        },
+        {
+          "name": "report_count",
+          "type": "int",
+          "required": true,
+          "traceability": [
+            "business_entities[User report]"
+          ]
+        },
+        {
+          "name": "latest_report_id",
+          "type": "objectId",
+          "required": false,
+          "traceability": [
+            "business_entities[User report]"
+          ]
+        },
+        {
+          "name": "latest_recheck_at",
+          "type": "date",
+          "required": false,
+          "traceability": [
+            "functional_requirements.fr1"
+          ]
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "updated_at",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "embedding_vs_references": {
+        "embedded": [],
+        "references": [
+          {
+            "field": "latest_report_id",
+            "references_collection": "user_reports",
+            "why": "Keeps a pointer to the most recent report without embedding full report details, which may change independently and can be numerous."
+          }
+        ]
+      },
+      "relationships": [
+        {
+          "type": "one-to-many",
+          "from_collection": "ui_incidents",
+          "to_collection": "user_reports",
+          "via": "incident_id"
+        },
+        {
+          "type": "one-to-many",
+          "from_collection": "ui_incidents",
+          "to_collection": "rechecks",
+          "via": "incident_id"
+        }
+      ]
+    },
+    {
+      "name": "rechecks",
+      "description": "Stores each recheck/investigation action taken after a user report of a stuck UI. Traces to use case uc1, journey uj1, and functional requirement fr1.",
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "report_id",
+          "type": "objectId",
+          "required": true,
+          "traceability": [
+            "business_entities[User report]",
+            "use_cases.uc1"
+          ]
+        },
+        {
+          "name": "incident_id",
+          "type": "objectId",
+          "required": false,
+          "traceability": [
+            "business_entities[UI incident]"
+          ]
+        },
+        {
+          "name": "started_at",
+          "type": "date",
+          "required": true,
+          "traceability": [
+            "functional_requirements.fr1",
+            "user_journeys.uj1"
+          ]
+        },
+        {
+          "name": "completed_at",
+          "type": "date",
+          "required": false,
+          "traceability": [
+            "functional_requirements.fr1"
+          ]
+        },
+        {
+          "name": "performed_by_type",
+          "type": "string",
+          "required": true,
+          "allowed_values": [
+            "support_or_operations",
+            "unknown"
+          ],
+          "traceability": [
+            "personas.p2",
+            "requirements_requiring_clarification"
+          ]
+        },
+        {
+          "name": "performed_by_identifier",
+          "type": "string",
+          "required": false,
+          "traceability": [
+            "personas.p2",
+            "open_questions"
+          ]
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true,
+          "allowed_values": [
+            "pending",
+            "in_progress",
+            "completed"
+          ],
+          "traceability": [
+            "use_cases.uc1",
+            "functional_requirements.fr1"
+          ]
+        },
+        {
+          "name": "outcome",
+          "type": "string",
+          "required": false,
+          "allowed_values": [
+            "reproduced",
+            "not_reproduced",
+            "needs_more_info",
+            "unknown"
+          ],
+          "traceability": [
+            "functional_requirements.fr1",
+            "open_questions"
+          ]
+        },
+        {
+          "name": "notes",
+          "type": "string",
+          "required": false,
+          "traceability": [
+            "functional_requirements.fr1"
+          ]
+        },
+        {
+          "name": "atlas_used",
+          "type": "boolean",
+          "required": false,
+          "traceability": [
+            "integrations.int1",
+            "mongodb_atlas_opportunities.mao1"
+          ]
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "updated_at",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "embedding_vs_references": {
+        "embedded": [],
+        "references": [
+          {
+            "field": "report_id",
+            "references_collection": "user_reports",
+            "why": "Each recheck is initiated in response to a specific report; referencing supports multiple rechecks per report without growing the parent document."
+          },
+          {
+            "field": "incident_id",
+            "references_collection": "ui_incidents",
+            "why": "Optional link to the broader incident when one exists, allowing report-centric and incident-centric workflows."
+          }
+        ]
+      },
+      "relationships": [
+        {
+          "type": "many-to-one",
+          "from_collection": "rechecks",
+          "to_collection": "user_reports",
+          "via": "report_id"
+        },
+        {
+          "type": "many-to-one",
+          "from_collection": "rechecks",
+          "to_collection": "ui_incidents",
+          "via": "incident_id"
+        }
+      ]
+    }
+  ],
+  "design_notes": {
+    "embedding_strategy": "Use separate collections for reports, incidents, and rechecks because the core access patterns implied by the spec involve creating a report, then performing one or more follow-up rechecks, and potentially grouping multiple reports into a single incident. Embedding rechecks inside reports or incidents would risk unbounded array growth and make independent querying of pending/in-progress rechecks harder.",
+    "traceability_and_scope_guardrails": "Because the source transcript is sparse, the model avoids inventing remediation workflows, ticketing entities, SLA fields, or detailed observability telemetry. Optional fields such as application_area and ui_screen are included only as lightweight placeholders aligned to explicit open questions about what systems/applications are involved.",
+    "assumptions_reflected_not_resolved": [
+      "Support/operations performer details remain minimal because responsibility is flagged as requiring clarification.",
+      "Atlas role is modeled only as a lightweight boolean marker on rechecks rather than assuming search, triggers, or observability integrations."
+    ]
+  }
+}
