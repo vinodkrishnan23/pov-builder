@@ -1,0 +1,74 @@
+{
+  "version": "1.0.0",
+  "pov_scope": "Validate fix stability under timeout margin and support AI-assisted internal ticket triage with similar-ticket lookup.",
+  "resources": [
+    "tickets",
+    "fixes",
+    "fix_validations"
+  ],
+  "endpoints": [
+    {
+      "operationId": "listTriageQueueTickets",
+      "method": "GET",
+      "path": "/tickets",
+      "purpose": "List active or recently updated tickets for the internal triage queue.",
+      "request": {
+        "query_parameters": [
+          {
+            "name": "since_date",
+            "type": "string",
+            "format": "date-time",
+            "required": true,
+            "description": "Return tickets updated at or after this timestamp."
+          },
+          {
+            "name": "limit",
+            "type": "integer",
+            "required": false,
+            "default": 50,
+            "minimum": 1,
+            "maximum": 200,
+            "description": "Maximum number of tickets to return."
+          }
+        ],
+        "path_parameters": [],
+        "headers": [],
+        "body": null
+      },
+      "response": {
+        "status_codes": {
+          "200": {
+            "description": "A triage queue of tickets.",
+            "body": {
+              "tickets": [
+                {
+                  "ticket_number": "string",
+                  "title": "string",
+                  "status": "string",
+                  "priority": "string|null",
+                  "category": "string|null",
+                  "assignee_name": "string|null",
+                  "updated_at": "date-time"
+                }
+              ],
+              "count": "integer"
+            }
+          }
+        },
+        "errors": [
+          {
+            "status": 400,
+            "code": "INVALID_QUERY_PARAMETER",
+            "message": "since_date must be a valid ISO-8601 date-time; limit must be within allowed bounds."
+          }
+        ],
+        "backing": {
+          "type": "query_pattern",
+          "id": "qp2",
+          "mongodb_operation": "find on tickets with status in active triage statuses and updated_at >= since_date, sorted by updated_at desc, limited."
+        }
+      },
+      ":{": "invalid"
+    }
+  ]
+}
