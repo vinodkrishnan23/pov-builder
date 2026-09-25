@@ -1,0 +1,11 @@
+{
+  "engines": {
+    "node": ">=20 <21"
+  },
+  "scripts": {
+    "seed": "node seed.js"
+  },
+  "dependencies": {
+    "mongodb": "^6.11.0"
+  }
+}
