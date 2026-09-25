@@ -1,0 +1,865 @@
+{
+  "app_shell": {
+    "route_pattern": "/customers/:customerId/*",
+    "global_components": [
+      "CustomerContextHeader",
+      "PrimaryNavigation",
+      "ApiErrorBanner",
+      "LoadingOverlay",
+      "UnauthorizedState",
+      "NotFoundState"
+    ],
+    "notes": [
+      "All pages require customerId in route context because all authoritative endpoints are customer-scoped.",
+      "Detailed log pages are intended for admin/authorized roles only, but auth implementation details are out of scope; frontend should still surface access-denied states when backend rejects access.",
+      "No frontend routes are defined for policy authoring/publishing because the API contract omits policy management CRUD.",
+      "No ingestion management or archival screens are defined because the API contract does not expose those capabilities."
+    ]
+  },
+  "routes": [
+    {
+      "path": "/customers/:customerId/requests",
+      "page_id": "request_search_page"
+    },
+    {
+      "path": "/customers/:customerId/requests/by-rule",
+      "page_id": "request_search_by_rule_page"
+    },
+    {
+      "path": "/customers/:customerId/requests/search-json",
+      "page_id": "request_json_search_page"
+    },
+    {
+      "path": "/customers/:customerId/requests/lookup",
+      "page_id": "request_lookup_page"
+    },
+    {
+      "path": "/customers/:customerId/requests/:requestId",
+      "page_id": "request_detail_page"
+    },
+    {
+      "path": "/customers/:customerId/correlation/:correlationId",
+      "page_id": "request_detail_by_correlation_page"
+    },
+    {
+      "path": "/customers/:customerId/rule-executions/search",
+      "page_id": "rule_execution_search_page"
+    },
+    {
+      "path": "/customers/:customerId/custom-extract",
+      "page_id": "custom_extract_page"
+    },
+    {
+      "path": "/customers/:customerId/analytics/policies/:policyId/versions",
+      "page_id": "policy_version_outcomes_page"
+    },
+    {
+      "path": "/customers/:customerId/analytics/outcomes/by-dimension",
+      "page_id": "outcomes_by_dimension_page"
+    },
+    {
+      "path": "/customers/:customerId/analytics/policies/:policyId/rule-impact",
+      "page_id": "policy_rule_impact_page"
+    },
+    {
+      "path": "/customers/:customerId/retention",
+      "page_id": "retention_management_page"
+    },
+    {
+      "path": "/customers/:customerId/settings/logging",
+      "page_id": "customer_logging_config_page"
+    }
+  ],
+  "pages": [
+    {
+      "page_id": "request_search_page",
+      "title": "Execution Request Search",
+      "purpose": "Locate candidate execution requests by time range and basic metadata before drilling into a specific request for audit and troubleshooting.",
+      "primary_personas": [
+        "P2",
+        "P3"
+      ],
+      "data_requirements": [
+        "customerId from route",
+        "Search filters: from_ts, to_ts, optional policy_id, optional policy_version, optional channel, optional decision, optional status, optional page_size",
+        "Paged request summary items including request_id, correlation_id, policy_id, policy_version, timestamps, duration, outcome, analytics_dimensions, executed_rule_names, rule_execution_count"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "searchRequests",
+          "method": "GET",
+          "path": "/api/v1/customers/{customerId}/requests"
+        }
+      ],
+      "user_actions": [
+        "Enter required date range",
+        "Apply optional metadata filters",
+        "Submit search",
+        "Paginate/load next page when next_page_token is present in response metadata",
+        "Open request detail by request_id",
+        "Open request detail by correlation_id when correlation_id is present",
+        "Clear filters"
+      ],
+      "loading_states": [
+        "Initial empty state before first search",
+        "Table/skeleton loading on search submit",
+        "Incremental loading state for pagination"
+      ],
+      "error_states": [
+        "400 INVALID_DATE_RANGE shown inline near date filters",
+        "Generic API failure banner for network/server errors",
+        "Empty results state when items array is empty"
+      ],
+      "components": [
+        "DateRangeFilter",
+        "RequestMetadataFilters",
+        "SearchToolbar",
+        "RequestResultsTable",
+        "OutcomeBadge",
+        "ExecutedRuleChips",
+        "PaginationControls",
+        "EmptyResultsState"
+      ]
+    },
+    {
+      "page_id": "request_search_by_rule_page",
+      "title": "Search Requests by Executed Rule",
+      "purpose": "Find request executions where a named rule fired using the denormalized executed_rule_names list on the request record.",
+      "primary_personas": [
+        "P2",
+        "P3"
+      ],
+      "data_requirements": [
+        "customerId from route",
+        "Search filters: from_ts, to_ts, required rule_name, optional policy_id, optional policy_version, optional decision, optional page_size",
+        "Result items with request summary subset"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "searchRequestsByExecutedRule",
+          "method": "GET",
+          "path": "/api/v1/customers/{customerId}/requests/by-rule"
+        }
+      ],
+      "user_actions": [
+        "Enter date range and rule name",
+        "Apply optional policy/decision filters",
+        "Submit search",
+        "Open a request detail from results",
+        "Clear filters"
+      ],
+      "loading_states": [
+        "Initial empty state",
+        "Results loading spinner/skeleton",
+        "Pagination loading"
+      ],
+      "error_states": [
+        "400 RULE_NAME_REQUIRED inline validation",
+        "400 INVALID_DATE_RANGE inline validation",
+        "Empty results state",
+        "Generic API error banner"
+      ],
+      "components": [
+        "DateRangeFilter",
+        "RuleNameInput",
+        "PolicyFilters",
+        "RequestResultsTable",
+        "PaginationControls",
+        "EmptyResultsState"
+      ]
+    },
+    {
+      "page_id": "request_json_search_page",
+      "title": "Search Requests by JSON Field Value",
+      "purpose": "Search request-level executions by a value inside stored request, response, or intermediate JSON content using an allowed dotted JSON path.",
+      "primary_personas": [
+        "P2",
+        "P3"
+      ],
+      "data_requirements": [
+        "customerId from route",
+        "Search form: from_ts, to_ts, json_path, value",
+        "Results with request_id, correlation_id, policy metadata, timestamps, outcome, request_payload, response_payload, intermediate_summary"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "searchRequestsByJsonField",
+          "method": "POST",
+          "path": "/api/v1/customers/{customerId}/requests/search-json"
+        }
+      ],
+      "user_actions": [
+        "Enter date range, JSON path, and value",
+        "Submit content search",
+        "Inspect matching payload snippets in result rows",
+        "Open full request detail",
+        "Clear search"
+      ],
+      "loading_states": [
+        "Initial guidance/empty state explaining safe dotted path requirement",
+        "Search execution loading state",
+        "Optional lazy expand for large JSON snippets in rows"
+      ],
+      "error_states": [
+        "400 INVALID_JSON_SEARCH inline form error",
+        "400 UNSAFE_JSON_PATH inline path validation error",
+        "Empty results state",
+        "Generic API error banner"
+      ],
+      "components": [
+        "DateRangeFilter",
+        "JsonPathSearchForm",
+        "ValueInput",
+        "JsonSnippetViewer",
+        "RequestSearchCards",
+        "EmptyResultsState"
+      ]
+    },
+    {
+      "page_id": "request_lookup_page",
+      "title": "Direct Request Lookup",
+      "purpose": "Quickly open a single request by request ID or correlation ID when the identifier is already known.",
+      "primary_personas": [
+        "P2",
+        "P3"
+      ],
+      "data_requirements": [
+        "customerId from route",
+        "User-entered requestId or correlationId"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "getRequestSummary",
+          "method": "GET",
+          "path": "/api/v1/customers/{customerId}/requests/{requestId}"
+        },
+        {
+          "operation_id": "getRequestSummaryByCorrelationId",
+          "method": "GET",
+          "path": "/api/v1/customers/{customerId}/requests/by-correlation/{correlationId}"
+        }
+      ],
+      "user_actions": [
+        "Choose lookup mode: request ID or correlation ID",
+        "Submit lookup",
+        "Navigate to corresponding detail page on success"
+      ],
+      "loading_states": [
+        "Button-level loading while lookup runs"
+      ],
+      "error_states": [
+        "404 REQUEST_NOT_FOUND as not-found helper state with option to retry another ID",
+        "400 INVALID_REQUEST_ID or INVALID_CORRELATION_ID inline validation",
+        "Generic API error banner"
+      ],
+      "components": [
+        "LookupModeToggle",
+        "RequestIdInput",
+        "CorrelationIdInput",
+        "InlineLookupResultState"
+      ]
+    },
+    {
+      "page_id": "request_detail_page",
+      "title": "Request Drilldown",
+      "purpose": "Inspect a full request-level execution record together with all ordered rule execution details to understand why an outcome occurred.",
+      "primary_personas": [
+        "P2",
+        "P3"
+      ],
+      "data_requirements": [
+        "customerId and requestId from route",
+        "Request drilldown payload including request metadata, full request/response JSON, intermediate summary, outcome, analytics_dimensions, executed_rule_names, rule_execution_count, and rule_execution_trace"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "getRequestDrilldown",
+          "method": "GET",
+          "path": "/api/v1/customers/{customerId}/requests/{requestId}"
+        }
+      ],
+      "user_actions": [
+        "View request metadata and outcome summary",
+        "Expand/collapse request payload, response payload, and intermediate summary JSON viewers",
+        "Browse ordered rule trace",
+        "Select a rule trace row to inspect snapshots, variables touched, and any error details",
+        "Optionally refresh data",
+        "Navigate back to search"
+      ],
+      "loading_states": [
+        "Full-page skeleton while drilldown loads",
+        "Section-level expansion loading only if UI lazily renders large JSON"
+      ],
+      "error_states": [
+        "404 REQUEST_NOT_FOUND page state",
+        "400 INVALID_REQUEST_ID page state",
+        "Generic API error banner with retry"
+      ],
+      "components": [
+        "RequestHeader",
+        "OutcomeSummaryPanel",
+        "JsonViewer",
+        "AnalyticsDimensionsPanel",
+        "ExecutedRulesList",
+        "RuleTraceTable",
+        "RuleTraceDetailDrawer",
+        "RetryButton"
+      ]
+    },
+    {
+      "page_id": "request_detail_by_correlation_page",
+      "title": "Request Drilldown by Correlation ID",
+      "purpose": "Inspect a full request and associated rule trace when correlation ID is the available lookup key.",
+      "primary_personas": [
+        "P2",
+        "P3"
+      ],
+      "data_requirements": [
+        "customerId and correlationId from route",
+        "Same drilldown payload shape returned by correlation lookup"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "getRequestDrilldownByCorrelationId",
+          "method": "GET",
+          "path": "/api/v1/customers/{customerId}/requests/by-correlation/{correlationId}/drilldown"
+        }
+      ],
+      "user_actions": [
+        "View full request drilldown",
+        "Inspect rule trace and payloads",
+        "Navigate to canonical request route using returned request_id if desired"
+      ],
+      "loading_states": [
+        "Full-page skeleton"
+      ],
+      "error_states": [
+        "404 REQUEST_NOT_FOUND page state",
+        "400 INVALID_CORRELATION_ID page state",
+        "Generic API error banner"
+      ],
+      "components": [
+        "RequestHeader",
+        "OutcomeSummaryPanel",
+        "JsonViewer",
+        "RuleTraceTable",
+        "RuleTraceDetailDrawer"
+      ]
+    },
+    {
+      "page_id": "rule_execution_search_page",
+      "title": "Rule Execution Variable Search",
+      "purpose": "Locate individual rule execution events where a named variable had a specific value, supporting deep troubleshooting beyond request-level search.",
+      "primary_personas": [
+        "P2",
+        "P3"
+      ],
+      "data_requirements": [
+        "customerId from route",
+        "Filters: from_ts, to_ts, variable_name, variable_value, optional rule_name, optional stage_name, optional execution_result, optional page_size",
+        "Result rows with request/correlation IDs, policy metadata, rule_log_seq, rule_name, stage_name, executed_at, execution_result, variables_touched, output_snapshot, error"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "searchRuleExecutionLogs",
+          "method": "GET",
+          "path": "/api/v1/customers/{customerId}/rule-executions"
+        }
+      ],
+      "user_actions": [
+        "Enter required variable name and variable value plus date range",
+        "Add optional narrowing filters",
+        "Submit search",
+        "Inspect matching variable snapshots in results",
+        "Open parent request detail for a selected row"
+      ],
+      "loading_states": [
+        "Initial helper state",
+        "Results loading state",
+        "Pagination loading"
+      ],
+      "error_states": [
+        "400 VARIABLE_SEARCH_REQUIRES_NAME_AND_VALUE inline validation",
+        "400 INVALID_DATE_RANGE inline validation",
+        "Empty results state",
+        "Generic API error banner"
+      ],
+      "components": [
+        "DateRangeFilter",
+        "VariableSearchForm",
+        "RuleExecutionFilters",
+        "RuleExecutionResultsTable",
+        "VariableValueViewer",
+        "PaginationControls"
+      ]
+    },
+    {
+      "page_id": "custom_extract_page",
+      "title": "Custom Extract Builder",
+      "purpose": "Return a reusable extract for a supplied set of request IDs so implementation and delivery teams can build tailored outputs from authoritative request and rule-log data.",
+      "primary_personas": [
+        "P3"
+      ],
+      "data_requirements": [
+        "customerId from route",
+        "User-supplied array/list of request IDs",
+        "Extract response items containing request summary fields, analytics_dimensions, request/response payloads, and compact rule_logs"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "customExtractByRequestIds",
+          "method": "POST",
+          "path": "/api/v1/customers/{customerId}/requests/custom-extract"
+        }
+      ],
+      "user_actions": [
+        "Paste or upload a line-separated list of request IDs into a text area (frontend parsing only)",
+        "Submit extract request",
+        "Review returned extract in tabular/card form",
+        "Copy or download client-side JSON of the returned response for downstream use"
+      ],
+      "loading_states": [
+        "Submission loading state",
+        "Large-response rendering spinner"
+      ],
+      "error_states": [
+        "400 REQUEST_IDS_REQUIRED inline validation",
+        "413 TOO_MANY_REQUEST_IDS with guidance to split batches",
+        "Empty response state if no matching items returned",
+        "Generic API error banner"
+      ],
+      "components": [
+        "RequestIdBatchInput",
+        "ExtractSubmitBar",
+        "ExtractResultsViewer",
+        "CompactRuleLogsPanel",
+        "ClientSideJsonDownloadButton"
+      ]
+    },
+    {
+      "page_id": "policy_version_outcomes_page",
+      "title": "Policy Version Outcome Comparison",
+      "purpose": "Compare outcomes across versions of a single policy to identify shifts in approval/rejection patterns, score changes, and latency changes.",
+      "primary_personas": [
+        "P2",
+        "P4"
+      ],
+      "data_requirements": [
+        "customerId and policyId from route",
+        "Date range filter",
+        "Items per policy_version with total_requests, decision_breakdown, avg_score, avg_duration_ms"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "compareOutcomesByPolicyVersion",
+          "method": "GET",
+          "path": "/api/v1/customers/{customerId}/analytics/policies/{policyId}/versions/outcomes"
+        }
+      ],
+      "user_actions": [
+        "Select date range",
+        "Run comparison",
+        "Switch between chart and table views",
+        "Inspect per-version metrics"
+      ],
+      "loading_states": [
+        "Chart/table loading skeleton"
+      ],
+      "error_states": [
+        "400 INVALID_DATE_RANGE inline validation",
+        "Empty analytics state when no records exist in range",
+        "Generic API error banner"
+      ],
+      "components": [
+        "DateRangeFilter",
+        "AnalyticsViewToggle",
+        "PolicyVersionComparisonChart",
+        "DecisionBreakdownTable",
+        "MetricSummaryCards"
+      ]
+    },
+    {
+      "page_id": "outcomes_by_dimension_page",
+      "title": "Outcome Analysis by Dimension",
+      "purpose": "Produce report-ready metrics such as approval rates by age band, region, or segment using allowed analytics dimensions.",
+      "primary_personas": [
+        "P2",
+        "P4"
+      ],
+      "data_requirements": [
+        "customerId from route",
+        "Filters: dimensionName, from_ts, to_ts, optional policy_id, optional policy_version",
+        "Items with dimension_value, total_requests, decision_breakdown including avg_score"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "analyzeOutcomesByDimension",
+          "method": "GET",
+          "path": "/api/v1/customers/{customerId}/analytics/outcomes/by-dimension/{dimensionName}"
+        }
+      ],
+      "user_actions": [
+        "Enter/select dimension name",
+        "Choose date range and optional policy filters",
+        "Run analysis",
+        "View chart/table",
+        "Inspect metric rows by dimension bucket"
+      ],
+      "loading_states": [
+        "Loading skeleton for chart and table"
+      ],
+      "error_states": [
+        "400 INVALID_DIMENSION_NAME inline guidance that only backend-allowed dimensions work; frontend cannot infer full allowed list from API contract",
+        "400 INVALID_DATE_RANGE inline validation",
+        "Empty analytics state",
+        "Generic API error banner"
+      ],
+      "components": [
+        "DimensionNameInput",
+        "DateRangeFilter",
+        "PolicyFilters",
+        "DimensionOutcomeChart",
+        "DimensionOutcomeTable",
+        "AnalyticsEmptyState"
+      ]
+    },
+    {
+      "page_id": "policy_rule_impact_page",
+      "title": "Policy Rule Impact Analysis",
+      "purpose": "Show which rules are firing differently across policy versions to help explain business-impact changes beyond top-level outcome rates.",
+      "primary_personas": [
+        "P2",
+        "P4"
+      ],
+      "data_requirements": [
+        "customerId and policyId from route",
+        "Date range filter",
+        "Items with policy_version, rule_name, total_executions, result_breakdown, avg_rule_duration_ms"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "identifyRuleImpactPatternsByPolicyVersion",
+          "method": "GET",
+          "path": "/api/v1/customers/{customerId}/analytics/policies/{policyId}/rule-impact"
+        }
+      ],
+      "user_actions": [
+        "Select date range",
+        "Run analysis",
+        "Sort/filter result table client-side by rule name, policy version, or execution count",
+        "Inspect rule impact patterns"
+      ],
+      "loading_states": [
+        "Analytics loading skeleton"
+      ],
+      "error_states": [
+        "400 INVALID_DATE_RANGE inline validation",
+        "Empty analytics state",
+        "Generic API error banner"
+      ],
+      "components": [
+        "DateRangeFilter",
+        "RuleImpactTable",
+        "ResultBreakdownStack",
+        "MetricSummaryCards"
+      ]
+    },
+    {
+      "page_id": "retention_management_page",
+      "title": "Retention Management",
+      "purpose": "Preview purge candidates for a customer and execute a confirmed administrative purge at a selected cutoff timestamp.",
+      "primary_personas": [
+        "P2"
+      ],
+      "data_requirements": [
+        "customerId from route",
+        "Current customer logging config for contextual retention settings",
+        "Purge cutoff timestamp entered by user",
+        "Preview response listing eligible execution_requests and rule_execution_logs",
+        "Purge execution response with deleted counts"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "getCustomerLoggingConfig",
+          "method": "GET",
+          "path": "/api/v1/customers/{customerId}/logging-config"
+        },
+        {
+          "operation_id": "previewRetentionPurgeCandidates",
+          "method": "GET",
+          "path": "/api/v1/customers/{customerId}/retention/purge-candidates"
+        },
+        {
+          "operation_id": "executeRetentionPurge",
+          "method": "POST",
+          "path": "/api/v1/customers/{customerId}/retention/purge"
+        }
+      ],
+      "user_actions": [
+        "View current logging enabled state and retention policy",
+        "Enter purge cutoff timestamp",
+        "Preview purge candidates",
+        "Review counts/items eligible for deletion",
+        "Open confirmation modal",
+        "Execute purge with confirm=true",
+        "Review deleted counts"
+      ],
+      "loading_states": [
+        "Initial config loading state",
+        "Preview loading state",
+        "Destructive action loading state during purge"
+      ],
+      "error_states": [
+        "404 customer config not found shown as contextual warning while still allowing retention actions only if backend permits",
+        "400 PURGE_CUTOFF_REQUIRED inline validation",
+        "400 PURGE_CONFIRMATION_REQUIRED should not occur if frontend sets confirm=true, but show banner if returned",
+        "Generic API error banner"
+      ],
+      "components": [
+        "RetentionPolicySummary",
+        "PurgeCutoffPicker",
+        "PurgeCandidatesPreview",
+        "DestructiveConfirmationModal",
+        "PurgeResultSummary"
+      ]
+    },
+    {
+      "page_id": "customer_logging_config_page",
+      "title": "Customer Logging Configuration",
+      "purpose": "View and update customer-level execution logging enablement, deployment mode, retention policy, and authorized log viewer roles.",
+      "primary_personas": [
+        "P2",
+        "P4"
+      ],
+      "data_requirements": [
+        "customerId from route",
+        "Config fields: customer_name, deployment_mode, logging_enabled, retention_policy.retention_days, purge_mode, purge_after_field, authorized_log_viewer_roles"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "getCustomerLoggingConfig",
+          "method": "GET",
+          "path": "/api/v1/customers/{customerId}/logging-config"
+        },
+        {
+          "operation_id": "upsertCustomerLoggingConfig",
+          "method": "PUT",
+          "path": "/api/v1/customers/{customerId}/logging-config"
+        }
+      ],
+      "user_actions": [
+        "Load existing config",
+        "Edit customer name and deployment mode",
+        "Toggle logging enabled/disabled",
+        "Edit retention days, purge mode, purge-after field",
+        "Edit authorized roles list",
+        "Save configuration",
+        "Reset unsaved changes"
+      ],
+      "loading_states": [
+        "Initial form skeleton",
+        "Save-in-progress disabled form state"
+      ],
+      "error_states": [
+        "404 CUSTOMER_NOT_FOUND can be treated as empty/create-new config form",
+        "400 INVALID_CUSTOMER_ID route-level error",
+        "400 VALIDATION_ERROR inline/server validation summary",
+        "409 CUSTOMER_ID_MISMATCH banner though frontend should avoid mismatch by deriving from route",
+        "Generic API error banner"
+      ],
+      "components": [
+        "CustomerConfigForm",
+        "DeploymentModeSelect",
+        "LoggingToggle",
+        "RetentionPolicyForm",
+        "AuthorizedRolesEditor",
+        "SaveBar",
+        "ValidationSummary"
+      ]
+    }
+  ],
+  "components": [
+    {
+      "component_id": "CustomerContextHeader",
+      "purpose": "Shows customer context and current route section."
+    },
+    {
+      "component_id": "PrimaryNavigation",
+      "purpose": "Provides links to request search, rule search, analytics, retention, and settings pages."
+    },
+    {
+      "component_id": "DateRangeFilter",
+      "purpose": "Reusable required from/to timestamp picker for all search and analytics screens."
+    },
+    {
+      "component_id": "RequestMetadataFilters",
+      "purpose": "Optional filters for policy, version, channel, decision, and status on request search."
+    },
+    {
+      "component_id": "RequestResultsTable",
+      "purpose": "Displays paged request summary results with links to detail pages."
+    },
+    {
+      "component_id": "OutcomeBadge",
+      "purpose": "Renders decision/status compactly."
+    },
+    {
+      "component_id": "ExecutedRuleChips",
+      "purpose": "Displays executed rule names from request summaries."
+    },
+    {
+      "component_id": "PaginationControls",
+      "purpose": "Handles client-side pagination UI using page_size and next_page_token presence. Note: the API contract returns next_page_token in responses but does not define a request parameter for sending it back, so true cursor continuation behavior is not fully specified by the backend contract and should be flagged for backend clarification."
+    },
+    {
+      "component_id": "JsonPathSearchForm",
+      "purpose": "Captures json_path and value for dynamic JSON search."
+    },
+    {
+      "component_id": "JsonSnippetViewer",
+      "purpose": "Compact expandable viewer for payload snippets in search results."
+    },
+    {
+      "component_id": "LookupModeToggle",
+      "purpose": "Switches direct lookup between request ID and correlation ID."
+    },
+    {
+      "component_id": "RequestHeader",
+      "purpose": "Displays request identifiers, policy info, timestamps, and ingestion status."
+    },
+    {
+      "component_id": "OutcomeSummaryPanel",
+      "purpose": "Shows final decision, status, score, and reason codes."
+    },
+    {
+      "component_id": "JsonViewer",
+      "purpose": "Formatted expandable viewer for large JSON request, response, snapshots, and intermediate objects."
+    },
+    {
+      "component_id": "AnalyticsDimensionsPanel",
+      "purpose": "Shows analytics_dimensions key-value pairs present on a request."
+    },
+    {
+      "component_id": "RuleTraceTable",
+      "purpose": "Displays ordered rule execution trace rows."
+    },
+    {
+      "component_id": "RuleTraceDetailDrawer",
+      "purpose": "Shows detailed snapshots, variables touched, expressions, and errors for one rule trace row."
+    },
+    {
+      "component_id": "VariableSearchForm",
+      "purpose": "Captures variable_name and variable_value for rule-execution search."
+    },
+    {
+      "component_id": "RuleExecutionResultsTable",
+      "purpose": "Displays matching rule execution events and links back to parent request."
+    },
+    {
+      "component_id": "RequestIdBatchInput",
+      "purpose": "Accepts multiple request IDs for custom extract generation."
+    },
+    {
+      "component_id": "ExtractResultsViewer",
+      "purpose": "Renders custom extract response items for review and copy/download."
+    },
+    {
+      "component_id": "ClientSideJsonDownloadButton",
+      "purpose": "Downloads the returned extract payload as JSON in-browser; this is client-side only because no backend export endpoint exists."
+    },
+    {
+      "component_id": "AnalyticsViewToggle",
+      "purpose": "Switches between chart and table presentations for analytics endpoints."
+    },
+    {
+      "component_id": "PolicyVersionComparisonChart",
+      "purpose": "Visualizes outcome and metric changes across policy versions."
+    },
+    {
+      "component_id": "DecisionBreakdownTable",
+      "purpose": "Tabular decision counts and averages by policy version or dimension."
+    },
+    {
+      "component_id": "DimensionOutcomeChart",
+      "purpose": "Visualizes decision rates across dimension values."
+    },
+    {
+      "component_id": "DimensionOutcomeTable",
+      "purpose": "Displays dimension analysis rows."
+    },
+    {
+      "component_id": "RuleImpactTable",
+      "purpose": "Tabular view of rule impact metrics by policy version."
+    },
+    {
+      "component_id": "RetentionPolicySummary",
+      "purpose": "Shows current customer logging and retention settings for context."
+    },
+    {
+      "component_id": "PurgeCutoffPicker",
+      "purpose": "Captures purge_cutoff_ts."
+    },
+    {
+      "component_id": "PurgeCandidatesPreview",
+      "purpose": "Displays eligible execution request and rule-log documents to be deleted."
+    },
+    {
+      "component_id": "DestructiveConfirmationModal",
+      "purpose": "Requires explicit confirmation before purge execution."
+    },
+    {
+      "component_id": "PurgeResultSummary",
+      "purpose": "Shows deleted document counts after purge."
+    },
+    {
+      "component_id": "CustomerConfigForm",
+      "purpose": "Editable form for customer logging configuration."
+    },
+    {
+      "component_id": "DeploymentModeSelect",
+      "purpose": "Select input constrained to on_prem, aws, azure, gcp, other_customer_cloud."
+    },
+    {
+      "component_id": "LoggingToggle",
+      "purpose": "Enable/disable execution logging at customer level."
+    },
+    {
+      "component_id": "RetentionPolicyForm",
+      "purpose": "Captures retention_days, purge_mode, and purge_after_field."
+    },
+    {
+      "component_id": "AuthorizedRolesEditor",
+      "purpose": "Manages array input for authorized log viewer roles."
+    },
+    {
+      "component_id": "ValidationSummary",
+      "purpose": "Displays backend validation errors in a consistent form summary."
+    }
+  ],
+  "constraints_and_gaps": [
+    {
+      "gap": "No endpoint exists to list policies or allowed analytics dimensions.",
+      "frontend_impact": "Analytics pages requiring policyId or dimensionName must rely on route parameters, free-text input, or externally supplied navigation context rather than an in-app picker backed by this API contract."
+    },
+    {
+      "gap": "No generic full-text or arbitrary nested search endpoint exists beyond JSON path search and variable/value search.",
+      "frontend_impact": "Search UI must be explicit about supported search modes and should not promise free-form global search."
+    },
+    {
+      "gap": "No archival/export API exists.",
+      "frontend_impact": "Any download/export capability must be limited to client-side export of already returned API payloads."
+    },
+    {
+      "gap": "Pagination continuation is partially specified: responses include next_page_token, but request query params do not define page_token/next_page_token inputs.",
+      "frontend_impact": "Frontend can render pagination affordances, but end-to-end cursor pagination behavior requires backend clarification before implementation."
+    },
+    {
+      "gap": "No endpoint exists to compare arbitrary policy definitions or retrieve policy metadata/history.",
+      "frontend_impact": "Business-impact analysis is limited to analytics aggregates by supplied policyId and versions present in results; the frontend cannot show actual rule-definition diffs."
+    },
+    {
+      "gap": "No endpoint exists for LLM insights.",
+      "frontend_impact": "Do not design an AI insights screen for this POV despite future roadmap interest."
+    }
+  ]
+}
