@@ -1,0 +1,1013 @@
+{
+  "app_shell": {
+    "purpose": "Deployment-scoped admin console for execution logging search, trace inspection, analytics, and configuration.",
+    "global_dependencies": [
+      "Authenticated session managed outside this contract",
+      "Active deployment context for deployment-scoped routes except global logging coverage"
+    ],
+    "navigation": [
+      {
+        "label": "Request Search",
+        "route": "/deployments/:deploymentId/execution-requests/search"
+      },
+      {
+        "label": "Step Search",
+        "route": "/deployments/:deploymentId/execution-steps/search"
+      },
+      {
+        "label": "Impact Search",
+        "route": "/deployments/:deploymentId/request-impact/search"
+      },
+      {
+        "label": "Analytics",
+        "route": "/deployments/:deploymentId/analytics/outcome-trends"
+      },
+      {
+        "label": "Deployment Config",
+        "route": "/deployments/:deploymentId/config"
+      },
+      {
+        "label": "Logging Coverage",
+        "route": "/analytics/logging-coverage"
+      }
+    ],
+    "shared_states": {
+      "unauthenticated": "Show sign-in/reauth required state when API returns 401.",
+      "forbidden": "Show access denied messaging when API returns 403, noting execution log access is restricted to privileged users.",
+      "unknown_error": "Show retry option and capture correlation/debug info where available."
+    }
+  },
+  "routes": [
+    {
+      "path": "/deployments/:deploymentId/execution-requests/search",
+      "page_id": "execution_request_search"
+    },
+    {
+      "path": "/deployments/:deploymentId/execution-steps/search",
+      "page_id": "execution_step_search"
+    },
+    {
+      "path": "/deployments/:deploymentId/execution-traces/:requestId",
+      "page_id": "execution_trace_detail"
+    },
+    {
+      "path": "/deployments/:deploymentId/execution-requests/:requestId",
+      "page_id": "execution_request_summary_detail"
+    },
+    {
+      "path": "/deployments/:deploymentId/execution-requests/:requestId/steps",
+      "page_id": "execution_steps_detail"
+    },
+    {
+      "path": "/deployments/:deploymentId/request-impact/search",
+      "page_id": "request_impact_search"
+    },
+    {
+      "path": "/deployments/:deploymentId/analytics/outcome-trends",
+      "page_id": "outcome_trends_analytics"
+    },
+    {
+      "path": "/deployments/:deploymentId/analytics/policy-version-comparison",
+      "page_id": "policy_version_comparison_analytics"
+    },
+    {
+      "path": "/deployments/:deploymentId/analytics/segment-outcomes",
+      "page_id": "segment_outcome_analytics"
+    },
+    {
+      "path": "/deployments/:deploymentId/analytics/rule-performance",
+      "page_id": "rule_performance_analytics"
+    },
+    {
+      "path": "/deployments/:deploymentId/config",
+      "page_id": "deployment_configuration"
+    },
+    {
+      "path": "/analytics/logging-coverage",
+      "page_id": "global_logging_coverage_analytics"
+    }
+  ],
+  "pages": [
+    {
+      "page_id": "execution_request_search",
+      "title": "Execution Request Search",
+      "purpose": "Find request-level execution logs using supported request filters, then drill into full execution traces.",
+      "personas": [
+        "P2",
+        "P3"
+      ],
+      "data_requirements": [
+        "deployment_id from route",
+        "Search form fields: date_range.start, date_range.end, optional status_in[], optional final_outcome_in[], optional policy_id, optional definition_version, optional search_attributes object, page.limit",
+        "Search results: request_id, policy metadata, timestamps, status, final_outcome, outcome_reason_codes, search_attributes, metrics"
+      ],
+      "api_consumption": [
+        {
+          "operation_id": "searchExecutionRequests",
+          "method": "POST",
+          "path": "/api/v1/deployments/{deployment_id}/execution-requests/search",
+          "usage": "Primary search request for request-level logs."
+        }
+      ],
+      "user_actions": [
+        "Enter/modify request search filters",
+        "Submit search",
+        "Clear filters",
+        "Adjust result limit up to supported max",
+        "Open a result in Execution Trace Detail",
+        "Open a result in lightweight Request Summary Detail"
+      ],
+      "loading_states": [
+        "Initial empty state before first search",
+        "Inline submitting state on search form",
+        "Results table skeleton while awaiting response"
+      ],
+      "error_states": [
+        {
+          "api_error": "INVALID_SEARCH_REQUEST",
+          "ui_handling": "Show field-level validation for invalid date range, malformed payload, or excessive limit."
+        },
+        {
+          "api_error": "401 UNAUTHENTICATED",
+          "ui_handling": "Show authentication required state."
+        },
+        {
+          "api_error": "403 FORBIDDEN",
+          "ui_handling": "Show privileged-access-only state."
+        },
+        {
+          "api_error": "500 INTERNAL_ERROR",
+          "ui_handling": "Show retry banner and preserve entered filters."
+        }
+      ],
+      "empty_state": "No matching requests found for the selected filters.",
+      "notes": [
+        "The UI must communicate that search_attributes supports curated exact-match filters only; arbitrary JSON-wide free text search is not exposed by the API contract."
+      ]
+    },
+    {
+      "page_id": "execution_step_search",
+      "title": "Execution Step Search",
+      "purpose": "Search rule/stage execution steps by rule metadata, step status, and observed variable content, then navigate to parent request traces.",
+      "personas": [
+        "P2",
+        "P3"
+      ],
+      "data_requirements": [
+        "deployment_id from route",
+        "Search form fields: date_range, optional stage_type, optional step_status, optional rule_name, optional policy_id, optional variable_match{name,value,matched}, page.limit",
+        "Results: request_id, step_sequence, stage_type, rule, policy, execution_timestamp, step_status, condition_expression, variable_observations, decision, performance, errors"
+      ],
+      "api_consumption": [
+        {
+          "operation_id": "searchExecutionSteps",
+          "method": "POST",
+          "path": "/api/v1/deployments/{deployment_id}/execution-steps/search",
+          "usage": "Primary step-level search."
+        }
+      ],
+      "user_actions": [
+        "Enter/modify step search filters",
+        "Search by variable name and optional value/matched flag",
+        "Submit search",
+        "Clear filters",
+        "Open parent request trace from a step result"
+      ],
+      "loading_states": [
+        "Initial empty state",
+        "Submitting state",
+        "Results list skeleton"
+      ],
+      "error_states": [
+        {
+          "api_error": "INVALID_SEARCH_REQUEST",
+          "ui_handling": "Show validation including required variable_match.name when variable_match is supplied."
+        },
+        {
+          "api_error": "401 UNAUTHENTICATED",
+          "ui_handling": "Show authentication required state."
+        },
+        {
+          "api_error": "403 FORBIDDEN",
+          "ui_handling": "Show privileged-access-only state."
+        },
+        {
+          "api_error": "500 INTERNAL_ERROR",
+          "ui_handling": "Show retry banner and preserve filters."
+        }
+      ],
+      "empty_state": "No matching execution steps found.",
+      "notes": [
+        "Search is limited to the fields in the authoritative API: date, stage, status, rule_name, policy_id, and variable_match. The frontend must not imply arbitrary full-text search across all step JSON."
+      ]
+    },
+    {
+      "page_id": "execution_trace_detail",
+      "title": "Execution Trace Detail",
+      "purpose": "Provide the canonical deep-dive view of a request, combining request-level metadata/payloads with all ordered execution steps.",
+      "personas": [
+        "P2",
+        "P3",
+        "P5"
+      ],
+      "data_requirements": [
+        "deployment_id and request_id from route",
+        "Optional id_type hint (request_id|correlation_id|auto) from query or lookup control",
+        "Trace data including request-level record and execution_steps[]"
+      ],
+      "api_consumption": [
+        {
+          "operation_id": "getCompleteExecutionTrace",
+          "method": "GET",
+          "path": "/api/v1/deployments/{deployment_id}/execution-traces/{request_id}",
+          "usage": "Primary data source for the full trace page."
+        }
+      ],
+      "user_actions": [
+        "Toggle between request metadata, request payload, response payload, and steps tabs/sections",
+        "Expand/collapse individual steps",
+        "Switch id_type hint if lookup may represent a correlation ID",
+        "Copy request_id/correlation_id",
+        "Navigate to adjacent focused detail pages if desired"
+      ],
+      "loading_states": [
+        "Page skeleton for summary panels and steps list",
+        "Per-step expansion loading is local only because all steps are returned in one response"
+      ],
+      "error_states": [
+        {
+          "api_error": "INVALID_PATH_PARAM",
+          "ui_handling": "Show invalid identifier message."
+        },
+        {
+          "api_error": "TRACE_NOT_FOUND",
+          "ui_handling": "Show not found state with option to return to search."
+        },
+        {
+          "api_error": "401 UNAUTHENTICATED",
+          "ui_handling": "Show authentication required state."
+        },
+        {
+          "api_error": "403 FORBIDDEN",
+          "ui_handling": "Show access denied state."
+        },
+        {
+          "api_error": "500 INTERNAL_ERROR",
+          "ui_handling": "Show retry action."
+        }
+      ],
+      "empty_state": "Not applicable; a successful trace response may contain zero steps only if backend returns it that way, but typical trace view should render request details regardless.",
+      "notes": [
+        "This is the preferred drilldown destination from all search screens.",
+        "No API exists for annotations, exports, or sharing links beyond route deep-linking."
+      ]
+    },
+    {
+      "page_id": "execution_request_summary_detail",
+      "title": "Execution Request Summary Detail",
+      "purpose": "Display request-level execution information without loading step-level trace data when a lighter view is preferred.",
+      "personas": [
+        "P2",
+        "P3"
+      ],
+      "data_requirements": [
+        "deployment_id and request_id from route",
+        "Optional id_type query hint",
+        "Request-level execution record"
+      ],
+      "api_consumption": [
+        {
+          "operation_id": "getExecutionRequest",
+          "method": "GET",
+          "path": "/api/v1/deployments/{deployment_id}/execution-requests/{request_id}",
+          "usage": "Fetch request-level summary, payloads, retention, and ingestion metadata."
+        }
+      ],
+      "user_actions": [
+        "View request/response JSON",
+        "Copy identifiers",
+        "Navigate to full trace page",
+        "Change id_type hint"
+      ],
+      "loading_states": [
+        "Summary skeleton",
+        "JSON viewer skeleton"
+      ],
+      "error_states": [
+        {
+          "api_error": "REQUEST_NOT_FOUND",
+          "ui_handling": "Show request not found state."
+        },
+        {
+          "api_error": "INVALID_PATH_PARAM",
+          "ui_handling": "Show invalid identifier message."
+        },
+        {
+          "api_error": "401 UNAUTHENTICATED",
+          "ui_handling": "Show authentication required state."
+        },
+        {
+          "api_error": "403 FORBIDDEN",
+          "ui_handling": "Show access denied state."
+        },
+        {
+          "api_error": "500 INTERNAL_ERROR",
+          "ui_handling": "Show retry action."
+        }
+      ],
+      "empty_state": "Not applicable for successful response."
+    },
+    {
+      "page_id": "execution_steps_detail",
+      "title": "Execution Steps Detail",
+      "purpose": "Show the ordered list of execution steps for a request when the user only needs the step timeline.",
+      "personas": [
+        "P2",
+        "P3"
+      ],
+      "data_requirements": [
+        "deployment_id and request_id from route",
+        "Ordered steps for the request"
+      ],
+      "api_consumption": [
+        {
+          "operation_id": "getExecutionStepsForRequest",
+          "method": "GET",
+          "path": "/api/v1/deployments/{deployment_id}/execution-requests/{request_id}/steps",
+          "usage": "Fetch ordered execution steps only."
+        }
+      ],
+      "user_actions": [
+        "Expand/collapse steps",
+        "Inspect variable observations/decision/errors",
+        "Navigate to full trace page"
+      ],
+      "loading_states": [
+        "Step list skeleton"
+      ],
+      "error_states": [
+        {
+          "api_error": "REQUEST_NOT_FOUND",
+          "ui_handling": "Show not found/no recorded steps state."
+        },
+        {
+          "api_error": "INVALID_PATH_PARAM",
+          "ui_handling": "Show invalid identifier message."
+        },
+        {
+          "api_error": "401 UNAUTHENTICATED",
+          "ui_handling": "Show authentication required state."
+        },
+        {
+          "api_error": "403 FORBIDDEN",
+          "ui_handling": "Show access denied state."
+        },
+        {
+          "api_error": "500 INTERNAL_ERROR",
+          "ui_handling": "Show retry action."
+        }
+      ],
+      "empty_state": "No recorded steps found for this request."
+    },
+    {
+      "page_id": "request_impact_search",
+      "title": "Request Impact Search",
+      "purpose": "Identify requests affected by a rule/version or decision pattern and inspect matched steps per request.",
+      "personas": [
+        "P2",
+        "P3",
+        "P5"
+      ],
+      "data_requirements": [
+        "deployment_id from route",
+        "Search form: date_range, optional rule_name, optional rule_version, optional decision_outcome, optional reason_code, page.limit",
+        "Results: deployment_id, request_id, first_execution_timestamp, matched_steps[]"
+      ],
+      "api_consumption": [
+        {
+          "operation_id": "findRequestsByRuleOrDecision",
+          "method": "POST",
+          "path": "/api/v1/deployments/{deployment_id}/request-impact/search",
+          "usage": "Primary impact analysis query."
+        }
+      ],
+      "user_actions": [
+        "Enter impact filters",
+        "Submit search",
+        "Expand matched steps under a request",
+        "Open request trace detail"
+      ],
+      "loading_states": [
+        "Initial empty state",
+        "Submitting/searching state",
+        "Result group skeleton"
+      ],
+      "error_states": [
+        {
+          "api_error": "INVALID_SEARCH_REQUEST",
+          "ui_handling": "Show invalid date range or malformed request validation."
+        },
+        {
+          "api_error": "401 UNAUTHENTICATED",
+          "ui_handling": "Show authentication required state."
+        },
+        {
+          "api_error": "403 FORBIDDEN",
+          "ui_handling": "Show access denied state."
+        },
+        {
+          "api_error": "500 INTERNAL_ERROR",
+          "ui_handling": "Show retry banner."
+        }
+      ],
+      "empty_state": "No impacted requests found for the selected criteria.",
+      "notes": [
+        "This page supports impact-style discovery, but it does not itself compare versions numerically; that belongs to the policy version comparison analytics endpoint."
+      ]
+    },
+    {
+      "page_id": "outcome_trends_analytics",
+      "title": "Outcome Trends Analytics",
+      "purpose": "Show outcome and approval-rate trends over time with optional version or segment slicing.",
+      "personas": [
+        "P2",
+        "P4",
+        "P5"
+      ],
+      "data_requirements": [
+        "deployment_id from route",
+        "Form: date_range, period_unit, optional policy_id, optional definition_version, optional segment_attribute",
+        "Results by period with counts, approval_rate, outcomes[], optional definition_version, optional segment"
+      ],
+      "api_consumption": [
+        {
+          "operation_id": "getOutcomeTrends",
+          "method": "POST",
+          "path": "/api/v1/deployments/{deployment_id}/analytics/outcome-trends",
+          "usage": "Primary time-series analytics source."
+        }
+      ],
+      "user_actions": [
+        "Choose period granularity day/week/month",
+        "Apply optional policy/version filters",
+        "Optionally segment by one curated search attribute",
+        "View chart/table toggles"
+      ],
+      "loading_states": [
+        "Analytics skeleton chart/table",
+        "Submitting state on filter changes"
+      ],
+      "error_states": [
+        {
+          "api_error": "INVALID_ANALYTICS_REQUEST",
+          "ui_handling": "Show validation for invalid date range, unsupported period unit, or unsupported segment attribute."
+        },
+        {
+          "api_error": "401 UNAUTHENTICATED",
+          "ui_handling": "Show authentication required state."
+        },
+        {
+          "api_error": "403 FORBIDDEN",
+          "ui_handling": "Show access denied state."
+        },
+        {
+          "api_error": "500 INTERNAL_ERROR",
+          "ui_handling": "Show retry action while preserving filters."
+        }
+      ],
+      "empty_state": "No trend data available for the selected range/filters.",
+      "notes": [
+        "segment_attribute must map to a curated search_attributes key; the UI should present a controlled selector, not free text."
+      ]
+    },
+    {
+      "page_id": "policy_version_comparison_analytics",
+      "title": "Policy Version Comparison Analytics",
+      "purpose": "Compare exactly two definition versions of a policy on business outcomes and processing metrics.",
+      "personas": [
+        "P2",
+        "P3",
+        "P5"
+      ],
+      "data_requirements": [
+        "deployment_id from route",
+        "Form: date_range, policy_id, exactly two definition_versions",
+        "Results per definition version with request volume, approval metrics, avg_duration_ms, avg_rule_execution_count, total_errors, outcome_breakdown"
+      ],
+      "api_consumption": [
+        {
+          "operation_id": "comparePolicyDefinitionVersions",
+          "method": "POST",
+          "path": "/api/v1/deployments/{deployment_id}/analytics/policy-version-comparison",
+          "usage": "Primary version comparison analytics source."
+        }
+      ],
+      "user_actions": [
+        "Select policy ID",
+        "Enter/select exactly two definition versions",
+        "Run comparison",
+        "Review side-by-side metrics and outcome breakdown"
+      ],
+      "loading_states": [
+        "Comparison card skeletons",
+        "Submitting state"
+      ],
+      "error_states": [
+        {
+          "api_error": "INVALID_ANALYTICS_REQUEST",
+          "ui_handling": "Show validation that policy_id is required and exactly two definition versions must be supplied."
+        },
+        {
+          "api_error": "401 UNAUTHENTICATED",
+          "ui_handling": "Show authentication required state."
+        },
+        {
+          "api_error": "403 FORBIDDEN",
+          "ui_handling": "Show access denied state."
+        },
+        {
+          "api_error": "500 INTERNAL_ERROR",
+          "ui_handling": "Show retry action."
+        }
+      ],
+      "empty_state": "No comparison data found for the selected policy versions/date range.",
+      "notes": [
+        "The API does not provide a list of available policies or versions, so unless such data is supplied elsewhere in the app, these inputs must be free-form or populated from prior known context/search results."
+      ]
+    },
+    {
+      "page_id": "segment_outcome_analytics",
+      "title": "Segment Outcome Analytics",
+      "purpose": "Analyze outcome rates by a selected curated segment attribute.",
+      "personas": [
+        "P2",
+        "P4",
+        "P5"
+      ],
+      "data_requirements": [
+        "deployment_id from route",
+        "Form: date_range, required segment_attribute, optional policy_id, optional definition_version",
+        "Results by segment with total_requests, approved_count, rejected_count, approval_rate, outcomes[]"
+      ],
+      "api_consumption": [
+        {
+          "operation_id": "getSegmentedOutcomeAnalytics",
+          "method": "POST",
+          "path": "/api/v1/deployments/{deployment_id}/analytics/segment-outcomes",
+          "usage": "Primary segmented analytics source."
+        }
+      ],
+      "user_actions": [
+        "Select segment attribute",
+        "Apply optional policy/version filters",
+        "View ranked table/chart of segments"
+      ],
+      "loading_states": [
+        "Chart/table skeleton",
+        "Submitting state"
+      ],
+      "error_states": [
+        {
+          "api_error": "INVALID_ANALYTICS_REQUEST",
+          "ui_handling": "Show validation that segment_attribute is required and must be curated/supported."
+        },
+        {
+          "api_error": "401 UNAUTHENTICATED",
+          "ui_handling": "Show authentication required state."
+        },
+        {
+          "api_error": "403 FORBIDDEN",
+          "ui_handling": "Show access denied state."
+        },
+        {
+          "api_error": "500 INTERNAL_ERROR",
+          "ui_handling": "Show retry action."
+        }
+      ],
+      "empty_state": "No segmented outcome data available for the selected filters.",
+      "notes": [
+        "The frontend should not imply arbitrary segmentation on any payload field; only curated search_attributes-backed segment keys are supported."
+      ]
+    },
+    {
+      "page_id": "rule_performance_analytics",
+      "title": "Rule Performance Analytics",
+      "purpose": "Analyze execution count, latency, failures, warnings, and lookup intensity by rule/stage.",
+      "personas": [
+        "P2",
+        "P3",
+        "P5"
+      ],
+      "data_requirements": [
+        "deployment_id from route",
+        "Form: date_range, optional policy_id, optional definition_version",
+        "Results with rule_name, rule_version, stage_type, execution_count, failed_count, warning_count, failure_rate, avg_duration_ms, max_duration_ms, total_lookup_count, error_instances"
+      ],
+      "api_consumption": [
+        {
+          "operation_id": "getRulePerformanceAnalysis",
+          "method": "POST",
+          "path": "/api/v1/deployments/{deployment_id}/analytics/rule-performance",
+          "usage": "Primary rule performance analytics source."
+        }
+      ],
+      "user_actions": [
+        "Apply date/policy/version filters",
+        "Sort by failure rate, duration, warnings, or lookup count",
+        "Use a rule name from results to navigate to Step Search with prefilled rule_name (frontend-only routing behavior)"
+      ],
+      "loading_states": [
+        "Analytics results skeleton",
+        "Submitting state"
+      ],
+      "error_states": [
+        {
+          "api_error": "INVALID_ANALYTICS_REQUEST",
+          "ui_handling": "Show invalid input/date range validation."
+        },
+        {
+          "api_error": "401 UNAUTHENTICATED",
+          "ui_handling": "Show authentication required state."
+        },
+        {
+          "api_error": "403 FORBIDDEN",
+          "ui_handling": "Show access denied state."
+        },
+        {
+          "api_error": "500 INTERNAL_ERROR",
+          "ui_handling": "Show retry action."
+        }
+      ],
+      "empty_state": "No rule performance data available for the selected filters.",
+      "notes": [
+        "The API does not provide a dedicated drilldown endpoint from a performance aggregate row; the UI may only route the user into step search prefilled with the rule name."
+      ]
+    },
+    {
+      "page_id": "deployment_configuration",
+      "title": "Deployment Configuration",
+      "purpose": "Inspect and update deployment-level logging, retention, hosting, and access-control settings.",
+      "personas": [
+        "P2",
+        "P5"
+      ],
+      "data_requirements": [
+        "deployment_id from route",
+        "Config record fields from GET and PUT responses"
+      ],
+      "api_consumption": [
+        {
+          "operation_id": "getDeploymentConfig",
+          "method": "GET",
+          "path": "/api/v1/deployments/{deployment_id}/config",
+          "usage": "Load current config."
+        },
+        {
+          "operation_id": "upsertDeploymentConfig",
+          "method": "PUT",
+          "path": "/api/v1/deployments/{deployment_id}/config",
+          "usage": "Save full replacement config."
+        }
+      ],
+      "user_actions": [
+        "View current deployment metadata",
+        "Edit deployment name, environment, hosting model",
+        "Enable/disable logging",
+        "Set default retention days and purge mode",
+        "Edit access-control fields allowed_user_ids and admin_only",
+        "Save configuration"
+      ],
+      "loading_states": [
+        "Initial form skeleton while loading config",
+        "Saving spinner with form disabled during PUT"
+      ],
+      "error_states": [
+        {
+          "api_error": "DEPLOYMENT_NOT_FOUND",
+          "ui_handling": "Show deployment not found state."
+        },
+        {
+          "api_error": "INVALID_CONFIG_REQUEST",
+          "ui_handling": "Show field validation for malformed payload or invalid enum values."
+        },
+        {
+          "api_error": "401 UNAUTHENTICATED",
+          "ui_handling": "Show authentication required state."
+        },
+        {
+          "api_error": "403 FORBIDDEN",
+          "ui_handling": "Show insufficient privileges to modify config."
+        },
+        {
+          "api_error": "500 INTERNAL_ERROR",
+          "ui_handling": "Show retry/save failed banner and preserve unsaved edits."
+        }
+      ],
+      "empty_state": "If no config exists but PUT is allowed, present a create configuration form seeded from deployment_id.",
+      "notes": [
+        "PUT is replace semantics; frontend should submit the full configuration object, not partial patches.",
+        "No API exists to test access-control users or purge logs from this screen."
+      ]
+    },
+    {
+      "page_id": "global_logging_coverage_analytics",
+      "title": "Global Logging Coverage Analytics",
+      "purpose": "Provide cross-deployment operational visibility into logged versus non-logged request coverage.",
+      "personas": [
+        "P5"
+      ],
+      "data_requirements": [
+        "Form: date_range",
+        "Results: deployment_id, logging_enabled, request_count, deployment_name, environment, hosting_model, default_logging_enabled"
+      ],
+      "api_consumption": [
+        {
+          "operation_id": "getLoggingCoverage",
+          "method": "POST",
+          "path": "/api/v1/analytics/logging-coverage",
+          "usage": "Primary cross-deployment operational analytics source."
+        }
+      ],
+      "user_actions": [
+        "Select date range",
+        "Run coverage analysis",
+        "Group/sort results by deployment, environment, hosting model, or logging_enabled",
+        "Navigate to a deployment configuration page from a deployment row"
+      ],
+      "loading_states": [
+        "Analytics skeleton table/chart",
+        "Submitting state"
+      ],
+      "error_states": [
+        {
+          "api_error": "INVALID_ANALYTICS_REQUEST",
+          "ui_handling": "Show invalid date range validation."
+        },
+        {
+          "api_error": "401 UNAUTHENTICATED",
+          "ui_handling": "Show authentication required state."
+        },
+        {
+          "api_error": "403 FORBIDDEN",
+          "ui_handling": "Show access denied state for cross-deployment analytics."
+        },
+        {
+          "api_error": "500 INTERNAL_ERROR",
+          "ui_handling": "Show retry action."
+        }
+      ],
+      "empty_state": "No logging coverage data available for the selected date range.",
+      "notes": [
+        "This endpoint is cross-deployment and cannot itself drill into individual request lists; any deeper investigation must start from a chosen deployment and separate search screens."
+      ]
+    }
+  ],
+  "components": [
+    {
+      "component_id": "deployment_context_header",
+      "name": "Deployment Context Header",
+      "purpose": "Shows active deployment, environment badge if known, and route-level context.",
+      "used_on_pages": [
+        "execution_request_search",
+        "execution_step_search",
+        "execution_trace_detail",
+        "execution_request_summary_detail",
+        "execution_steps_detail",
+        "request_impact_search",
+        "outcome_trends_analytics",
+        "policy_version_comparison_analytics",
+        "segment_outcome_analytics",
+        "rule_performance_analytics",
+        "deployment_configuration"
+      ]
+    },
+    {
+      "component_id": "date_range_picker",
+      "name": "Date Range Picker",
+      "purpose": "Controlled date range input used by search and analytics forms.",
+      "used_on_pages": [
+        "execution_request_search",
+        "execution_step_search",
+        "request_impact_search",
+        "outcome_trends_analytics",
+        "policy_version_comparison_analytics",
+        "segment_outcome_analytics",
+        "rule_performance_analytics",
+        "global_logging_coverage_analytics"
+      ]
+    },
+    {
+      "component_id": "request_search_form",
+      "name": "Request Search Form",
+      "purpose": "Captures request-level filters including curated search_attributes exact-match entries.",
+      "used_on_pages": [
+        "execution_request_search"
+      ]
+    },
+    {
+      "component_id": "step_search_form",
+      "name": "Step Search Form",
+      "purpose": "Captures step-level filters including variable_match inputs.",
+      "used_on_pages": [
+        "execution_step_search"
+      ]
+    },
+    {
+      "component_id": "impact_search_form",
+      "name": "Impact Search Form",
+      "purpose": "Captures rule/version/decision/reason-code impact filters.",
+      "used_on_pages": [
+        "request_impact_search"
+      ]
+    },
+    {
+      "component_id": "request_results_table",
+      "name": "Request Results Table",
+      "purpose": "Displays request search results and quick actions to open trace or summary views.",
+      "used_on_pages": [
+        "execution_request_search"
+      ]
+    },
+    {
+      "component_id": "step_results_table",
+      "name": "Step Results Table",
+      "purpose": "Displays step search results with parent request navigation.",
+      "used_on_pages": [
+        "execution_step_search"
+      ]
+    },
+    {
+      "component_id": "impact_results_group",
+      "name": "Impact Results Group",
+      "purpose": "Displays impacted requests with nested matched steps.",
+      "used_on_pages": [
+        "request_impact_search"
+      ]
+    },
+    {
+      "component_id": "request_summary_panel",
+      "name": "Request Summary Panel",
+      "purpose": "Displays request metadata, policy info, status, metrics, retention, and ingestion fields.",
+      "used_on_pages": [
+        "execution_trace_detail",
+        "execution_request_summary_detail"
+      ]
+    },
+    {
+      "component_id": "json_payload_viewer",
+      "name": "JSON Payload Viewer",
+      "purpose": "Readable expandable viewer for request_payload, response_payload, input_snapshot, and output_snapshot objects.",
+      "used_on_pages": [
+        "execution_trace_detail",
+        "execution_request_summary_detail",
+        "execution_steps_detail"
+      ]
+    },
+    {
+      "component_id": "execution_steps_timeline",
+      "name": "Execution Steps Timeline",
+      "purpose": "Ordered expandable list of execution steps with rule, stage, status, decision, variables, performance, and errors.",
+      "used_on_pages": [
+        "execution_trace_detail",
+        "execution_steps_detail"
+      ]
+    },
+    {
+      "component_id": "step_detail_card",
+      "name": "Step Detail Card",
+      "purpose": "Detailed rendering of one execution step.",
+      "used_on_pages": [
+        "execution_trace_detail",
+        "execution_steps_detail",
+        "execution_step_search",
+        "request_impact_search"
+      ]
+    },
+    {
+      "component_id": "trace_lookup_control",
+      "name": "Trace Lookup Control",
+      "purpose": "Allows user to enter request/correlation ID and choose id_type hint for trace retrieval.",
+      "used_on_pages": [
+        "execution_trace_detail",
+        "execution_request_summary_detail"
+      ]
+    },
+    {
+      "component_id": "analytics_filter_bar",
+      "name": "Analytics Filter Bar",
+      "purpose": "Reusable wrapper for analytics inputs and submit/reset actions.",
+      "used_on_pages": [
+        "outcome_trends_analytics",
+        "policy_version_comparison_analytics",
+        "segment_outcome_analytics",
+        "rule_performance_analytics",
+        "global_logging_coverage_analytics"
+      ]
+    },
+    {
+      "component_id": "outcome_trends_chart",
+      "name": "Outcome Trends Chart",
+      "purpose": "Renders time-series outcomes and approval rate.",
+      "used_on_pages": [
+        "outcome_trends_analytics"
+      ]
+    },
+    {
+      "component_id": "version_comparison_cards",
+      "name": "Version Comparison Cards",
+      "purpose": "Side-by-side presentation of two definition versions and key deltas.",
+      "used_on_pages": [
+        "policy_version_comparison_analytics"
+      ]
+    },
+    {
+      "component_id": "segment_outcomes_chart_table",
+      "name": "Segment Outcomes Chart/Table",
+      "purpose": "Combined visualization and table of segment-level outcomes.",
+      "used_on_pages": [
+        "segment_outcome_analytics"
+      ]
+    },
+    {
+      "component_id": "rule_performance_table",
+      "name": "Rule Performance Table",
+      "purpose": "Sortable analytics table for rule/stage performance aggregates.",
+      "used_on_pages": [
+        "rule_performance_analytics"
+      ]
+    },
+    {
+      "component_id": "deployment_config_form",
+      "name": "Deployment Config Form",
+      "purpose": "Full replacement form for deployment configuration fields.",
+      "used_on_pages": [
+        "deployment_configuration"
+      ]
+    },
+    {
+      "component_id": "logging_coverage_table_chart",
+      "name": "Logging Coverage Table/Chart",
+      "purpose": "Cross-deployment table and summary chart for logging coverage analytics.",
+      "used_on_pages": [
+        "global_logging_coverage_analytics"
+      ]
+    },
+    {
+      "component_id": "api_error_state",
+      "name": "API Error State",
+      "purpose": "Standardized rendering for 401/403/404/500 and retry behaviors.",
+      "used_on_pages": [
+        "execution_request_search",
+        "execution_step_search",
+        "execution_trace_detail",
+        "execution_request_summary_detail",
+        "execution_steps_detail",
+        "request_impact_search",
+        "outcome_trends_analytics",
+        "policy_version_comparison_analytics",
+        "segment_outcome_analytics",
+        "rule_performance_analytics",
+        "deployment_configuration",
+        "global_logging_coverage_analytics"
+      ]
+    },
+    {
+      "component_id": "empty_state_panel",
+      "name": "Empty State Panel",
+      "purpose": "Standardized no-results and guidance messaging.",
+      "used_on_pages": [
+        "execution_request_search",
+        "execution_step_search",
+        "execution_steps_detail",
+        "request_impact_search",
+        "outcome_trends_analytics",
+        "policy_version_comparison_analytics",
+        "segment_outcome_analytics",
+        "rule_performance_analytics",
+        "global_logging_coverage_analytics"
+      ]
+    }
+  ],
+  "constraints_and_gaps": [
+    {
+      "gap": "No endpoint exists to enumerate deployments, policies, definition versions, supported segment attributes, or supported curated search_attributes keys.",
+      "frontend_implication": "The frontend must rely on route context, app-provided metadata outside this API contract, or free-form inputs with helper text. It must not assume discoverability endpoints exist."
+    },
+    {
+      "gap": "No endpoint exists for arbitrary full-text search across request/response JSON blobs.",
+      "frontend_implication": "Search UI must be limited to the contract\u2019s supported filters: curated search_attributes for request search and variable_match for step search."
+    },
+    {
+      "gap": "No endpoint exists for delete/purge operations on logs.",
+      "frontend_implication": "Deployment configuration may display retention/purge mode but cannot offer direct purge execution controls."
+    },
+    {
+      "gap": "No endpoint exists for AI/LLM insight generation or natural-language querying.",
+      "frontend_implication": "Do not design chat, recommendations, or AI insight screens as active functionality in this POV."
+    },
+    {
+      "gap": "No write endpoint exists for creating execution request/step log records.",
+      "frontend_implication": "Frontend is read/analytics/config focused only; ingestion management is out of scope for this contract."
+    }
+  ]
+}
