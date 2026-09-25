@@ -1,0 +1,901 @@
+{
+  "app_shell": {
+    "route_prefixes": [
+      "/customers/:customerId",
+      "/policies/:policyId"
+    ],
+    "global_components": [
+      "CustomerScopedLayout",
+      "PrimaryNav",
+      "Breadcrumbs",
+      "ApiErrorBanner",
+      "UnauthorizedState",
+      "NotFoundState",
+      "JsonViewer",
+      "DateRangePicker",
+      "LoadingSkeleton",
+      "EmptyStatePanel",
+      "ConfirmDialog",
+      "FilterChips",
+      "KeyValueSummary",
+      "DataTable",
+      "PaginationControls",
+      "ChartPanel"
+    ],
+    "notes": [
+      "All customer data screens require a customerId route context.",
+      "Authorization handling is assumed external to this contract; pages must gracefully handle 403 responses.",
+      "No route for customer directory is defined because the API contract does not expose customer listing.",
+      "No generic policy listing screen is defined because the API contract only exposes policy versions for a known policyId."
+    ]
+  },
+  "routes": [
+    {
+      "route": "#/customers/:customerId/executions/search",
+      "page_id": "execution_request_search"
+    },
+    {
+      "route": "#/customers/:customerId/executions/:requestOrCorrelationId",
+      "page_id": "execution_request_detail"
+    },
+    {
+      "route": "#/customers/:customerId/executions/:requestId/trail",
+      "page_id": "execution_trail_only"
+    },
+    {
+      "route": "#/customers/:customerId/log-records/search",
+      "page_id": "log_record_search"
+    },
+    {
+      "route": "#/customers/:customerId/analytics/policy-version-outcomes",
+      "page_id": "policy_version_outcome_comparison"
+    },
+    {
+      "route": "#/customers/:customerId/analytics/policy-version-segments",
+      "page_id": "policy_version_segment_comparison"
+    },
+    {
+      "route": "#/customers/:customerId/analytics/rule-behavior-diff",
+      "page_id": "rule_behavior_diff_analysis"
+    },
+    {
+      "route": "#/customers/:customerId/analytics/rule-impact",
+      "page_id": "rule_impact_results"
+    },
+    {
+      "route": "#/customers/:customerId/dashboards/outcome-trend",
+      "page_id": "outcome_trend_dashboard"
+    },
+    {
+      "route": "#/customers/:customerId/dashboards/segment-success-rate",
+      "page_id": "segment_success_dashboard"
+    },
+    {
+      "route": "#/customers/:customerId/retention",
+      "page_id": "retention_overview"
+    },
+    {
+      "route": "#/customers/:customerId/purge-runs",
+      "page_id": "purge_run_history"
+    },
+    {
+      "route": "#/customers/:customerId/logging-config",
+      "page_id": "logging_configuration"
+    },
+    {
+      "route": "#/policies/:policyId/versions",
+      "page_id": "policy_version_selector"
+    }
+  ],
+  "pages": [
+    {
+      "page_id": "execution_request_search",
+      "title": "Execution Request Search",
+      "purpose": "Support request-level search for audit/troubleshooting and entry into specific execution investigations.",
+      "personas": [
+        "P2",
+        "P3",
+        "P4"
+      ],
+      "data_needs": [
+        "Search form state: from_date, to_date, policy_ids, policy_version_ids, final_outcomes, promoted search_attributes (applicant_age, product_type, geography, loan_amount), page_size, cursor.",
+        "Search results list with request_id, correlation_id, policy/version, requested_at, final_outcome, outcome_reason_codes, search_attributes, metrics.",
+        "Optional version metadata for a known policyId via policy version selector utility."
+      ],
+      "api_consumes": [
+        {
+          "operation_id": "searchExecutionRequests",
+          "usage": "Primary search action and cursor-based pagination."
+        },
+        {
+          "operation_id": "listPolicyVersions",
+          "usage": "Optional helper to populate policy version choices when user provides a policyId."
+        }
+      ],
+      "user_actions": [
+        "Enter and submit request search criteria.",
+        "Clear filters.",
+        "Paginate to next results page using next_cursor.",
+        "Open execution detail for a selected request via request_id or correlation_id.",
+        "Open policy version selector helper for a known policyId."
+      ],
+      "loading_states": [
+        "Initial empty/search-prompt state before first search.",
+        "Inline loading state on search submit.",
+        "Table pagination loading state when fetching next cursor page.",
+        "Version selector loading state when fetching policy versions."
+      ],
+      "error_states": [
+        "400 invalid search criteria with field-level validation summary.",
+        "403 forbidden for customer search access.",
+        "500 generic search failure.",
+        "Policy version helper shows error if policyId is invalid or versions cannot be loaded."
+      ],
+      "components": [
+        "ExecutionRequestSearchForm",
+        "PromotedSearchAttributesFilter",
+        "OutcomeMultiSelect",
+        "PolicyVersionPicker",
+        "ExecutionRequestResultsTable",
+        "CursorPaginationFooter"
+      ]
+    },
+    {
+      "page_id": "execution_request_detail",
+      "title": "Execution Request Detail",
+      "purpose": "Show complete request summary plus ordered execution trail for a request/correlation ID to explain why an approval/rejection/error occurred.",
+      "personas": [
+        "P2"
+      ],
+      "data_needs": [
+        "Request summary fields including policy_id, policy_version_id, requested/completed times, final_outcome, reason codes, request/response payloads, search_attributes, metrics.",
+        "Ordered execution trail with record_type, sequence, rule/stage identifiers, execution_status, condition_results, input/output payloads, changed_values, message, outcome, duration_ms."
+      ],
+      "api_consumes": [
+        {
+          "operation_id": "getRequestExecution",
+          "usage": "Primary load for full summary and trail."
+        },
+        {
+          "operation_id": "getRequestSummary",
+          "usage": "Optional lightweight refresh if implementing summary-first progressive loading; not required if full endpoint is used exclusively."
+        }
+      ],
+      "user_actions": [
+        "Load by route parameter with lookupBy hint.",
+        "Toggle between summary, payloads, and trail tabs.",
+        "Expand/collapse JSON payload viewers.",
+        "Filter visible trail rows client-side by record type/status/rule/stage within already loaded data.",
+        "Navigate to trail-only screen for technical focus."
+      ],
+      "loading_states": [
+        "Page skeleton while full execution loads.",
+        "Secondary section skeletons for payload/trail tabs if progressively rendered."
+      ],
+      "error_states": [
+        "400 invalid customer or request identifier.",
+        "404 execution not found.",
+        "403 forbidden for detailed log access.",
+        "500 unexpected load failure."
+      ],
+      "components": [
+        "ExecutionHeader",
+        "OutcomeBadge",
+        "MetricsSummaryCards",
+        "RequestSummaryPanel",
+        "PayloadTabs",
+        "ExecutionTrailTimeline",
+        "TrailEventCard",
+        "ConditionResultsList",
+        "ChangedValuesPanel"
+      ]
+    },
+    {
+      "page_id": "execution_trail_only",
+      "title": "Execution Trail Only View",
+      "purpose": "Provide a narrower technical view of ordered execution events for a known request ID without the larger request summary context.",
+      "personas": [
+        "P2",
+        "P3"
+      ],
+      "data_needs": [
+        "request_id, customer_id, execution_trail event list."
+      ],
+      "api_consumes": [
+        {
+          "operation_id": "getExecutionTrail",
+          "usage": "Primary load for ordered trail."
+        },
+        {
+          "operation_id": "getRequestSummary",
+          "usage": "Optional link-preview/header enrichment if needed after trail load, using requestId as requestOrCorrelationId."
+        }
+      ],
+      "user_actions": [
+        "Load trail by requestId.",
+        "Expand event payloads and changed values.",
+        "Jump to full execution detail.",
+        "Client-side filter/sort within returned ordered list (without changing backend order semantics)."
+      ],
+      "loading_states": [
+        "Skeleton list while trail loads."
+      ],
+      "error_states": [
+        "400 invalid path parameter.",
+        "404 trail not found.",
+        "403 forbidden.",
+        "500 unexpected load failure."
+      ],
+      "components": [
+        "ExecutionTrailTimeline",
+        "TrailFilterBar",
+        "TrailEventCard",
+        "JsonViewer"
+      ]
+    },
+    {
+      "page_id": "log_record_search",
+      "title": "Detailed Log Record Search",
+      "purpose": "Search across detailed rule/stage log records using metadata and limited payload content predicates.",
+      "personas": [
+        "P2",
+        "P3",
+        "P4"
+      ],
+      "data_needs": [
+        "Search form fields: time range, policy/version, record_types, rule_id, rule_name, stage_name, execution_status, outcome, condition_result, content_filters, limit.",
+        "Results list including request_id, correlation_id, policy/version, event metadata, condition results, payload snippets, changed_values, message, duration_ms.",
+        "API note awareness that unsupported combinations of multiple dynamic content filters may be rejected."
+      ],
+      "api_consumes": [
+        {
+          "operation_id": "searchExecutionLogRecords",
+          "usage": "Primary search action."
+        },
+        {
+          "operation_id": "listPolicyVersions",
+          "usage": "Optional helper for version selection when policyId is known."
+        }
+      ],
+      "user_actions": [
+        "Compose metadata filters.",
+        "Add a constrained content filter for input/output/changed_values field_path and value.",
+        "Submit search.",
+        "Inspect matching log records.",
+        "Open parent execution detail from a selected result."
+      ],
+      "loading_states": [
+        "Initial empty/search-prompt state.",
+        "Submitting search spinner.",
+        "Result-list incremental rendering for large payload snippets."
+      ],
+      "error_states": [
+        "400 invalid request including unsupported content filter combinations; UI should surface API limitation clearly.",
+        "403 forbidden.",
+        "500 unexpected search failure."
+      ],
+      "components": [
+        "LogRecordSearchForm",
+        "ContentFilterBuilder",
+        "RecordTypeMultiSelect",
+        "ConditionResultFilter",
+        "LogRecordResultsTable",
+        "PayloadSnippetViewer",
+        "ApiConstraintNotice"
+      ]
+    },
+    {
+      "page_id": "policy_version_outcome_comparison",
+      "title": "Policy Version Outcome Comparison",
+      "purpose": "Compare approval/rejection outcomes across selected versions of one policy over a date range.",
+      "personas": [
+        "P4"
+      ],
+      "data_needs": [
+        "Known policy_id input.",
+        "Available versions metadata for selection.",
+        "Comparison results by policy_version_id with total_requests, outcome_counts, approval_count, rejection_count, approval_rate."
+      ],
+      "api_consumes": [
+        {
+          "operation_id": "listPolicyVersions",
+          "usage": "Load selectable versions for the entered policy."
+        },
+        {
+          "operation_id": "comparePolicyVersionOutcomes",
+          "usage": "Run comparison query."
+        }
+      ],
+      "user_actions": [
+        "Enter/select policy ID.",
+        "Load versions.",
+        "Select one or more version IDs and date range.",
+        "Run comparison.",
+        "Open segment comparison with same context.",
+        "Open rule behavior diff with chosen baseline and comparison versions."
+      ],
+      "loading_states": [
+        "Versions loading state.",
+        "Comparison chart/table loading state."
+      ],
+      "error_states": [
+        "400 invalid policy/version/date inputs.",
+        "403 forbidden for analytics.",
+        "500 comparison load failure."
+      ],
+      "components": [
+        "PolicySelector",
+        "PolicyVersionPicker",
+        "DateRangePicker",
+        "OutcomeComparisonChart",
+        "OutcomeComparisonTable",
+        "ComparisonContextHeader"
+      ]
+    },
+    {
+      "page_id": "policy_version_segment_comparison",
+      "title": "Policy Version Segment Comparison",
+      "purpose": "Compare outcome rates across versions segmented by one supported business field.",
+      "personas": [
+        "P4"
+      ],
+      "data_needs": [
+        "policy_id, selected version_ids, date range, selected segment_field limited to allowed values.",
+        "Results with policy_version_id, segment_value, total_requests, outcomes, approval_rate."
+      ],
+      "api_consumes": [
+        {
+          "operation_id": "listPolicyVersions",
+          "usage": "Optional helper to select versions for a known policy."
+        },
+        {
+          "operation_id": "compareOutcomeRatesBySegmentAcrossVersions",
+          "usage": "Primary segment comparison query."
+        }
+      ],
+      "user_actions": [
+        "Choose policy, versions, date range, and supported segment field.",
+        "Run comparison.",
+        "Switch segment field among allowed options.",
+        "Drill back to version outcome comparison."
+      ],
+      "loading_states": [
+        "Versions loading.",
+        "Segment comparison query loading."
+      ],
+      "error_states": [
+        "400 unsupported or missing segment field/date/version inputs.",
+        "403 forbidden.",
+        "500 analytics failure."
+      ],
+      "components": [
+        "PolicyVersionPicker",
+        "SegmentFieldSelect",
+        "SegmentComparisonChart",
+        "SegmentComparisonTable"
+      ]
+    },
+    {
+      "page_id": "rule_behavior_diff_analysis",
+      "title": "Rule Behavior Diff Analysis",
+      "purpose": "Identify rules whose behavior differs between two versions so analysts can understand outcome changes.",
+      "personas": [
+        "P4"
+      ],
+      "data_needs": [
+        "policy_id, baseline_version_id, comparison_version_id, date range.",
+        "Rule diff results: policy_version_id, rule_id, rule_name, status_outcome_breakdown, total_events."
+      ],
+      "api_consumes": [
+        {
+          "operation_id": "listPolicyVersions",
+          "usage": "Load selectable baseline/comparison versions."
+        },
+        {
+          "operation_id": "identifyRuleBehaviorChangesBetweenVersions",
+          "usage": "Primary diff analysis query."
+        }
+      ],
+      "user_actions": [
+        "Select policy, baseline version, comparison version, and date range.",
+        "Run diff analysis.",
+        "Sort rules by total_events or visible behavior change indicators client-side.",
+        "Open impacted-request analysis for a selected rule."
+      ],
+      "loading_states": [
+        "Version metadata loading.",
+        "Rule diff loading."
+      ],
+      "error_states": [
+        "400 missing required policy/version/date inputs.",
+        "403 forbidden.",
+        "500 analytics failure."
+      ],
+      "components": [
+        "BaselineComparisonSelector",
+        "RuleBehaviorDiffTable",
+        "StatusOutcomeBreakdownPanel",
+        "OpenRuleImpactButton"
+      ]
+    },
+    {
+      "page_id": "rule_impact_results",
+      "title": "Rule Impact Results",
+      "purpose": "Show requests affected by a given rule across selected versions and statuses/outcomes, enabling drill-down to concrete request audits.",
+      "personas": [
+        "P4",
+        "P2"
+      ],
+      "data_needs": [
+        "policy_id, version_ids, rule_id, date range, optional execution_status and outcome filters.",
+        "Results with request_id, policy_version_id, latest_event_time, statuses, outcomes."
+      ],
+      "api_consumes": [
+        {
+          "operation_id": "findRequestsImpactedByRule",
+          "usage": "Primary impacted request query."
+        },
+        {
+          "operation_id": "getRequestSummary",
+          "usage": "Optional lightweight preview when user selects a request without full navigation."
+        }
+      ],
+      "user_actions": [
+        "Run impacted-request query.",
+        "Filter selected rows client-side.",
+        "Open request detail for a request.",
+        "Optionally preview request summary inline."
+      ],
+      "loading_states": [
+        "Query loading state.",
+        "Inline preview loading state if request summary preview is used."
+      ],
+      "error_states": [
+        "400 invalid rule-impact inputs.",
+        "403 forbidden.",
+        "500 analytics failure."
+      ],
+      "components": [
+        "RuleImpactQueryForm",
+        "ImpactedRequestsTable",
+        "RequestSummaryPreviewDrawer"
+      ]
+    },
+    {
+      "page_id": "outcome_trend_dashboard",
+      "title": "Outcome Trend Dashboard",
+      "purpose": "Provide dashboard-ready trend visualization of request volumes and outcomes over time.",
+      "personas": [
+        "P4",
+        "P3"
+      ],
+      "data_needs": [
+        "Date range, optional policy_ids and policy_version_ids, bucket_unit.",
+        "Trend results by period_start with total_requests and per-outcome counts."
+      ],
+      "api_consumes": [
+        {
+          "operation_id": "getOutcomeTrend",
+          "usage": "Primary dashboard query."
+        },
+        {
+          "operation_id": "listPolicyVersions",
+          "usage": "Optional helper for version filters when a known policyId is used."
+        }
+      ],
+      "user_actions": [
+        "Set date range and bucket unit.",
+        "Optionally filter by policies/versions.",
+        "Refresh dashboard.",
+        "Toggle chart/table visualization."
+      ],
+      "loading_states": [
+        "Dashboard chart loading.",
+        "Empty state when no results returned."
+      ],
+      "error_states": [
+        "400 invalid date range or bucket unit.",
+        "403 forbidden.",
+        "500 dashboard load failure."
+      ],
+      "components": [
+        "DashboardFilterBar",
+        "BucketUnitToggle",
+        "OutcomeTrendChart",
+        "OutcomeTrendTable"
+      ]
+    },
+    {
+      "page_id": "segment_success_dashboard",
+      "title": "Segment Success Dashboard",
+      "purpose": "Show success/approval rates by a selected supported business segment for reporting use cases.",
+      "personas": [
+        "P4",
+        "P3"
+      ],
+      "data_needs": [
+        "Date range, optional policy_ids and policy_version_ids, supported segment_field.",
+        "Results with segment_value, total_requests, outcomes, success_rate."
+      ],
+      "api_consumes": [
+        {
+          "operation_id": "getSuccessRateBySegment",
+          "usage": "Primary dashboard query."
+        },
+        {
+          "operation_id": "listPolicyVersions",
+          "usage": "Optional helper for version selection."
+        }
+      ],
+      "user_actions": [
+        "Set filters and supported segment field.",
+        "Refresh visualization.",
+        "Toggle chart/table view."
+      ],
+      "loading_states": [
+        "Dashboard query loading.",
+        "Empty-state message when no results."
+      ],
+      "error_states": [
+        "400 unsupported segment field or missing inputs.",
+        "403 forbidden.",
+        "500 dashboard load failure."
+      ],
+      "components": [
+        "DashboardFilterBar",
+        "SegmentFieldSelect",
+        "SegmentSuccessChart",
+        "SegmentSuccessTable"
+      ]
+    },
+    {
+      "page_id": "retention_overview",
+      "title": "Retention Overview",
+      "purpose": "Operational landing page for viewing logging enablement, retention settings, request stats, and recent purge activity.",
+      "personas": [
+        "P5"
+      ],
+      "data_needs": [
+        "customer_id, customer_name, logging_enabled, retention_policy, request_stats, recent_purge_runs."
+      ],
+      "api_consumes": [
+        {
+          "operation_id": "getRetentionOverview",
+          "usage": "Primary page load."
+        }
+      ],
+      "user_actions": [
+        "Review current operational state.",
+        "Navigate to purge run history.",
+        "Navigate to logging configuration editor."
+      ],
+      "loading_states": [
+        "Overview skeleton cards/table while loading."
+      ],
+      "error_states": [
+        "400 invalid customerId.",
+        "404 customer config not found.",
+        "403 forbidden.",
+        "500 load failure."
+      ],
+      "components": [
+        "RetentionSummaryCards",
+        "RetentionPolicyPanel",
+        "RequestStatsPanel",
+        "RecentPurgeRunsTable",
+        "OperationalNavLinks"
+      ]
+    },
+    {
+      "page_id": "purge_run_history",
+      "title": "Purge Run History",
+      "purpose": "Search and review historical purge runs for audit/operations.",
+      "personas": [
+        "P5"
+      ],
+      "data_needs": [
+        "Search fields: from_date, to_date, statuses, optional scope policy/version.",
+        "Results with started/completed times, status, cutoff_time, scope, documents_deleted, notes."
+      ],
+      "api_consumes": [
+        {
+          "operation_id": "listPurgeRuns",
+          "usage": "Primary search action."
+        }
+      ],
+      "user_actions": [
+        "Search purge runs by range and status.",
+        "Filter by optional policy/version scope.",
+        "Inspect run details."
+      ],
+      "loading_states": [
+        "Initial empty/search-prompt state.",
+        "Search loading state."
+      ],
+      "error_states": [
+        "400 invalid date range/filter values.",
+        "403 forbidden.",
+        "500 load failure."
+      ],
+      "components": [
+        "PurgeRunSearchForm",
+        "PurgeRunResultsTable",
+        "StatusBadge"
+      ]
+    },
+    {
+      "page_id": "logging_configuration",
+      "title": "Logging Configuration",
+      "purpose": "View and update customer logging enablement and retention settings.",
+      "personas": [
+        "P5"
+      ],
+      "data_needs": [
+        "Current customer config: customer_name, deployment_type, logging_enabled, retention_policy.",
+        "Editable fields: logging_enabled, retention_days, purge_enabled, purge_threshold_gb."
+      ],
+      "api_consumes": [
+        {
+          "operation_id": "getCustomerLoggingConfig",
+          "usage": "Initial load/reset values."
+        },
+        {
+          "operation_id": "updateCustomerLoggingConfig",
+          "usage": "Persist user changes."
+        }
+      ],
+      "user_actions": [
+        "Load current configuration.",
+        "Edit logging toggle and retention settings.",
+        "Save changes.",
+        "Reset form to server values.",
+        "Navigate back to retention overview."
+      ],
+      "loading_states": [
+        "Initial form skeleton.",
+        "Save-in-progress disabled form state."
+      ],
+      "error_states": [
+        "400 invalid supplied values with field-level validation messaging where possible.",
+        "404 customer not found.",
+        "403 forbidden.",
+        "500 save/load failure.",
+        "Informational notice: no API exists to trigger purge immediately."
+      ],
+      "components": [
+        "LoggingConfigForm",
+        "RetentionPolicyEditor",
+        "SaveBar",
+        "ReadonlyDeploymentInfo",
+        "UnsupportedCapabilityNotice"
+      ]
+    },
+    {
+      "page_id": "policy_version_selector",
+      "title": "Policy Version Selector",
+      "purpose": "Utility screen/modal to load policy version metadata and rule lists for a known policy ID, supporting analytics/report filters.",
+      "personas": [
+        "P3",
+        "P4"
+      ],
+      "data_needs": [
+        "Policy version metadata including version_id, version_label, published_at, status, rules[]."
+      ],
+      "api_consumes": [
+        {
+          "operation_id": "listPolicyVersions",
+          "usage": "Primary load."
+        }
+      ],
+      "user_actions": [
+        "Enter or receive policyId from context.",
+        "Browse versions and available rules.",
+        "Select versions for downstream screens.",
+        "Select a rule for rule-impact/diff workflows."
+      ],
+      "loading_states": [
+        "Metadata loading state."
+      ],
+      "error_states": [
+        "400 invalid policyId.",
+        "500 load failure."
+      ],
+      "components": [
+        "PolicyVersionList",
+        "RuleListPanel",
+        "VersionSelectionDialog"
+      ]
+    }
+  ],
+  "components": [
+    {
+      "component_id": "CustomerScopedLayout",
+      "purpose": "Shared customer-context shell with navigation and route outlet."
+    },
+    {
+      "component_id": "PrimaryNav",
+      "purpose": "Top-level navigation across search, analytics, dashboards, and admin areas."
+    },
+    {
+      "component_id": "ExecutionRequestSearchForm",
+      "purpose": "Capture request-level search criteria aligned to searchExecutionRequests request body."
+    },
+    {
+      "component_id": "PromotedSearchAttributesFilter",
+      "purpose": "Edit applicant_age, product_type, geography, and loan_amount filters only; no arbitrary attribute search is assumed."
+    },
+    {
+      "component_id": "PolicyVersionPicker",
+      "purpose": "Select version IDs loaded from listPolicyVersions for a known policyId."
+    },
+    {
+      "component_id": "ExecutionRequestResultsTable",
+      "purpose": "Render request search results with drill-in actions."
+    },
+    {
+      "component_id": "ExecutionHeader",
+      "purpose": "Display request identifiers, policy metadata, timings, and final outcome."
+    },
+    {
+      "component_id": "RequestSummaryPanel",
+      "purpose": "Show request-level fields and metrics."
+    },
+    {
+      "component_id": "PayloadTabs",
+      "purpose": "Switch between request payload, response payload, and search attributes views."
+    },
+    {
+      "component_id": "ExecutionTrailTimeline",
+      "purpose": "Display ordered execution events from detail or trail endpoints."
+    },
+    {
+      "component_id": "TrailEventCard",
+      "purpose": "Render one execution event, including payloads and condition results."
+    },
+    {
+      "component_id": "ConditionResultsList",
+      "purpose": "Show condition evaluation details when present."
+    },
+    {
+      "component_id": "ChangedValuesPanel",
+      "purpose": "Highlight changed values within an event."
+    },
+    {
+      "component_id": "LogRecordSearchForm",
+      "purpose": "Capture detailed log-record search filters aligned to searchExecutionLogRecords."
+    },
+    {
+      "component_id": "ContentFilterBuilder",
+      "purpose": "Build constrained content_filters and enforce frontend guardrails around unsupported combinations."
+    },
+    {
+      "component_id": "LogRecordResultsTable",
+      "purpose": "Render detailed log record search results with request drill-through."
+    },
+    {
+      "component_id": "PayloadSnippetViewer",
+      "purpose": "Compact preview of large payload fragments in tables."
+    },
+    {
+      "component_id": "ApiConstraintNotice",
+      "purpose": "Explain backend limitations such as constrained dynamic content filter support and unavailable capabilities."
+    },
+    {
+      "component_id": "OutcomeComparisonChart",
+      "purpose": "Visualize approval/rejection counts and rates by version."
+    },
+    {
+      "component_id": "OutcomeComparisonTable",
+      "purpose": "Tabular comparison of version outcomes."
+    },
+    {
+      "component_id": "BaselineComparisonSelector",
+      "purpose": "Choose baseline and comparison versions for rule diff analysis."
+    },
+    {
+      "component_id": "RuleBehaviorDiffTable",
+      "purpose": "List rules with changed behavior breakdowns across versions."
+    },
+    {
+      "component_id": "StatusOutcomeBreakdownPanel",
+      "purpose": "Visualize per-rule execution_status/outcome counts and average duration."
+    },
+    {
+      "component_id": "RuleImpactQueryForm",
+      "purpose": "Capture policy/rule/version/date filters for impacted-request lookup."
+    },
+    {
+      "component_id": "ImpactedRequestsTable",
+      "purpose": "Render requests affected by a selected rule."
+    },
+    {
+      "component_id": "RequestSummaryPreviewDrawer",
+      "purpose": "Optional lightweight inline preview using getRequestSummary."
+    },
+    {
+      "component_id": "DashboardFilterBar",
+      "purpose": "Shared date/policy/version controls for dashboard pages."
+    },
+    {
+      "component_id": "BucketUnitToggle",
+      "purpose": "Select day/week/month for outcome trend."
+    },
+    {
+      "component_id": "OutcomeTrendChart",
+      "purpose": "Time-series chart for total requests and outcomes."
+    },
+    {
+      "component_id": "OutcomeTrendTable",
+      "purpose": "Tabular trend representation."
+    },
+    {
+      "component_id": "SegmentFieldSelect",
+      "purpose": "Restrict selection to allowed segment fields from the API contract."
+    },
+    {
+      "component_id": "SegmentComparisonChart",
+      "purpose": "Compare version outcomes across segment values."
+    },
+    {
+      "component_id": "SegmentComparisonTable",
+      "purpose": "Tabular segment comparison output."
+    },
+    {
+      "component_id": "SegmentSuccessChart",
+      "purpose": "Chart success rates by segment."
+    },
+    {
+      "component_id": "SegmentSuccessTable",
+      "purpose": "Table success rates by segment."
+    },
+    {
+      "component_id": "RetentionSummaryCards",
+      "purpose": "Display logging enabled and retention summary at a glance."
+    },
+    {
+      "component_id": "RetentionPolicyPanel",
+      "purpose": "Render retention settings from overview/config endpoints."
+    },
+    {
+      "component_id": "RequestStatsPanel",
+      "purpose": "Show request count and oldest/newest request timestamps."
+    },
+    {
+      "component_id": "RecentPurgeRunsTable",
+      "purpose": "Render recent purge history from retention overview."
+    },
+    {
+      "component_id": "PurgeRunSearchForm",
+      "purpose": "Capture purge run history filters."
+    },
+    {
+      "component_id": "PurgeRunResultsTable",
+      "purpose": "Display purge run search results."
+    },
+    {
+      "component_id": "LoggingConfigForm",
+      "purpose": "Edit logging_enabled and retention_policy values."
+    },
+    {
+      "component_id": "RetentionPolicyEditor",
+      "purpose": "Subform for retention_days, purge_enabled, and purge_threshold_gb."
+    },
+    {
+      "component_id": "ReadonlyDeploymentInfo",
+      "purpose": "Show deployment type and non-editable customer metadata."
+    },
+    {
+      "component_id": "UnsupportedCapabilityNotice",
+      "purpose": "Communicate capabilities intentionally unavailable because the API contract does not expose them, such as triggering purge or exporting reports."
+    }
+  ],
+  "constraints_and_gaps": [
+    "No API exists to list customers; customer selection must come from host application context, route parameter, or out-of-band configuration.",
+    "No API exists to list all policies globally; policy-based analytics screens require entering or receiving a known policyId before loading versions.",
+    "No API exists to trigger a purge run; admin UI can only view retention overview/history and update config.",
+    "No API exists for report export, saved dashboards, scheduled reports, or sharing; frontend must not promise those features.",
+    "No API exists for arbitrary aggregation across any payload field for dashboards; segment fields are restricted to allowed promoted attributes.",
+    "Dynamic content filter support in detailed log search is constrained by the API/backend note; frontend should limit UI to combinations likely to be accepted and surface backend rejection clearly.",
+    "Authentication details are out of scope; pages should only model handling of 403/404/400/500 responses."
+  ]
+}
