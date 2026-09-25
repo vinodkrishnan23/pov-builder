@@ -1,0 +1,412 @@
+{
+  "qp-1": {
+    "id": "qp-1",
+    "name": "Create test run record",
+    "serves": [
+      "functional_requirement:fr-1"
+    ],
+    "collections": [
+      "test_runs"
+    ],
+    "query": {
+      "collection": "test_runs",
+      "operation": "insertOne",
+      "document": {
+        "run_name": "<string?>",
+        "status": "queued",
+        "started_at": "<date>",
+        "endpoint_path": "<string>",
+        "endpoint_method": "<GET|POST|PUT|PATCH|DELETE>",
+        "environment": "<string?>",
+        "initiated_by": "<string?>",
+        "summary": {
+          "total_events": "<int?>",
+          "expected_final_state": "<string?>"
+        }
+      }
+    },
+    "purpose": "Create a new end-to-end validation run for the streaming progress endpoint before or at test start."
+  },
+  "qp-2": {
+    "id": "qp-2",
+    "name": "Update test run lifecycle status",
+    "serves": [
+      "functional_requirement:fr-1"
+    ],
+    "collections": [
+      "test_runs"
+    ],
+    "query": {
+      "collection": "test_runs",
+      "operation": "updateOne",
+      "filter": {
+        "_id": "<test_run_id>"
+      },
+      "update": {
+        "$set": {
+          "status": "<queued|running|passed|failed|cancelled>",
+          "completed_at": "<date?>",
+          "summary.observed_final_state": "<string?>",
+          "summary.pass_reason": "<string?>",
+          "summary.failure_reason": "<string?>"
+        }
+      }
+    },
+    "purpose": "Mark a validation run as running, passed, failed, or cancelled and persist final outcome details."
+  },
+  "qp-3": {
+    "id": "qp-3",
+    "name": "Append observed progress event",
+    "serves": [
+      "functional_requirement:fr-1"
+    ],
+    "collections": [
+      "progress_events"
+    ],
+    "query": {
+      "collection": "progress_events",
+      "operation": "insertOne",
+      "document": {
+        "test_run_id": "<objectId>",
+        "sequence_number": "<int>",
+        "event_timestamp": "<date>",
+        "event_type": "<string?>",
+        "progress_percent": "<double?>",
+        "message": "<string?>",
+        "raw_payload": "<document?>",
+        "is_terminal": "<bool?>",
+        "validation": {
+          "is_expected_order": "<bool?>",
+          "is_valid_payload": "<bool?>",
+          "notes": "<string?>"
+        }
+      }
+    },
+    "purpose": "Store each streamed progress event observed during an end-to-end test run."
+  },
+  "qp-4": {
+    "id": "qp-4",
+    "name": "List test runs with latest outcomes",
+    "serves": [
+      "functional_requirement:fr-1"
+    ],
+    "collections": [
+      "test_runs"
+    ],
+    "query": {
+      "collection": "test_runs",
+      "operation": "find",
+      "filter": {
+        "endpoint_path": "<string?>",
+        "environment": "<string?>",
+        "status": "<string?>",
+        "started_at": {
+          "$gte": "<date?>",
+          "$lte": "<date?>"
+        }
+      },
+      "projection": {
+        "run_name": 1,
+        "status": 1,
+        "started_at": 1,
+        "completed_at": 1,
+        "endpoint_path": 1,
+        "endpoint_method": 1,
+        "environment": 1,
+        "initiated_by": 1,
+        "summary.total_events": 1,
+        "summary.expected_final_state": 1,
+        "summary.observed_final_state": 1,
+        "summary.pass_reason": 1,
+        "summary.failure_reason": 1
+      },
+      "sort": {
+        "started_at": -1
+      },
+      "limit": "<int?>"
+    },
+    "purpose": "Review recent validation runs for the streaming progress endpoint and their outcomes."
+  },
+  "qp-5": {
+    "id": "qp-5",
+    "name": "Get test run details by id",
+    "serves": [
+      "functional_requirement:fr-1"
+    ],
+    "collections": [
+      "test_runs"
+    ],
+    "query": {
+      "collection": "test_runs",
+      "operation": "findOne",
+      "filter": {
+        "_id": "<test_run_id>"
+      },
+      "projection": {
+        "run_name": 1,
+        "status": 1,
+        "started_at": 1,
+        "completed_at": 1,
+        "endpoint_path": 1,
+        "endpoint_method": 1,
+        "environment": 1,
+        "initiated_by": 1,
+        "summary": 1
+      }
+    },
+    "purpose": "Fetch the parent validation run metadata for detailed inspection."
+  },
+  "qp-6": {
+    "id": "qp-6",
+    "name": "Get ordered progress event stream for a test run",
+    "serves": [
+      "functional_requirement:fr-1"
+    ],
+    "collections": [
+      "progress_events"
+    ],
+    "query": {
+      "collection": "progress_events",
+      "operation": "find",
+      "filter": {
+        "test_run_id": "<test_run_id>"
+      },
+      "projection": {
+        "sequence_number": 1,
+        "event_timestamp": 1,
+        "event_type": 1,
+        "progress_percent": 1,
+        "message": 1,
+        "raw_payload": 1,
+        "is_terminal": 1,
+        "validation": 1
+      },
+      "sort": {
+        "sequence_number": 1
+      }
+    },
+    "purpose": "Replay or inspect the exact ordered stream of progress events captured for a validation run."
+  },
+  "qp-7": {
+    "id": "qp-7",
+    "name": "Get terminal or anomalous events for a test run",
+    "serves": [
+      "functional_requirement:fr-1"
+    ],
+    "collections": [
+      "progress_events"
+    ],
+    "query": {
+      "collection": "progress_events",
+      "operation": "find",
+      "filter": {
+        "test_run_id": "<test_run_id>",
+        "$or": [
+          {
+            "is_terminal": true
+          },
+          {
+            "validation.is_expected_order": false
+          },
+          {
+            "validation.is_valid_payload": false
+          }
+        ]
+      },
+      "projection": {
+        "sequence_number": 1,
+        "event_timestamp": 1,
+        "event_type": 1,
+        "progress_percent": 1,
+        "message": 1,
+        "is_terminal": 1,
+        "validation": 1
+      },
+      "sort": {
+        "sequence_number": 1
+      }
+    },
+    "purpose": "Quickly isolate terminal events and validation anomalies during end-to-end diagnosis."
+  },
+  "qp-8": {
+    "id": "qp-8",
+    "name": "Summarize a test run from its events",
+    "serves": [
+      "functional_requirement:fr-1"
+    ],
+    "collections": [
+      "progress_events",
+      "test_runs"
+    ],
+    "query": {
+      "collection": "progress_events",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "test_run_id": "<test_run_id>"
+          }
+        },
+        {
+          "$sort": {
+            "sequence_number": 1
+          }
+        },
+        {
+          "$group": {
+            "_id": "$test_run_id",
+            "total_events": {
+              "$sum": 1
+            },
+            "first_event_at": {
+              "$first": "$event_timestamp"
+            },
+            "last_event_at": {
+              "$last": "$event_timestamp"
+            },
+            "terminal_event": {
+              "$last": {
+                "$cond": [
+                  {
+                    "$eq": [
+                      "$is_terminal",
+                      true
+                    ]
+                  },
+                  {
+                    "sequence_number": "$sequence_number",
+                    "event_type": "$event_type",
+                    "progress_percent": "$progress_percent",
+                    "message": "$message"
+                  },
+                  null
+                ]
+              }
+            },
+            "invalid_payload_count": {
+              "$sum": {
+                "$cond": [
+                  {
+                    "$eq": [
+                      "$validation.is_valid_payload",
+                      false
+                    ]
+                  },
+                  1,
+                  0
+                ]
+              }
+            },
+            "out_of_order_count": {
+              "$sum": {
+                "$cond": [
+                  {
+                    "$eq": [
+                      "$validation.is_expected_order",
+                      false
+                    ]
+                  },
+                  1,
+                  0
+                ]
+              }
+            },
+            "observed_final_state": {
+              "$last": "$event_type"
+            }
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "test_run_id": "$_id",
+            "total_events": 1,
+            "first_event_at": 1,
+            "last_event_at": 1,
+            "terminal_event": 1,
+            "invalid_payload_count": 1,
+            "out_of_order_count": 1,
+            "observed_final_state": 1
+          }
+        }
+      ]
+    },
+    "purpose": "Compute run-level validation summary metrics from the captured event stream for reporting or post-run updates."
+  },
+  "qp-9": {
+    "id": "qp-9",
+    "name": "Get run with embedded ordered events",
+    "serves": [
+      "functional_requirement:fr-1"
+    ],
+    "collections": [
+      "test_runs",
+      "progress_events"
+    ],
+    "query": {
+      "collection": "test_runs",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "_id": "<test_run_id>"
+          }
+        },
+        {
+          "$lookup": {
+            "from": "progress_events",
+            "let": {
+              "runId": "$_id"
+            },
+            "pipeline": [
+              {
+                "$match": {
+                  "$expr": {
+                    "$eq": [
+                      "$test_run_id",
+                      "$$runId"
+                    ]
+                  }
+                }
+              },
+              {
+                "$sort": {
+                  "sequence_number": 1
+                }
+              },
+              {
+                "$project": {
+                  "_id": 1,
+                  "sequence_number": 1,
+                  "event_timestamp": 1,
+                  "event_type": 1,
+                  "progress_percent": 1,
+                  "message": 1,
+                  "raw_payload": 1,
+                  "is_terminal": 1,
+                  "validation": 1
+                }
+              }
+            ],
+            "as": "events"
+          }
+        },
+        {
+          "$project": {
+            "run_name": 1,
+            "status": 1,
+            "started_at": 1,
+            "completed_at": 1,
+            "endpoint_path": 1,
+            "endpoint_method": 1,
+            "environment": 1,
+            "initiated_by": 1,
+            "summary": 1,
+            "events": 1
+          }
+        }
+      ]
+    },
+    "purpose": "Retrieve a full end-to-end validation run together with its ordered event stream in a single read for detailed test inspection."
+  }
+}
