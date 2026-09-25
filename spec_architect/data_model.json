@@ -2,18 +2,13 @@
   "collections": [
     {
       "name": "tenants",
-      "description": "Tenant boundary for isolated customer/demo contexts in the POV.",
-      "traceability": {
-        "business_entities": [
-          "Tenant"
-        ],
-        "functional_requirements": [],
-        "use_cases": [
-          "UC1",
-          "UC2",
-          "UC3"
-        ]
-      },
+      "description": "Logical customer/workshop boundary for uploaded corpora, agent memory, and benchmark artifacts. Included because Tenant is a business entity and documents/benchmarks need customer-level isolation for POV datasets.",
+      "traceability": [
+        "business_entities:Tenant",
+        "use_cases:UC1",
+        "use_cases:UC2",
+        "use_cases:UC3"
+      ],
       "fields": [
         {
           "name": "_id",
@@ -26,86 +21,91 @@
           "required": true
         },
         {
-          "name": "display_name",
+          "name": "name",
           "type": "string",
           "required": true
         },
         {
-          "name": "deployment_model",
+          "name": "deployment_mode",
           "type": "string",
           "required": false,
           "enum": [
-            "saas_shared",
-            "saas_isolated",
-            "customer_isolated"
+            "shared_pov",
+            "isolated_pov"
           ]
         },
         {
-          "name": "cloud",
+          "name": "status",
           "type": "string",
           "required": false,
           "enum": [
-            "aws",
-            "gcp",
-            "azure",
-            "other"
+            "active",
+            "inactive"
           ]
-        },
-        {
-          "name": "notes",
-          "type": "string",
-          "required": false
         },
         {
           "name": "created_at",
           "type": "date",
           "required": true
+        },
+        {
+          "name": "metadata",
+          "type": "document",
+          "required": false,
+          "fields": [
+            {
+              "name": "notes",
+              "type": "string",
+              "required": false
+            }
+          ]
         }
       ],
       "relationships": [
         {
-          "type": "one_to_many",
-          "to_collection": "documents",
-          "via": "tenant_id"
+          "type": "one-to-many",
+          "to": "documents",
+          "via": "documents.tenant_id"
         },
         {
-          "type": "one_to_many",
-          "to_collection": "benchmark_runs",
-          "via": "tenant_id"
+          "type": "one-to-many",
+          "to": "benchmark_runs",
+          "via": "benchmark_runs.tenant_id"
+        },
+        {
+          "type": "one-to-many",
+          "to": "ground_truth_sets",
+          "via": "ground_truth_sets.tenant_id"
         }
       ],
-      "embedding_vs_reference": "Top-level reference target. Tenant is shared by many documents and benchmark runs, so referencing avoids duplication and supports tenant-scoped queries.",
+      "embedding_vs_reference": {
+        "strategy": "top-level collection referenced by ObjectId from workload collections",
+        "why": "Tenant is reused across many documents, chunks, memory items, and benchmark runs; referencing avoids duplication and supports tenant-scoped queries."
+      },
       "indexes": [
         {
-          "name": "uk_tenants_tenant_key",
+          "name": "uk_tenant_key",
           "kind": "regular",
           "fields": [
             "tenant_key"
           ],
-          "reason": "Lookup and enforce uniqueness for tenant/demo environment selection."
+          "reason": "Fast lookup of a tenant/workshop namespace by stable external key during upload, search, and benchmarking flows."
         }
       ]
     },
     {
       "name": "documents",
-      "description": "Canonical metadata for uploaded or ingested content used in document search and agent memory retrieval.",
-      "traceability": {
-        "business_entities": [
-          "Document",
-          "Agent Memory"
-        ],
-        "functional_requirements": [
-          "FR1",
-          "FR2",
-          "FR3",
-          "FR4"
-        ],
-        "use_cases": [
-          "UC1",
-          "UC2",
-          "UC3"
-        ]
-      },
+      "description": "Uploaded source documents and agent-memory source records used for search, retrieval, and evaluation. Covers PDFs, CSVs, sheets exports, text files, and conversation-derived memory documents.",
+      "traceability": [
+        "business_entities:Document",
+        "business_entities:Agent memory document",
+        "functional_requirements:FR1",
+        "functional_requirements:FR2",
+        "functional_requirements:FR3",
+        "functional_requirements:FR7",
+        "use_cases:UC1",
+        "use_cases:UC2"
+      ],
       "fields": [
         {
           "name": "_id",
@@ -122,42 +122,33 @@
           "type": "string",
           "required": true,
           "enum": [
-            "uploaded_file",
-            "agent_memory",
-            "benchmark_supporting_doc"
+            "pdf",
+            "csv",
+            "google_sheet_export",
+            "txt",
+            "md",
+            "html",
+            "doc_export",
+            "slack_export",
+            "jira_export",
+            "conversation_memory",
+            "other"
           ]
         },
         {
-          "name": "source_type",
+          "name": "source_category",
           "type": "string",
           "required": true,
           "enum": [
-            "pdf",
-            "csv",
-            "google_sheet",
-            "text",
-            "research_paper",
-            "business_document",
-            "jira_export",
-            "slack_export",
-            "conversation_context",
-            "other"
+            "uploaded_file",
+            "connector_export",
+            "agent_memory"
           ]
         },
         {
           "name": "title",
           "type": "string",
-          "required": false
-        },
-        {
-          "name": "original_filename",
-          "type": "string",
-          "required": false
-        },
-        {
-          "name": "mime_type",
-          "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "source_uri",
@@ -165,23 +156,42 @@
           "required": false
         },
         {
-          "name": "storage_location_type",
+          "name": "storage_provider",
           "type": "string",
           "required": false,
           "enum": [
-            "atlas",
             "s3",
-            "external_url",
-            "inline"
+            "atlas",
+            "other"
           ]
         },
         {
-          "name": "raw_text",
+          "name": "mime_type",
           "type": "string",
           "required": false
         },
         {
-          "name": "metadata",
+          "name": "file_size_bytes",
+          "type": "long",
+          "required": false
+        },
+        {
+          "name": "checksum",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "language",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "tags",
+          "type": "array<string>",
+          "required": false
+        },
+        {
+          "name": "structured_metadata",
           "type": "document",
           "required": false,
           "fields": [
@@ -191,17 +201,66 @@
               "required": false
             },
             {
-              "name": "language",
+              "name": "created_source_at",
+              "type": "date",
+              "required": false
+            },
+            {
+              "name": "connector_name",
               "type": "string",
               "required": false
             },
             {
-              "name": "tags",
-              "type": "array<string>",
+              "name": "external_ids",
+              "type": "document",
+              "required": false
+            }
+          ]
+        },
+        {
+          "name": "text_extraction",
+          "type": "document",
+          "required": false,
+          "fields": [
+            {
+              "name": "status",
+              "type": "string",
+              "required": true,
+              "enum": [
+                "pending",
+                "completed",
+                "failed"
+              ]
+            },
+            {
+              "name": "raw_text",
+              "type": "string",
               "required": false
             },
             {
-              "name": "created_by",
+              "name": "page_count",
+              "type": "int",
+              "required": false
+            },
+            {
+              "name": "extracted_at",
+              "type": "date",
+              "required": false
+            },
+            {
+              "name": "error_message",
+              "type": "string",
+              "required": false
+            }
+          ]
+        },
+        {
+          "name": "agent_memory_metadata",
+          "type": "document",
+          "required": false,
+          "fields": [
+            {
+              "name": "session_id",
               "type": "string",
               "required": false
             },
@@ -211,27 +270,30 @@
               "required": false
             },
             {
-              "name": "session_id",
-              "type": "string",
+              "name": "speaker_ids",
+              "type": "array<string>",
+              "required": false
+            },
+            {
+              "name": "captured_at",
+              "type": "date",
               "required": false
             }
-          ],
-          "reason": "Flexible metadata is needed because customer documents vary widely and agent memory may carry conversation/session identifiers."
+          ]
         },
         {
-          "name": "processing_status",
+          "name": "status",
           "type": "string",
           "required": true,
           "enum": [
             "uploaded",
-            "parsed",
-            "chunked",
-            "embedded",
-            "failed"
+            "processed",
+            "failed",
+            "archived"
           ]
         },
         {
-          "name": "ingested_at",
+          "name": "created_at",
           "type": "date",
           "required": true
         },
@@ -243,71 +305,75 @@
       ],
       "relationships": [
         {
-          "type": "many_to_one",
-          "to_collection": "tenants",
+          "type": "many-to-one",
+          "to": "tenants",
           "via": "tenant_id"
         },
         {
-          "type": "one_to_many",
-          "to_collection": "document_chunks",
-          "via": "document_id"
-        },
-        {
-          "type": "one_to_many",
-          "to_collection": "benchmark_ground_truths",
-          "via": "relevant_document_ids"
+          "type": "one-to-many",
+          "to": "chunks",
+          "via": "chunks.document_id"
         }
       ],
-      "embedding_vs_reference": "Documents reference tenant_id because tenant metadata is shared. Chunk text and embeddings are not embedded in documents because multiple chunking strategies per document are required and chunk counts can be large.",
+      "embedding_vs_reference": {
+        "strategy": "top-level collection; chunks reference documents",
+        "why": "Documents can be large and produce many chunks under multiple chunking strategies. Keeping documents separate avoids rewriting large source records when chunking/embedding variants are regenerated."
+      },
       "indexes": [
         {
-          "name": "idx_documents_tenant_type_ingested",
+          "name": "idx_documents_tenant_status_type",
           "kind": "regular",
           "fields": [
             "tenant_id",
-            "document_type",
-            "ingested_at"
+            "status",
+            "document_type"
           ],
-          "reason": "Supports listing recently uploaded documents and filtering document-search vs agent-memory documents during the live demo."
+          "reason": "Supports tenant-scoped upload/review screens and filtering by processed state and document type during the POV."
         },
         {
-          "name": "idx_documents_tenant_source_type",
+          "name": "idx_documents_tenant_source_category",
           "kind": "regular",
           "fields": [
             "tenant_id",
-            "source_type"
+            "source_category"
           ],
-          "reason": "Supports evaluation by file/source type such as PDF, CSV, Slack/Jira text exports."
+          "reason": "Supports separating unstructured document search corpora from agent memory source documents within a tenant."
+        },
+        {
+          "name": "idx_documents_checksum",
+          "kind": "regular",
+          "fields": [
+            "tenant_id",
+            "checksum"
+          ],
+          "reason": "Supports deduplication checks when users upload representative files during the session."
+        },
+        {
+          "name": "search_documents_text",
+          "kind": "search",
+          "fields": [
+            "title",
+            "text_extraction.raw_text",
+            "tags"
+          ],
+          "reason": "Supports lexical/full-text retrieval and mixed search over uploaded documents, especially for benchmark comparisons against non-vector approaches."
         }
       ]
     },
     {
-      "name": "document_chunks",
-      "description": "Chunked text derived from documents, stored per chunking strategy and used for lexical and vector retrieval.",
-      "traceability": {
-        "business_entities": [
-          "Chunk",
-          "Embedding"
-        ],
-        "functional_requirements": [
-          "FR1",
-          "FR2",
-          "FR3",
-          "FR6",
-          "FR7"
-        ],
-        "ai_requirements": [
-          "AI2",
-          "AI3",
-          "AI4",
-          "AI5"
-        ],
-        "use_cases": [
-          "UC1",
-          "UC2",
-          "UC3"
-        ]
-      },
+      "name": "chunks",
+      "description": "Chunked document segments produced by one or more chunking strategies, each optionally contextualized and embedded for retrieval.",
+      "traceability": [
+        "business_entities:Chunk",
+        "business_entities:Embedding",
+        "functional_requirements:FR4",
+        "functional_requirements:FR5",
+        "functional_requirements:FR6",
+        "ai_genai_requirements:AI2",
+        "ai_genai_requirements:AI5",
+        "use_cases:UC1",
+        "use_cases:UC2"
+      ],
       "fields": [
         {
           "name": "_id",
@@ -336,32 +402,9 @@
           ]
         },
         {
-          "name": "strategy_params",
-          "type": "document",
-          "required": false,
-          "fields": [
-            {
-              "name": "chunk_size",
-              "type": "int",
-              "required": false
-            },
-            {
-              "name": "chunk_overlap",
-              "type": "int",
-              "required": false
-            },
-            {
-              "name": "separator_policy",
-              "type": "string",
-              "required": false
-            },
-            {
-              "name": "notes",
-              "type": "string",
-              "required": false
-            }
-          ],
-          "reason": "Needed to compare chunking configurations, not just strategy names."
+          "name": "strategy_version",
+          "type": "string",
+          "required": false
         },
         {
           "name": "chunk_index",
@@ -374,8 +417,40 @@
           "required": true
         },
         {
+          "name": "contextual_text",
+          "type": "string",
+          "required": false
+        },
+        {
           "name": "token_count",
           "type": "int",
+          "required": false
+        },
+        {
+          "name": "char_count",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "page_range",
+          "type": "document",
+          "required": false,
+          "fields": [
+            {
+              "name": "start",
+              "type": "int",
+              "required": false
+            },
+            {
+              "name": "end",
+              "type": "int",
+              "required": false
+            }
+          ]
+        },
+        {
+          "name": "section_path",
+          "type": "array<string>",
           "required": false
         },
         {
@@ -389,18 +464,23 @@
           "required": false
         },
         {
-          "name": "page_span",
+          "name": "embedding_dimensions",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "metadata",
           "type": "document",
           "required": false,
           "fields": [
             {
-              "name": "start_page",
-              "type": "int",
+              "name": "contains_table_text",
+              "type": "bool",
               "required": false
             },
             {
-              "name": "end_page",
-              "type": "int",
+              "name": "source_offsets",
+              "type": "document",
               "required": false
             }
           ]
@@ -413,27 +493,30 @@
       ],
       "relationships": [
         {
-          "type": "many_to_one",
-          "to_collection": "documents",
+          "type": "many-to-one",
+          "to": "documents",
           "via": "document_id"
         },
         {
-          "type": "many_to_one",
-          "to_collection": "tenants",
+          "type": "many-to-one",
+          "to": "tenants",
           "via": "tenant_id"
         }
       ],
-      "embedding_vs_reference": "Chunks reference the parent document because each document can produce many chunks under multiple strategies. Embedding is stored on the chunk because retrieval is chunk-level and embedding travels with the chunk for vector search.",
+      "embedding_vs_reference": {
+        "strategy": "embedding stored in the chunk document",
+        "why": "Primary retrieval unit is the chunk. Co-locating text, metadata, and vector minimizes fetches for top-K retrieval and reranking candidates in the POV."
+      },
       "indexes": [
         {
-          "name": "idx_chunks_doc_strategy_order",
+          "name": "idx_chunks_doc_strategy_index",
           "kind": "regular",
           "fields": [
             "document_id",
             "chunking_strategy",
             "chunk_index"
           ],
-          "reason": "Supports reconstructing chunk sequences for a document and comparing chunk outputs by strategy."
+          "reason": "Supports reconstruction/debugging of a document under a selected chunking strategy and deterministic playback during benchmark review."
         },
         {
           "name": "idx_chunks_tenant_strategy",
@@ -442,15 +525,17 @@
             "tenant_id",
             "chunking_strategy"
           ],
-          "reason": "Supports running strategy-specific benchmark queries scoped to a tenant/demo dataset."
+          "reason": "Supports benchmarking and filtering retrieval to a specific chunking method for side-by-side comparisons."
         },
         {
           "name": "search_chunks_text",
           "kind": "search",
           "fields": [
-            "text"
+            "text",
+            "contextual_text",
+            "section_path"
           ],
-          "reason": "Supports keyword/hybrid retrieval over chunk text for document search and side-by-side comparison against non-vector baselines."
+          "reason": "Supports lexical retrieval baseline, hybrid retrieval, and keyword querying directly over chunk text."
         },
         {
           "name": "vector_chunks_embedding",
@@ -458,28 +543,21 @@
           "fields": [
             "embedding"
           ],
-          "reason": "Supports semantic retrieval over chunks for document search and agent memory evaluation using embeddings."
+          "reason": "Supports semantic top-K retrieval over chunk embeddings for document search and agent memory queries."
         }
       ]
     },
     {
-      "name": "benchmark_ground_truths",
-      "description": "Customer-provided prompts/questions and expected relevant answers or documents used to score retrieval quality.",
-      "traceability": {
-        "business_entities": [
-          "Document"
-        ],
-        "functional_requirements": [
-          "FR4",
-          "FR7"
-        ],
-        "ai_requirements": [
-          "AI6"
-        ],
-        "use_cases": [
-          "UC3"
-        ]
-      },
+      "name": "ground_truth_sets",
+      "description": "Benchmark question sets and expected relevant documents/chunks used to evaluate retrieval accuracy, latency, and top-K performance.",
+      "traceability": [
+        "business_entities:Ground truth set",
+        "use_cases:UC3",
+        "success_criteria:SC5",
+        "success_criteria:SC6",
+        "success_criteria:SC7",
+        "success_criteria:SC8"
+      ],
       "fields": [
         {
           "name": "_id",
@@ -492,48 +570,63 @@
           "required": true
         },
         {
-          "name": "prompt_text",
+          "name": "name",
           "type": "string",
           "required": true
         },
         {
-          "name": "task_type",
+          "name": "description",
           "type": "string",
+          "required": false
+        },
+        {
+          "name": "questions",
+          "type": "array<object>",
           "required": true,
-          "enum": [
-            "document_search",
-            "agent_memory"
+          "fields": [
+            {
+              "name": "question_id",
+              "type": "string",
+              "required": true
+            },
+            {
+              "name": "query_text",
+              "type": "string",
+              "required": true
+            },
+            {
+              "name": "expected_answer",
+              "type": "string",
+              "required": false
+            },
+            {
+              "name": "relevance_targets",
+              "type": "array<object>",
+              "required": false,
+              "fields": [
+                {
+                  "name": "document_id",
+                  "type": "objectId",
+                  "required": false
+                },
+                {
+                  "name": "chunk_id",
+                  "type": "objectId",
+                  "required": false
+                },
+                {
+                  "name": "relevance_grade",
+                  "type": "int",
+                  "required": false
+                }
+              ]
+            },
+            {
+              "name": "tags",
+              "type": "array<string>",
+              "required": false
+            }
           ]
-        },
-        {
-          "name": "ground_truth_text",
-          "type": "string",
-          "required": false
-        },
-        {
-          "name": "relevant_document_ids",
-          "type": "array<objectId>",
-          "required": false
-        },
-        {
-          "name": "relevant_chunk_ids",
-          "type": "array<objectId>",
-          "required": false
-        },
-        {
-          "name": "top_k_targets",
-          "type": "array<int>",
-          "required": false
-        },
-        {
-          "name": "provided_during_session",
-          "type": "bool",
-          "required": true
-        },
-        {
-          "name": "notes",
-          "type": "string",
-          "required": false
         },
         {
           "name": "created_at",
@@ -543,64 +636,46 @@
       ],
       "relationships": [
         {
-          "type": "many_to_one",
-          "to_collection": "tenants",
+          "type": "many-to-one",
+          "to": "tenants",
           "via": "tenant_id"
         },
         {
-          "type": "many_to_many",
-          "to_collection": "documents",
-          "via": "relevant_document_ids"
-        },
-        {
-          "type": "many_to_many",
-          "to_collection": "document_chunks",
-          "via": "relevant_chunk_ids"
-        },
-        {
-          "type": "one_to_many",
-          "to_collection": "benchmark_runs",
-          "via": "ground_truth_id"
+          "type": "one-to-many",
+          "to": "benchmark_runs",
+          "via": "benchmark_runs.ground_truth_set_id"
         }
       ],
-      "embedding_vs_reference": "Ground truths reference documents/chunks because the same benchmark prompt may be evaluated across multiple runs and strategies; embedding them would duplicate benchmark targets.",
+      "embedding_vs_reference": {
+        "strategy": "embed benchmark questions inside the set document",
+        "why": "Questions are always consumed together as a named benchmark pack during a run; embedding avoids an extra collection for small-to-moderate benchmark sets in the POV."
+      },
       "indexes": [
         {
-          "name": "idx_ground_truths_tenant_task",
+          "name": "idx_ground_truth_tenant_name",
           "kind": "regular",
           "fields": [
             "tenant_id",
-            "task_type"
+            "name"
           ],
-          "reason": "Supports selecting benchmark prompt sets by tenant and use case during the session."
+          "reason": "Supports selecting a benchmark pack for a tenant/workshop."
         }
       ]
     },
     {
       "name": "benchmark_runs",
-      "description": "Recorded execution of a retrieval benchmark against a selected strategy and baseline, including measured latency and quality metrics.",
-      "traceability": {
-        "business_entities": [
-          "Chunk",
-          "Embedding"
-        ],
-        "functional_requirements": [
-          "FR4",
-          "FR6",
-          "FR7"
-        ],
-        "use_cases": [
-          "UC3"
-        ],
-        "success_criteria": [
-          "SC1",
-          "SC2",
-          "SC3",
-          "SC4",
-          "SC5",
-          "SC6"
-        ]
-      },
+      "description": "Execution records for side-by-side evaluations of retrieval approaches, chunking strategies, and baselines, including measured metrics and per-question results.",
+      "traceability": [
+        "use_cases:UC3",
+        "business_objectives:BO5",
+        "functional_requirements:FR6",
+        "success_criteria:SC1",
+        "success_criteria:SC4",
+        "success_criteria:SC5",
+        "success_criteria:SC6",
+        "success_criteria:SC7",
+        "success_criteria:SC8"
+      ],
       "fields": [
         {
           "name": "_id",
@@ -613,26 +688,23 @@
           "required": true
         },
         {
-          "name": "ground_truth_id",
+          "name": "ground_truth_set_id",
           "type": "objectId",
-          "required": true
+          "required": false
         },
         {
-          "name": "run_label",
+          "name": "run_name",
           "type": "string",
-          "required": false
+          "required": true
         },
         {
           "name": "system_under_test",
           "type": "string",
           "required": true,
           "enum": [
-            "mongodb_atlas",
-            "elastic",
-            "opensearch",
-            "qdrant",
-            "pinecone",
-            "internal_baseline",
+            "mongodb_voyage",
+            "baseline_elastic_like",
+            "qdrant_like",
             "other"
           ]
         },
@@ -642,7 +714,7 @@
           "required": true,
           "enum": [
             "vector",
-            "keyword",
+            "lexical",
             "hybrid"
           ]
         },
@@ -663,71 +735,32 @@
           "required": false
         },
         {
-          "name": "candidate_pool_filter",
+          "name": "top_k_values",
+          "type": "array<int>",
+          "required": true
+        },
+        {
+          "name": "filters",
           "type": "document",
           "required": false,
           "fields": [
             {
-              "name": "document_ids",
-              "type": "array<objectId>",
-              "required": false
-            },
-            {
-              "name": "source_types",
+              "name": "document_types",
               "type": "array<string>",
               "required": false
-            }
-          ],
-          "reason": "Allows controlled comparison subsets during the live demo."
-        },
-        {
-          "name": "top_k_results",
-          "type": "array<document>",
-          "required": false,
-          "fields": [
-            {
-              "name": "rank",
-              "type": "int",
-              "required": true
             },
             {
-              "name": "document_id",
-              "type": "objectId",
-              "required": true
-            },
-            {
-              "name": "chunk_id",
-              "type": "objectId",
-              "required": false
-            },
-            {
-              "name": "score",
-              "type": "number",
-              "required": false
-            },
-            {
-              "name": "snippet",
+              "name": "source_category",
               "type": "string",
               "required": false
-            },
-            {
-              "name": "is_relevant",
-              "type": "bool",
-              "required": false
             }
-          ],
-          "reason": "Top-K result capture is needed for observable comparison and precision/recall analysis."
+          ]
         },
         {
-          "name": "metrics",
+          "name": "aggregate_metrics",
           "type": "document",
-          "required": true,
+          "required": false,
           "fields": [
-            {
-              "name": "latency_ms",
-              "type": "number",
-              "required": true
-            },
             {
               "name": "precision_at_k",
               "type": "document",
@@ -739,64 +772,143 @@
               "required": false
             },
             {
-              "name": "result_count",
+              "name": "avg_latency_ms",
+              "type": "double",
+              "required": false
+            },
+            {
+              "name": "p95_latency_ms",
+              "type": "double",
+              "required": false
+            },
+            {
+              "name": "query_count",
               "type": "int",
               "required": false
             }
-          ],
-          "reason": "Directly supports requested benchmark evidence for precision, recall, and latency."
+          ]
         },
         {
-          "name": "run_timestamp",
+          "name": "question_results",
+          "type": "array<object>",
+          "required": false,
+          "fields": [
+            {
+              "name": "question_id",
+              "type": "string",
+              "required": true
+            },
+            {
+              "name": "query_text",
+              "type": "string",
+              "required": true
+            },
+            {
+              "name": "latency_ms",
+              "type": "double",
+              "required": true
+            },
+            {
+              "name": "top_k",
+              "type": "array<object>",
+              "required": true,
+              "fields": [
+                {
+                  "name": "rank",
+                  "type": "int",
+                  "required": true
+                },
+                {
+                  "name": "chunk_id",
+                  "type": "objectId",
+                  "required": false
+                },
+                {
+                  "name": "document_id",
+                  "type": "objectId",
+                  "required": false
+                },
+                {
+                  "name": "score",
+                  "type": "double",
+                  "required": false
+                },
+                {
+                  "name": "is_relevant",
+                  "type": "bool",
+                  "required": false
+                }
+              ]
+            },
+            {
+              "name": "precision_at_k",
+              "type": "document",
+              "required": false
+            },
+            {
+              "name": "recall_at_k",
+              "type": "document",
+              "required": false
+            }
+          ]
+        },
+        {
+          "name": "started_at",
           "type": "date",
           "required": true
         },
         {
-          "name": "notes",
-          "type": "string",
+          "name": "completed_at",
+          "type": "date",
           "required": false
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "running",
+            "completed",
+            "failed"
+          ]
         }
       ],
       "relationships": [
         {
-          "type": "many_to_one",
-          "to_collection": "tenants",
+          "type": "many-to-one",
+          "to": "tenants",
           "via": "tenant_id"
         },
         {
-          "type": "many_to_one",
-          "to_collection": "benchmark_ground_truths",
-          "via": "ground_truth_id"
+          "type": "many-to-one",
+          "to": "ground_truth_sets",
+          "via": "ground_truth_set_id"
         }
       ],
-      "embedding_vs_reference": "Benchmark runs reference prompts and result targets because many runs are executed against the same prompt across systems and chunking strategies. Top-K results are embedded because they are bounded, run-specific output that should be read with the run document.",
+      "embedding_vs_reference": {
+        "strategy": "top-level collection with embedded per-question results",
+        "why": "A benchmark run is naturally read as a whole artifact for comparison dashboards and workshop review. Embedding question results keeps run outputs self-contained."
+      },
       "indexes": [
         {
-          "name": "idx_runs_tenant_groundtruth_time",
+          "name": "idx_benchmark_runs_tenant_started",
           "kind": "regular",
           "fields": [
             "tenant_id",
-            "ground_truth_id",
-            "run_timestamp"
+            "started_at"
           ],
-          "reason": "Supports reviewing repeated benchmark executions for a prompt over time in the demo."
+          "reason": "Supports listing recent evaluation runs in the playground/workshop environment."
         },
         {
-          "name": "idx_runs_system_strategy",
+          "name": "idx_benchmark_runs_compare",
           "kind": "regular",
           "fields": [
+            "tenant_id",
             "system_under_test",
+            "retrieval_mode",
             "chunking_strategy"
           ],
-          "reason": "Supports side-by-side comparison by baseline system and chunking strategy."
-        },
-        {
-          "name": "idx_runs_metrics_latency",
-          "kind": "regular",
-          "fields": [
-            "metrics.latency_ms"
-          ],
-          "reason": "Supports sorting/filtering benchmark runs by measured latency when presenting results."
+          "reason": "Supports side-by-side comparison of systems and chunking strategies for the same tenant corpus."
         }
       ]
     }
