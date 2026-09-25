@@ -1,0 +1,47 @@
+{
+  "artifacts": [
+    {
+      "bytes": 1226,
+      "key": "seed/v001/SEED_README.md",
+      "sha256": "93b844e38ac931ccf989220e8d87855cc33be857bf34ea5e92e5b4c9db5b0056"
+    },
+    {
+      "bytes": 80,
+      "key": "seed/v001/package.json",
+      "sha256": "0daeb6cbc8f7cf8fe97f1ad5a5bacc50d942f37bee8ebe9d4915b24204017ed8"
+    },
+    {
+      "bytes": 8079,
+      "key": "seed/v001/seed.js",
+      "sha256": "5c2d985b1345e1d26dddf00a111acc3efc77aae9974d61f6b9a896be7f16b3db"
+    }
+  ],
+  "code_version": "v001",
+  "correlation": {
+    "poc_id": "1790363790918",
+    "producer": "poc-data-seed",
+    "run_id": "run_01M3D26V5QV3Q7XE7TWA27HN3J",
+    "task_id": "task_01M3D26V5QX7AY03AKCTQAX4B9",
+    "trace_id": "trace_01M3D26V5QV3Q7XE7TWA27HN3J"
+  },
+  "defaults_applied": [
+    "customers: seed count 20",
+    "policies: seed count 20",
+    "execution_requests: seed count 20",
+    "rule_execution_logs: seed count 20"
+  ],
+  "inputs": {
+    "data_model": {
+      "commit_sha": "d039c316e0251784e82c7c5b1fb544c1a6cfc803",
+      "key": "spec_architect/data_model.json",
+      "sha256": "d8a439543f08fb15f7b7264c8cb734e606bd59066dcea05d64f3bae83ce6bd6a"
+    }
+  },
+  "poc_id": "1790363790918",
+  "producer": "poc-data-seed",
+  "storage": {
+    "branch": "vinod-krishnan-mongodb-com/voyage-harness-arv",
+    "provider": "github",
+    "repository": "vinodkrishnan23/pov-builder"
+  }
+}
