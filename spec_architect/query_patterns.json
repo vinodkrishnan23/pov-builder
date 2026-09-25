@@ -1,0 +1,917 @@
+{
+  "QP-001": {
+    "id": "QP-001",
+    "name": "Get execution request summary by request/correlation ID",
+    "serves": [
+      "UC-1",
+      "UJ-1",
+      "FR-11"
+    ],
+    "collections": [
+      "execution_requests"
+    ],
+    "query": {
+      "collection": "execution_requests",
+      "operation": "findOne",
+      "filter": {
+        "customer_id": "<customer_id>",
+        "$or": [
+          {
+            "request_id": "<request_or_correlation_id>"
+          },
+          {
+            "correlation_id": "<request_or_correlation_id>"
+          }
+        ]
+      },
+      "projection": {
+        "_id": 0,
+        "request_id": 1,
+        "correlation_id": 1,
+        "customer_id": 1,
+        "policy_id": 1,
+        "policy_version_id": 1,
+        "service_context": 1,
+        "request_received_at": 1,
+        "request_status": 1,
+        "final_outcome": 1,
+        "outcome_code": 1,
+        "total_rules_executed": 1,
+        "execution_duration_ms": 1,
+        "request_payload": 1,
+        "response_payload": 1,
+        "tags": 1,
+        "created_at": 1,
+        "updated_at": 1
+      }
+    },
+    "purpose": "Fetch the top-level execution record for a specific request so an admin can review request input, output, status, and outcome."
+  },
+  "QP-002": {
+    "id": "QP-002",
+    "name": "Get all rule-step execution details for a request",
+    "serves": [
+      "UC-1",
+      "UJ-1",
+      "FR-3",
+      "FR-8",
+      "FR-11"
+    ],
+    "collections": [
+      "execution_rule_steps"
+    ],
+    "query": {
+      "collection": "execution_rule_steps",
+      "operation": "find",
+      "filter": {
+        "customer_id": "<customer_id>",
+        "request_id": "<request_id>"
+      },
+      "projection": {
+        "_id": 0,
+        "request_id": 1,
+        "correlation_id": 1,
+        "rule_id": 1,
+        "rule_name": 1,
+        "step_sequence": 1,
+        "stage_name": 1,
+        "executed_at": 1,
+        "step_status": 1,
+        "condition_result": 1,
+        "input_snapshot": 1,
+        "output_snapshot": 1,
+        "intermediate_values": 1,
+        "searched_attributes_flat": 1,
+        "duration_ms": 1,
+        "error_code": 1,
+        "error_message": 1,
+        "created_at": 1
+      },
+      "sort": {
+        "step_sequence": 1,
+        "executed_at": 1
+      }
+    },
+    "purpose": "Retrieve the full ordered rule-level execution trail for a request, including intermediate values and errors, for audit and troubleshooting."
+  },
+  "QP-003": {
+    "id": "QP-003",
+    "name": "Get request with embedded rule-step drill-down",
+    "serves": [
+      "UC-1",
+      "UJ-1",
+      "FR-11"
+    ],
+    "collections": [
+      "execution_requests",
+      "execution_rule_steps"
+    ],
+    "query": {
+      "collection": "execution_requests",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "customer_id": "<customer_id>",
+            "$or": [
+              {
+                "request_id": "<request_or_correlation_id>"
+              },
+              {
+                "correlation_id": "<request_or_correlation_id>"
+              }
+            ]
+          }
+        },
+        {
+          "$lookup": {
+            "from": "execution_rule_steps",
+            "localField": "request_id",
+            "foreignField": "request_id",
+            "as": "rule_steps"
+          }
+        },
+        {
+          "$set": {
+            "rule_steps": {
+              "$sortArray": {
+                "input": "$rule_steps",
+                "sortBy": {
+                  "step_sequence": 1,
+                  "executed_at": 1
+                }
+              }
+            }
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "request_id": 1,
+            "correlation_id": 1,
+            "customer_id": 1,
+            "policy_id": 1,
+            "policy_version_id": 1,
+            "request_received_at": 1,
+            "request_status": 1,
+            "final_outcome": 1,
+            "outcome_code": 1,
+            "execution_duration_ms": 1,
+            "total_rules_executed": 1,
+            "request_payload": 1,
+            "response_payload": 1,
+            "rule_steps": {
+              "rule_id": 1,
+              "rule_name": 1,
+              "step_sequence": 1,
+              "stage_name": 1,
+              "executed_at": 1,
+              "step_status": 1,
+              "condition_result": 1,
+              "input_snapshot": 1,
+              "output_snapshot": 1,
+              "intermediate_values": 1,
+              "duration_ms": 1,
+              "error_code": 1,
+              "error_message": 1
+            }
+          }
+        }
+      ]
+    },
+    "purpose": "Support a single UI/API call that returns both request summary and all related rule-step details for drill-down investigation."
+  },
+  "QP-004": {
+    "id": "QP-004",
+    "name": "Search execution requests by request payload attributes and date range",
+    "serves": [
+      "UC-2",
+      "UJ-2",
+      "FR-14",
+      "BO-4"
+    ],
+    "collections": [
+      "execution_requests"
+    ],
+    "query": {
+      "collection": "execution_requests",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "customer_id": "<customer_id>",
+            "request_received_at": {
+              "$gte": "<start_at>",
+              "$lte": "<end_at>"
+            },
+            "input_attributes_flat": {
+              "$elemMatch": {
+                "path": "<attribute_path>",
+                "value_string": "<attribute_value>"
+              }
+            }
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "request_id": 1,
+            "correlation_id": 1,
+            "policy_id": 1,
+            "policy_version_id": 1,
+            "request_received_at": 1,
+            "request_status": 1,
+            "final_outcome": 1,
+            "outcome_code": 1,
+            "service_context": 1,
+            "tags": 1
+          }
+        },
+        {
+          "$sort": {
+            "request_received_at": -1
+          }
+        },
+        {
+          "$limit": "<page_size>"
+        }
+      ]
+    },
+    "purpose": "Find request executions by selected input attribute values captured from nested JSON, scoped to customer and time window."
+  },
+  "QP-005": {
+    "id": "QP-005",
+    "name": "Search rule-step executions by rule name and variable/value",
+    "serves": [
+      "UC-2",
+      "UJ-2",
+      "FR-14",
+      "BO-4"
+    ],
+    "collections": [
+      "execution_rule_steps"
+    ],
+    "query": {
+      "collection": "execution_rule_steps",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "customer_id": "<customer_id>",
+            "executed_at": {
+              "$gte": "<start_at>",
+              "$lte": "<end_at>"
+            },
+            "rule_name": "<rule_name>",
+            "searched_attributes_flat": {
+              "$elemMatch": {
+                "path": "<variable_path>",
+                "value_string": "<variable_value>"
+              }
+            }
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "request_id": 1,
+            "correlation_id": 1,
+            "policy_id": 1,
+            "policy_version_id": 1,
+            "rule_id": 1,
+            "rule_name": 1,
+            "step_sequence": 1,
+            "stage_name": 1,
+            "executed_at": 1,
+            "step_status": 1,
+            "condition_result": 1,
+            "duration_ms": 1,
+            "error_code": 1
+          }
+        },
+        {
+          "$sort": {
+            "executed_at": -1
+          }
+        },
+        {
+          "$limit": "<page_size>"
+        }
+      ]
+    },
+    "purpose": "Search across rule execution steps to find where a particular rule ran with a specific variable/value combination."
+  },
+  "QP-006": {
+    "id": "QP-006",
+    "name": "Search execution content directly in nested request/response JSON",
+    "serves": [
+      "UC-2",
+      "FR-5",
+      "FR-14",
+      "BO-4"
+    ],
+    "collections": [
+      "execution_requests"
+    ],
+    "query": {
+      "collection": "execution_requests",
+      "operation": "find",
+      "filter": {
+        "customer_id": "<customer_id>",
+        "request_received_at": {
+          "$gte": "<start_at>",
+          "$lte": "<end_at>"
+        },
+        "$or": [
+          {
+            "request_payload.<dynamic_path>": "<value>"
+          },
+          {
+            "response_payload.<dynamic_path>": "<value>"
+          }
+        ]
+      },
+      "projection": {
+        "_id": 0,
+        "request_id": 1,
+        "correlation_id": 1,
+        "policy_id": 1,
+        "policy_version_id": 1,
+        "request_received_at": 1,
+        "request_status": 1,
+        "final_outcome": 1,
+        "request_payload": 1,
+        "response_payload": 1
+      },
+      "sort": {
+        "request_received_at": -1
+      },
+      "limit": "<page_size>"
+    },
+    "purpose": "Support direct filtering on known nested JSON paths when users need to search execution content without relying only on flattened attributes."
+  },
+  "QP-007": {
+    "id": "QP-007",
+    "name": "Analyze approval/outcome rates by policy version",
+    "serves": [
+      "UC-3",
+      "FR-15",
+      "BO-2",
+      "SC-4"
+    ],
+    "collections": [
+      "execution_requests",
+      "policy_versions"
+    ],
+    "query": {
+      "collection": "execution_requests",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "customer_id": "<customer_id>",
+            "policy_id": "<policy_id>",
+            "request_status": "completed",
+            "request_received_at": {
+              "$gte": "<start_at>",
+              "$lte": "<end_at>"
+            }
+          }
+        },
+        {
+          "$group": {
+            "_id": {
+              "policy_version_id": "$policy_version_id",
+              "final_outcome": "$final_outcome"
+            },
+            "execution_count": {
+              "$sum": 1
+            }
+          }
+        },
+        {
+          "$group": {
+            "_id": "$_id.policy_version_id",
+            "outcomes": {
+              "$push": {
+                "final_outcome": "$_id.final_outcome",
+                "count": "$execution_count"
+              }
+            },
+            "total_requests": {
+              "$sum": "$execution_count"
+            }
+          }
+        },
+        {
+          "$lookup": {
+            "from": "policy_versions",
+            "localField": "_id",
+            "foreignField": "policy_version_id",
+            "as": "policy_version"
+          }
+        },
+        {
+          "$unwind": "$policy_version"
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "policy_version_id": "$_id",
+            "version_label": "$policy_version.version_label",
+            "version_number": "$policy_version.version_number",
+            "published_at": "$policy_version.published_at",
+            "total_requests": 1,
+            "outcomes": 1
+          }
+        }
+      ]
+    },
+    "purpose": "Compare outcome distributions, such as approvals versus rejections, across policy versions to understand business impact of policy changes."
+  },
+  "QP-008": {
+    "id": "QP-008",
+    "name": "Compare two policy versions with approval-rate delta",
+    "serves": [
+      "UC-3",
+      "FR-15",
+      "BO-2"
+    ],
+    "collections": [
+      "execution_requests",
+      "policy_versions"
+    ],
+    "query": {
+      "collection": "execution_requests",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "customer_id": "<customer_id>",
+            "policy_id": "<policy_id>",
+            "policy_version_id": {
+              "$in": [
+                "<version_a>",
+                "<version_b>"
+              ]
+            },
+            "request_status": "completed",
+            "request_received_at": {
+              "$gte": "<start_at>",
+              "$lte": "<end_at>"
+            }
+          }
+        },
+        {
+          "$group": {
+            "_id": "$policy_version_id",
+            "total_requests": {
+              "$sum": 1
+            },
+            "approved_requests": {
+              "$sum": {
+                "$cond": [
+                  {
+                    "$eq": [
+                      "$final_outcome",
+                      "approved"
+                    ]
+                  },
+                  1,
+                  0
+                ]
+              }
+            },
+            "rejected_requests": {
+              "$sum": {
+                "$cond": [
+                  {
+                    "$eq": [
+                      "$final_outcome",
+                      "rejected"
+                    ]
+                  },
+                  1,
+                  0
+                ]
+              }
+            },
+            "avg_duration_ms": {
+              "$avg": "$execution_duration_ms"
+            }
+          }
+        },
+        {
+          "$addFields": {
+            "approval_rate": {
+              "$cond": [
+                {
+                  "$gt": [
+                    "$total_requests",
+                    0
+                  ]
+                },
+                {
+                  "$divide": [
+                    "$approved_requests",
+                    "$total_requests"
+                  ]
+                },
+                0
+              ]
+            }
+          }
+        },
+        {
+          "$lookup": {
+            "from": "policy_versions",
+            "localField": "_id",
+            "foreignField": "policy_version_id",
+            "as": "policy_version"
+          }
+        },
+        {
+          "$unwind": "$policy_version"
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "policy_version_id": "$_id",
+            "version_label": "$policy_version.version_label",
+            "version_number": "$policy_version.version_number",
+            "total_requests": 1,
+            "approved_requests": 1,
+            "rejected_requests": 1,
+            "approval_rate": 1,
+            "avg_duration_ms": 1
+          }
+        },
+        {
+          "$sort": {
+            "version_number": 1
+          }
+        }
+      ]
+    },
+    "purpose": "Directly compare two selected policy versions and quantify changes in approval rate, rejection count, and performance."
+  },
+  "QP-009": {
+    "id": "QP-009",
+    "name": "Identify rules most associated with rejected outcomes for a policy version",
+    "serves": [
+      "UC-3",
+      "FR-15",
+      "BO-2"
+    ],
+    "collections": [
+      "execution_requests",
+      "execution_rule_steps"
+    ],
+    "query": {
+      "collection": "execution_requests",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "customer_id": "<customer_id>",
+            "policy_id": "<policy_id>",
+            "policy_version_id": "<policy_version_id>",
+            "final_outcome": "rejected",
+            "request_status": "completed",
+            "request_received_at": {
+              "$gte": "<start_at>",
+              "$lte": "<end_at>"
+            }
+          }
+        },
+        {
+          "$lookup": {
+            "from": "execution_rule_steps",
+            "localField": "request_id",
+            "foreignField": "request_id",
+            "as": "steps"
+          }
+        },
+        {
+          "$unwind": "$steps"
+        },
+        {
+          "$group": {
+            "_id": {
+              "rule_id": "$steps.rule_id",
+              "rule_name": "$steps.rule_name"
+            },
+            "rejected_request_count": {
+              "$addToSet": "$request_id"
+            }
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "rule_id": "$_id.rule_id",
+            "rule_name": "$_id.rule_name",
+            "rejected_request_count": {
+              "$size": "$rejected_request_count"
+            }
+          }
+        },
+        {
+          "$sort": {
+            "rejected_request_count": -1
+          }
+        },
+        {
+          "$limit": 20
+        }
+      ]
+    },
+    "purpose": "Show which rules appear most often in rejected requests to help explain why outcomes changed after a policy update."
+  },
+  "QP-010": {
+    "id": "QP-010",
+    "name": "Dashboard summary by day and outcome",
+    "serves": [
+      "UC-4",
+      "FR-16",
+      "BO-3",
+      "SC-4"
+    ],
+    "collections": [
+      "execution_requests"
+    ],
+    "query": {
+      "collection": "execution_requests",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "customer_id": "<customer_id>",
+            "request_received_at": {
+              "$gte": "<start_at>",
+              "$lte": "<end_at>"
+            }
+          }
+        },
+        {
+          "$group": {
+            "_id": {
+              "day": {
+                "$dateTrunc": {
+                  "date": "$request_received_at",
+                  "unit": "day"
+                }
+              },
+              "final_outcome": "$final_outcome"
+            },
+            "count": {
+              "$sum": 1
+            },
+            "avg_duration_ms": {
+              "$avg": "$execution_duration_ms"
+            }
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "day": "$_id.day",
+            "final_outcome": "$_id.final_outcome",
+            "count": 1,
+            "avg_duration_ms": 1
+          }
+        },
+        {
+          "$sort": {
+            "day": 1,
+            "final_outcome": 1
+          }
+        }
+      ]
+    },
+    "purpose": "Feed dashboard charts showing daily volumes, outcomes, and average execution times over a selected time period."
+  },
+  "QP-011": {
+    "id": "QP-011",
+    "name": "Dashboard breakdown by customer segment attribute",
+    "serves": [
+      "UC-4",
+      "FR-16",
+      "BO-3"
+    ],
+    "collections": [
+      "execution_requests"
+    ],
+    "query": {
+      "collection": "execution_requests",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "customer_id": "<customer_id>",
+            "request_status": "completed",
+            "request_received_at": {
+              "$gte": "<start_at>",
+              "$lte": "<end_at>"
+            }
+          }
+        },
+        {
+          "$unwind": "$input_attributes_flat"
+        },
+        {
+          "$match": {
+            "input_attributes_flat.path": "<segment_attribute_path>"
+          }
+        },
+        {
+          "$group": {
+            "_id": {
+              "segment_value": {
+                "$ifNull": [
+                  "$input_attributes_flat.value_string",
+                  {
+                    "$toString": "$input_attributes_flat.value_number"
+                  }
+                ]
+              },
+              "final_outcome": "$final_outcome"
+            },
+            "count": {
+              "$sum": 1
+            }
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "segment_value": "$_id.segment_value",
+            "final_outcome": "$_id.final_outcome",
+            "count": 1
+          }
+        },
+        {
+          "$sort": {
+            "segment_value": 1,
+            "final_outcome": 1
+          }
+        }
+      ]
+    },
+    "purpose": "Generate report data for business segments, such as approval rates for customers under a given age bracket or other selected attribute."
+  },
+  "QP-012": {
+    "id": "QP-012",
+    "name": "Operational report of logging enablement and retention by customer",
+    "serves": [
+      "FR-17",
+      "FR-18"
+    ],
+    "collections": [
+      "customers"
+    ],
+    "query": {
+      "collection": "customers",
+      "operation": "find",
+      "filter": {},
+      "projection": {
+        "_id": 0,
+        "customer_id": 1,
+        "name": 1,
+        "industry": 1,
+        "deployment_cloud": 1,
+        "logging_enabled": 1,
+        "retention_days": 1,
+        "purge_after": 1,
+        "updated_at": 1
+      },
+      "sort": {
+        "name": 1
+      }
+    },
+    "purpose": "Provide an operational view of which customers have execution logging enabled and what retention settings apply."
+  },
+  "QP-013": {
+    "id": "QP-013",
+    "name": "List authorized admin users for execution log access",
+    "serves": [
+      "FR-12",
+      "FR-9",
+      "FR-10"
+    ],
+    "collections": [
+      "admin_users"
+    ],
+    "query": {
+      "collection": "admin_users",
+      "operation": "find",
+      "filter": {
+        "customer_id": "<customer_id>",
+        "is_active": true
+      },
+      "projection": {
+        "_id": 0,
+        "user_id": 1,
+        "customer_id": 1,
+        "name": 1,
+        "email": 1,
+        "roles": 1,
+        "is_active": 1
+      },
+      "sort": {
+        "name": 1
+      }
+    },
+    "purpose": "Retrieve the active authorized users who may access detailed execution-log data for a customer context."
+  },
+  "QP-014": {
+    "id": "QP-014",
+    "name": "Retrieve policy versions and embedded rule definitions for comparison context",
+    "serves": [
+      "UC-3",
+      "UJ-2",
+      "FR-15"
+    ],
+    "collections": [
+      "policy_versions"
+    ],
+    "query": {
+      "collection": "policy_versions",
+      "operation": "find",
+      "filter": {
+        "customer_id": "<customer_id>",
+        "policy_id": "<policy_id>",
+        "policy_version_id": {
+          "$in": [
+            "<version_a>",
+            "<version_b>"
+          ]
+        }
+      },
+      "projection": {
+        "_id": 0,
+        "policy_version_id": 1,
+        "policy_id": 1,
+        "version_label": 1,
+        "version_number": 1,
+        "published_at": 1,
+        "is_active": 1,
+        "rule_definitions": 1
+      },
+      "sort": {
+        "version_number": 1
+      }
+    },
+    "purpose": "Fetch the selected policy versions and their rule definitions so analysts can compare the configuration behind observed outcome changes."
+  },
+  "QP-015": {
+    "id": "QP-015",
+    "name": "Retrieve derived execution insights for a request or policy window",
+    "serves": [
+      "AI-1",
+      "AI-2"
+    ],
+    "collections": [
+      "execution_insights"
+    ],
+    "query": {
+      "collection": "execution_insights",
+      "operation": "find",
+      "filter": {
+        "customer_id": "<customer_id>",
+        "$or": [
+          {
+            "request_id": "<request_id>"
+          },
+          {
+            "policy_version_id": "<policy_version_id>",
+            "source_window.start_at": {
+              "$gte": "<start_at>"
+            },
+            "source_window.end_at": {
+              "$lte": "<end_at>"
+            }
+          }
+        ]
+      },
+      "projection": {
+        "_id": 0,
+        "request_id": 1,
+        "customer_id": 1,
+        "policy_id": 1,
+        "policy_version_id": 1,
+        "insight_type": 1,
+        "source_window": 1,
+        "summary_text": 1,
+        "structured_findings": 1,
+        "generated_by": 1,
+        "model_name": 1,
+        "created_at": 1
+      },
+      "sort": {
+        "created_at": -1
+      }
+    },
+    "purpose": "Retrieve optional derived summaries or future AI-generated notes tied to a request or a policy-version analysis window."
+  }
+}
