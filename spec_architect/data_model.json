@@ -1,0 +1,779 @@
+{
+  "collections": [
+    {
+      "name": "policies",
+      "description": "Published BRMS policies that executions are associated with. Kept as a separate collection because policies are reusable across many execution requests and are needed for policy-version analytics.",
+      "traceability": {
+        "business_entities": [
+          "Policy"
+        ],
+        "functional_requirements": [
+          "FR13"
+        ],
+        "use_cases": [
+          "UC3",
+          "UC4"
+        ]
+      },
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "policy_id",
+          "type": "string",
+          "required": true,
+          "description": "Stable business identifier from BRMS."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "version",
+          "type": "string",
+          "required": true,
+          "description": "Published policy version used for impact analysis."
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "draft",
+            "validated",
+            "published",
+            "retired"
+          ],
+          "description": "Included because policy lifecycle is part of broader product context, though POV focuses on execution logs."
+        },
+        {
+          "name": "published_at",
+          "type": "date",
+          "required": false
+        },
+        {
+          "name": "consolidated_input_schema",
+          "type": "document",
+          "required": false,
+          "description": "Optional summary of consolidated input expected by the policy; supports FR13 without over-modeling authoring workflows."
+        },
+        {
+          "name": "rule_refs",
+          "type": "array<objectId>",
+          "required": false,
+          "description": "References to reusable rule definitions associated with this policy version."
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "updated_at",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "relationships": [
+        {
+          "type": "one-to-many",
+          "to_collection": "execution_requests",
+          "via": "policy_id",
+          "description": "A policy version can have many execution requests."
+        },
+        {
+          "type": "many-to-many (logical via embedding/references)",
+          "to_collection": "rules",
+          "via": "rule_refs",
+          "description": "A policy contains multiple rules."
+        }
+      ],
+      "embedding_vs_references": {
+        "decision": "reference rules from policies",
+        "why": "Rules are reusable definitions and can be numerous; executions only need policy/rule identifiers, while analytics may join by identifiers. Keeping policy metadata separate avoids duplicating policy details on every execution request, while still snapshotting policy version info onto requests for read efficiency."
+      },
+      "indexes": [
+        {
+          "name": "ux_policy_business_key",
+          "kind": "regular",
+          "fields": [
+            "policy_id",
+            "version"
+          ],
+          "reason": "Supports lookup of a specific published policy version and ensures uniqueness for analytics grouped by policy version (UC3, FR13)."
+        },
+        {
+          "name": "idx_policy_status",
+          "kind": "regular",
+          "fields": [
+            "status"
+          ],
+          "reason": "Supports listing/filtering policies by lifecycle state for product-context demos around published policies (UC4, FR13)."
+        }
+      ]
+    },
+    {
+      "name": "rules",
+      "description": "Rule definitions referenced by policies and execution steps. Separate collection because rules are reused across many requests and are useful for rule-level analytics.",
+      "traceability": {
+        "business_entities": [
+          "Rule"
+        ],
+        "functional_requirements": [
+          "FR2",
+          "FR13",
+          "FR20"
+        ],
+        "use_cases": [
+          "UC1",
+          "UC3"
+        ]
+      },
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "rule_id",
+          "type": "string",
+          "required": true,
+          "description": "Stable business identifier from BRMS."
+        },
+        {
+          "name": "policy_id",
+          "type": "string",
+          "required": true,
+          "description": "Owning policy business identifier."
+        },
+        {
+          "name": "policy_version",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "sequence",
+          "type": "int",
+          "required": false,
+          "description": "Execution/display ordering within a policy when applicable."
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "is_lookup_enabled",
+          "type": "bool",
+          "required": false,
+          "description": "Whether runtime DB lookup can occur for this rule when configured (FR15)."
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "updated_at",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "relationships": [
+        {
+          "type": "many-to-one",
+          "to_collection": "policies",
+          "via": [
+            "policy_id",
+            "policy_version"
+          ],
+          "description": "Rules belong to a policy version."
+        },
+        {
+          "type": "one-to-many",
+          "to_collection": "execution_requests.rule_steps",
+          "via": "rule_id",
+          "description": "Execution steps reference rule identifiers executed for a request."
+        }
+      ],
+      "embedding_vs_references": {
+        "decision": "store rule definitions separately, but snapshot key rule attributes into execution steps",
+        "why": "Execution reads need fast request reconstruction without joins, so step documents carry rule_id/rule_name/sequence snapshots. Separate rules collection supports policy/rule catalogs and analytics dimensions without bloating policy docs."
+      },
+      "indexes": [
+        {
+          "name": "ux_rule_business_key",
+          "kind": "regular",
+          "fields": [
+            "rule_id",
+            "policy_version"
+          ],
+          "reason": "Supports unique lookup of a specific rule definition version and correlation from step records (UC1, UC3)."
+        },
+        {
+          "name": "idx_rule_policy",
+          "kind": "regular",
+          "fields": [
+            "policy_id",
+            "policy_version",
+            "sequence"
+          ],
+          "reason": "Supports listing rules for a policy/version in evaluation order (FR13, UC1)."
+        }
+      ]
+    },
+    {
+      "name": "execution_requests",
+      "description": "Primary audit document for each request/correlation ID. Stores request/response JSON and embedded rule-level steps to support request-centric retrieval and detailed audit review.",
+      "traceability": {
+        "business_entities": [
+          "Execution Log",
+          "Request",
+          "Customer Data"
+        ],
+        "functional_requirements": [
+          "FR1",
+          "FR2",
+          "FR3",
+          "FR4",
+          "FR5",
+          "FR6",
+          "FR7",
+          "FR10",
+          "FR11",
+          "FR12",
+          "FR14",
+          "FR16",
+          "FR18",
+          "FR19",
+          "FR20"
+        ],
+        "use_cases": [
+          "UC1",
+          "UC2",
+          "UC4",
+          "UC5"
+        ]
+      },
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "tenant_id",
+          "type": "string",
+          "required": false,
+          "description": "Optional customer/environment identifier because tenant isolation is an open question, but customer-specific logging/retention exists."
+        },
+        {
+          "name": "request_id",
+          "type": "string",
+          "required": true,
+          "description": "Business request/correlation identifier used to retrieve all rule information for a request (FR10)."
+        },
+        {
+          "name": "correlation_id",
+          "type": "string",
+          "required": false,
+          "description": "Optional separate correlation ID when different from request_id."
+        },
+        {
+          "name": "policy_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "policy_version",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "invocation_channel",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "api",
+            "mobile",
+            "portal",
+            "banking_app",
+            "batch",
+            "other"
+          ],
+          "description": "Captures source application context implied by integrations/use cases."
+        },
+        {
+          "name": "logging_enabled",
+          "type": "bool",
+          "required": true,
+          "description": "Whether detailed execution logging was enabled for this request/customer context (FR18)."
+        },
+        {
+          "name": "request_received_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "execution_completed_at",
+          "type": "date",
+          "required": false
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "received",
+            "in_progress",
+            "completed",
+            "failed",
+            "partially_logged"
+          ],
+          "description": "Supports asynchronous/incremental ingestion lifecycle (FR5, FR6)."
+        },
+        {
+          "name": "final_outcome",
+          "type": "string",
+          "required": false,
+          "description": "High-level business result such as approved/rejected/eligible/ineligible used in analytics."
+        },
+        {
+          "name": "outcome_reason_codes",
+          "type": "array<string>",
+          "required": false,
+          "description": "Normalized reasons for approval/rejection when available, supporting audit and analytics."
+        },
+        {
+          "name": "request_payload",
+          "type": "document",
+          "required": true,
+          "description": "Full nested input JSON; supports complex arrays/nesting (FR1, FR4, FR14)."
+        },
+        {
+          "name": "response_payload",
+          "type": "document",
+          "required": false,
+          "description": "Final output JSON returned to consuming app (FR1, FR12)."
+        },
+        {
+          "name": "payload_summary",
+          "type": "document",
+          "required": false,
+          "description": "Optional extracted top-level fields/metrics used frequently in dashboards to avoid repeated deep JSON traversal."
+        },
+        {
+          "name": "rule_step_count",
+          "type": "int",
+          "required": true,
+          "description": "Number of logged rule steps, supports monitoring of variable step volumes (FR3, FR20)."
+        },
+        {
+          "name": "rule_steps",
+          "type": "array<document>",
+          "required": false,
+          "description": "Embedded chronological rule execution details for the request.",
+          "fields": [
+            {
+              "name": "step_no",
+              "type": "int",
+              "required": true
+            },
+            {
+              "name": "logged_at",
+              "type": "date",
+              "required": true
+            },
+            {
+              "name": "rule_id",
+              "type": "string",
+              "required": false
+            },
+            {
+              "name": "rule_name",
+              "type": "string",
+              "required": false
+            },
+            {
+              "name": "rule_sequence",
+              "type": "int",
+              "required": false
+            },
+            {
+              "name": "stage_name",
+              "type": "string",
+              "required": false,
+              "description": "Stage within rule execution, e.g. initiation, stage1, stage2."
+            },
+            {
+              "name": "step_status",
+              "type": "string",
+              "required": false,
+              "enum": [
+                "started",
+                "completed",
+                "failed",
+                "skipped"
+              ]
+            },
+            {
+              "name": "input_snapshot",
+              "type": "document",
+              "required": false,
+              "description": "Intermediate input/state at this step."
+            },
+            {
+              "name": "output_snapshot",
+              "type": "document",
+              "required": false,
+              "description": "Intermediate output/state at this step."
+            },
+            {
+              "name": "decision",
+              "type": "string",
+              "required": false,
+              "description": "Step-level decision or result if present."
+            },
+            {
+              "name": "reason",
+              "type": "string",
+              "required": false,
+              "description": "Human-readable explanation when available."
+            },
+            {
+              "name": "lookup_performed",
+              "type": "bool",
+              "required": false
+            },
+            {
+              "name": "lookup_details",
+              "type": "document",
+              "required": false,
+              "description": "Optional metadata about runtime DB lookup performed by the rule (FR15)."
+            }
+          ]
+        },
+        {
+          "name": "ingestion_metadata",
+          "type": "document",
+          "required": false,
+          "fields": [
+            {
+              "name": "source_type",
+              "type": "string",
+              "required": false,
+              "enum": [
+                "kafka",
+                "queue",
+                "direct_api",
+                "batch"
+              ]
+            },
+            {
+              "name": "source_message_id",
+              "type": "string",
+              "required": false
+            },
+            {
+              "name": "ingested_at",
+              "type": "date",
+              "required": false
+            },
+            {
+              "name": "ingestion_status",
+              "type": "string",
+              "required": false,
+              "enum": [
+                "pending",
+                "ingested",
+                "error"
+              ]
+            },
+            {
+              "name": "error_message",
+              "type": "string",
+              "required": false
+            }
+          ],
+          "description": "Supports asynchronous ingestion traceability from Kafka/queue pathways (FR5, INT1)."
+        },
+        {
+          "name": "retention",
+          "type": "document",
+          "required": false,
+          "fields": [
+            {
+              "name": "expire_at",
+              "type": "date",
+              "required": false,
+              "description": "Per-document retention cutoff to support purging/TTL (FR19)."
+            },
+            {
+              "name": "retention_class",
+              "type": "string",
+              "required": false,
+              "enum": [
+                "short",
+                "standard",
+                "extended",
+                "legal_hold"
+              ]
+            },
+            {
+              "name": "purge_hold",
+              "type": "bool",
+              "required": false
+            }
+          ],
+          "description": "Retention controls driven by customer needs and growth management."
+        },
+        {
+          "name": "created_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "updated_at",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "relationships": [
+        {
+          "type": "many-to-one",
+          "to_collection": "policies",
+          "via": [
+            "policy_id",
+            "policy_version"
+          ],
+          "description": "Each request executes one policy version."
+        },
+        {
+          "type": "one-to-many (embedded)",
+          "to_collection": "execution_requests.rule_steps",
+          "via": "rule_steps",
+          "description": "A request contains multiple chronological rule execution step logs."
+        }
+      ],
+      "embedding_vs_references": {
+        "decision": "embed rule_steps inside execution_requests",
+        "why": "The dominant access pattern is request-centric audit retrieval by request/correlation ID showing full request, response, and all internal steps together (UC1, FR10). Step counts are variable but typically tens to low hundreds per request, making embedding appropriate for the POV and simplifying atomic request reconstruction. Separate per-step collection is avoided unless real volumes approach document limits."
+      },
+      "indexes": [
+        {
+          "name": "ux_request_id",
+          "kind": "regular",
+          "fields": [
+            "request_id"
+          ],
+          "reason": "Primary retrieval path for audit investigation by request ID/correlation ID (UJ1, UC1, FR10)."
+        },
+        {
+          "name": "idx_correlation_id",
+          "kind": "regular",
+          "fields": [
+            "correlation_id"
+          ],
+          "reason": "Supports retrieval when clients use a correlation ID distinct from request ID (FR10, review ISSUE-3)."
+        },
+        {
+          "name": "idx_policy_version_time_outcome",
+          "kind": "regular",
+          "fields": [
+            "policy_id",
+            "policy_version",
+            "request_received_at",
+            "final_outcome"
+          ],
+          "reason": "Supports policy-version impact analytics over time and approval/rejection comparisons (UC3, BO3, BO4, FR17)."
+        },
+        {
+          "name": "idx_status_time",
+          "kind": "regular",
+          "fields": [
+            "status",
+            "request_received_at"
+          ],
+          "reason": "Supports monitoring incremental/asynchronous ingestion and recent failed/in-progress requests (FR5, FR6, FR7)."
+        },
+        {
+          "name": "idx_retention_expire_at",
+          "kind": "regular",
+          "fields": [
+            "retention.expire_at"
+          ],
+          "reason": "Supports retention management and TTL-style purging workflows (UC5, FR19)."
+        },
+        {
+          "name": "idx_tenant_policy_time",
+          "kind": "regular",
+          "fields": [
+            "tenant_id",
+            "policy_id",
+            "request_received_at"
+          ],
+          "reason": "Supports customer-scoped analytics and operational filtering where tenant/customer separation is needed (FR18, UC2, UC3)."
+        },
+        {
+          "name": "search_logged_content",
+          "kind": "search",
+          "fields": [
+            "request_payload",
+            "response_payload",
+            "rule_steps.input_snapshot",
+            "rule_steps.output_snapshot",
+            "rule_steps.reason",
+            "outcome_reason_codes",
+            "final_outcome"
+          ],
+          "reason": "Supports fast search/filtering within nested JSON content and rule-step data, which is a core pain point in the current relational approach (UC2, FR16, MO2)."
+        }
+      ]
+    },
+    {
+      "name": "analytics_daily_policy_outcomes",
+      "description": "Pre-aggregated daily metrics by policy version and outcome to power dashboards efficiently. Included because dashboard/reporting is a stated requirement, while remaining secondary to the raw audit log model.",
+      "traceability": {
+        "business_entities": [
+          "Execution Log",
+          "Policy"
+        ],
+        "functional_requirements": [
+          "FR17"
+        ],
+        "use_cases": [
+          "UC3"
+        ],
+        "business_objectives": [
+          "BO3",
+          "BO4"
+        ]
+      },
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "tenant_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "metric_date",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "policy_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "policy_version",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "total_requests",
+          "type": "int",
+          "required": true
+        },
+        {
+          "name": "approved_count",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "rejected_count",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "other_outcome_counts",
+          "type": "document",
+          "required": false,
+          "description": "Flexible counts for outcomes beyond approved/rejected."
+        },
+        {
+          "name": "avg_rule_step_count",
+          "type": "double",
+          "required": false
+        },
+        {
+          "name": "top_reason_codes",
+          "type": "array<document>",
+          "required": false,
+          "fields": [
+            {
+              "name": "reason_code",
+              "type": "string",
+              "required": true
+            },
+            {
+              "name": "count",
+              "type": "int",
+              "required": true
+            }
+          ]
+        },
+        {
+          "name": "generated_at",
+          "type": "date",
+          "required": true
+        }
+      ],
+      "relationships": [
+        {
+          "type": "derived-from",
+          "to_collection": "execution_requests",
+          "via": [
+            "tenant_id",
+            "policy_id",
+            "policy_version",
+            "metric_date"
+          ],
+          "description": "Precomputed from raw execution request data for dashboard speed."
+        }
+      ],
+      "embedding_vs_references": {
+        "decision": "separate derived collection",
+        "why": "Dashboard/report workloads differ from raw audit retrieval. Pre-aggregating avoids repeatedly scanning large execution payloads for common management views while preserving raw logs as source of truth."
+      },
+      "indexes": [
+        {
+          "name": "ux_daily_policy_metric",
+          "kind": "regular",
+          "fields": [
+            "tenant_id",
+            "metric_date",
+            "policy_id",
+            "policy_version"
+          ],
+          "reason": "Supports dashboard queries over time by tenant and policy version and prevents duplicate daily metric rows (UC3, FR17)."
+        },
+        {
+          "name": "idx_policy_metric_date",
+          "kind": "regular",
+          "fields": [
+            "policy_id",
+            "policy_version",
+            "metric_date"
+          ],
+          "reason": "Supports trend charts comparing policy versions over time (UC3, BO4)."
+        }
+      ]
+    }
+  ]
+}
