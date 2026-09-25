@@ -1,0 +1,473 @@
+{
+  "app_shell": {
+    "name": "Internal Support Ticket Triage POV",
+    "access_model": "internal-only",
+    "authentication_gate": {
+      "endpoint": "GET /api/me",
+      "required_before_protected_routes": true,
+      "on_401": "redirect to deployment-specific sign-in entry or show unauthenticated access message",
+      "on_403": "show access denied screen",
+      "on_404": "show user record not found screen"
+    }
+  },
+  "routes": [
+    {
+      "path": "/",
+      "page_id": "ticket_lookup",
+      "protected": true,
+      "description": "Default landing page for support agents to find a ticket by search or exact ticket number."
+    },
+    {
+      "path": "/tickets",
+      "page_id": "ticket_lookup",
+      "protected": true,
+      "description": "Explicit ticket lookup/search route."
+    },
+    {
+      "path": "/tickets/:ticketId",
+      "page_id": "ticket_triage_detail",
+      "protected": true,
+      "description": "Ticket triage and resolution workspace for a selected ticket."
+    },
+    {
+      "path": "/access-denied",
+      "page_id": "access_denied",
+      "protected": false,
+      "description": "Shown when authenticated user lacks allowed internal access."
+    },
+    {
+      "path": "/not-found",
+      "page_id": "generic_not_found",
+      "protected": false,
+      "description": "Generic fallback for unknown routes or missing resources when not handled inline."
+    }
+  ],
+  "pages": [
+    {
+      "page_id": "ticket_lookup",
+      "title": "Ticket Lookup",
+      "purpose": "Allow a support agent to find a support ticket to triage by text search or exact ticket number.",
+      "personas": [
+        "Support Agent"
+      ],
+      "user_stories": [
+        "As a support agent, I want to search for tickets by text so I can find the issue I need to triage.",
+        "As a support agent, I want to jump directly to a ticket when I know the exact ticket number."
+      ],
+      "data_requirements": [
+        {
+          "name": "current_user",
+          "needed_for": "access confirmation and optional header/profile display",
+          "source_endpoint": "GET /api/me",
+          "required": true
+        },
+        {
+          "name": "ticket_search_results",
+          "needed_for": "show matching tickets from free-text lookup",
+          "source_endpoint": "GET /api/tickets?q={q}&status={status[]}",
+          "required": false
+        },
+        {
+          "name": "exact_ticket_lookup",
+          "needed_for": "navigate directly when exact ticket number is known",
+          "source_endpoint": "GET /api/tickets/by-number/{ticketNumber}",
+          "required": false
+        }
+      ],
+      "api_consumption": [
+        {
+          "endpoint": "GET /api/me",
+          "usage": "Validate internal access when page loads if not already resolved by app shell."
+        },
+        {
+          "endpoint": "GET /api/tickets",
+          "usage": "Run text search with required q and optional status filters."
+        },
+        {
+          "endpoint": "GET /api/tickets/by-number/{ticketNumber}",
+          "usage": "Fetch exact ticket by known ticket number and redirect to detail route on success."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "enter_search_text",
+          "result": "Enables search submission when q is non-empty."
+        },
+        {
+          "action": "apply_status_filters",
+          "result": "Narrows search results to selected statuses open, in_progress, resolved."
+        },
+        {
+          "action": "submit_text_search",
+          "result": "Calls GET /api/tickets and renders results list with count."
+        },
+        {
+          "action": "enter_exact_ticket_number",
+          "result": "Allows direct lookup submission."
+        },
+        {
+          "action": "submit_exact_ticket_lookup",
+          "result": "Calls GET /api/tickets/by-number/{ticketNumber}; on success navigates to /tickets/:ticketId."
+        },
+        {
+          "action": "open_ticket_from_results",
+          "result": "Navigates to /tickets/:ticketId using selected result id."
+        }
+      ],
+      "loading_states": [
+        {
+          "state": "initial_auth_check",
+          "ui": "Full-page spinner or skeleton while validating access via /api/me."
+        },
+        {
+          "state": "search_in_progress",
+          "ui": "Disable search controls, show results skeleton/loading indicator."
+        },
+        {
+          "state": "exact_lookup_in_progress",
+          "ui": "Disable exact lookup button, show inline loader near ticket number field."
+        }
+      ],
+      "error_states": [
+        {
+          "state": "unauthenticated",
+          "condition": "GET /api/me returns 401",
+          "ui": "Block app access and send user to deployment-specific sign-in flow or show sign-in required message."
+        },
+        {
+          "state": "forbidden",
+          "condition": "GET /api/me or ticket endpoints return 403",
+          "ui": "Navigate to access denied screen."
+        },
+        {
+          "state": "user_not_found",
+          "condition": "GET /api/me returns 404",
+          "ui": "Show blocking message that internal user record was not found."
+        },
+        {
+          "state": "invalid_search_query",
+          "condition": "GET /api/tickets returns 400 INVALID_QUERY",
+          "ui": "Show inline validation message prompting for non-empty search text and valid status filters."
+        },
+        {
+          "state": "search_request_failed",
+          "condition": "GET /api/tickets non-auth unexpected failure",
+          "ui": "Show retry banner and preserve current query/filter input."
+        },
+        {
+          "state": "exact_ticket_not_found",
+          "condition": "GET /api/tickets/by-number/{ticketNumber} returns 404",
+          "ui": "Show inline 'ticket not found' message; remain on lookup page."
+        },
+        {
+          "state": "invalid_ticket_number",
+          "condition": "GET /api/tickets/by-number/{ticketNumber} returns 400",
+          "ui": "Show inline validation error for malformed or missing ticket number."
+        }
+      ],
+      "components": [
+        "AppHeader",
+        "UserProfileBadge",
+        "TicketSearchForm",
+        "StatusFilterChips",
+        "ExactTicketLookupForm",
+        "TicketResultsTable",
+        "TicketResultRow",
+        "EmptySearchState",
+        "InlineErrorAlert",
+        "FullPageAuthLoader"
+      ]
+    },
+    {
+      "page_id": "ticket_triage_detail",
+      "title": "Ticket Triage Detail",
+      "purpose": "Provide the full internal triage workspace for a single ticket, including ticket details, AI guidance, similar resolved tickets, and resolve action.",
+      "personas": [
+        "Support Agent"
+      ],
+      "user_stories": [
+        "As a support agent, I want to review a ticket's details and AI guidance so I can triage it efficiently.",
+        "As a support agent, I want to review similar resolved tickets so I can use prior resolutions as references.",
+        "As a support agent, I want to mark a ticket resolved and optionally capture a resolution summary."
+      ],
+      "data_requirements": [
+        {
+          "name": "current_user",
+          "needed_for": "access validation and optional user display",
+          "source_endpoint": "GET /api/me",
+          "required": true
+        },
+        {
+          "name": "ticket_details",
+          "needed_for": "header, metadata, full description, current resolution info/status",
+          "source_endpoint": "GET /api/tickets/{ticketId}",
+          "required": true
+        },
+        {
+          "name": "triage_guidance",
+          "needed_for": "AI triage guidance panel",
+          "source_endpoint": "GET /api/tickets/{ticketId}/triage-guidance",
+          "required": false,
+          "notes": "Can be fetched separately for panel-level loading/refresh, but the same guidance fields are also included in GET /api/tickets/{ticketId}."
+        },
+        {
+          "name": "similar_resolved_tickets",
+          "needed_for": "reference list of prior resolved tickets",
+          "source_endpoint": "GET /api/tickets/{ticketId}/similar-resolved-tickets",
+          "required": true,
+          "notes": "Although GET /api/tickets/{ticketId} returns similar_resolved_ticket_ids, details for display require this dedicated endpoint."
+        },
+        {
+          "name": "resolve_result",
+          "needed_for": "update UI after marking ticket resolved",
+          "source_endpoint": "POST /api/tickets/{ticketId}/resolve",
+          "required": false
+        }
+      ],
+      "api_consumption": [
+        {
+          "endpoint": "GET /api/me",
+          "usage": "Validate access on protected-route entry if not already available."
+        },
+        {
+          "endpoint": "GET /api/tickets/{ticketId}",
+          "usage": "Primary load for ticket content and current embedded triage guidance."
+        },
+        {
+          "endpoint": "GET /api/tickets/{ticketId}/triage-guidance",
+          "usage": "Optional dedicated fetch for the AI guidance section if the frontend wants panel-level loading or a narrower request."
+        },
+        {
+          "endpoint": "GET /api/tickets/{ticketId}/similar-resolved-tickets",
+          "usage": "Load detailed similar resolved ticket cards/list."
+        },
+        {
+          "endpoint": "POST /api/tickets/{ticketId}/resolve",
+          "usage": "Mark the ticket resolved with optional resolution_summary."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "view_ticket_details",
+          "result": "Read ticket subject, description, customer info, product area, priority, status, timestamps, and existing resolution fields if present."
+        },
+        {
+          "action": "view_ai_triage_guidance",
+          "result": "Read generated summary, suggested category, suggested priority, recommended actions, and confidence."
+        },
+        {
+          "action": "view_similar_resolved_tickets",
+          "result": "Inspect similar ticket cards/rows with ticket number, subject, product area, priority, resolved_at, resolution_summary, and triage_guidance_summary."
+        },
+        {
+          "action": "navigate_back_to_lookup",
+          "result": "Return to /tickets while preserving optional client-side query state if implemented."
+        },
+        {
+          "action": "open_resolve_modal_or_panel",
+          "result": "Present optional resolution summary input and confirm action."
+        },
+        {
+          "action": "submit_resolve_ticket",
+          "result": "Calls POST /api/tickets/{ticketId}/resolve; on success updates status to resolved and displays resolution confirmation."
+        }
+      ],
+      "loading_states": [
+        {
+          "state": "page_initial_load",
+          "ui": "Show page skeleton for ticket header, guidance panel, and similar tickets panel while primary data loads."
+        },
+        {
+          "state": "ticket_details_loading",
+          "ui": "Skeleton or placeholder for ticket metadata and description."
+        },
+        {
+          "state": "triage_guidance_loading",
+          "ui": "Panel-level skeleton if guidance fetched separately."
+        },
+        {
+          "state": "similar_tickets_loading",
+          "ui": "List/card skeletons in similar resolved tickets section."
+        },
+        {
+          "state": "resolve_submission_in_progress",
+          "ui": "Disable resolve controls, show spinner in confirmation button, prevent duplicate submissions."
+        }
+      ],
+      "error_states": [
+        {
+          "state": "invalid_ticket_id",
+          "condition": "GET /api/tickets/{ticketId}, /triage-guidance, or /similar-resolved-tickets returns 400",
+          "ui": "Show resource error state with option to go back to lookup."
+        },
+        {
+          "state": "ticket_not_found",
+          "condition": "GET /api/tickets/{ticketId} or subordinate endpoints return 404",
+          "ui": "Show ticket not found empty state with navigation back to lookup."
+        },
+        {
+          "state": "auth_forbidden_or_unauthenticated",
+          "condition": "Protected endpoint returns 401 or 403",
+          "ui": "Handle through app shell auth logic."
+        },
+        {
+          "state": "ticket_load_failed",
+          "condition": "GET /api/tickets/{ticketId} unexpected failure",
+          "ui": "Show retryable page error banner."
+        },
+        {
+          "state": "guidance_load_failed",
+          "condition": "GET /api/tickets/{ticketId}/triage-guidance unexpected failure",
+          "ui": "Show inline guidance panel error and allow retry; other page sections remain usable."
+        },
+        {
+          "state": "similar_tickets_load_failed",
+          "condition": "GET /api/tickets/{ticketId}/similar-resolved-tickets unexpected failure",
+          "ui": "Show inline similar-tickets panel error and allow retry; other page sections remain usable."
+        },
+        {
+          "state": "resolve_invalid_request",
+          "condition": "POST /api/tickets/{ticketId}/resolve returns 400 INVALID_REQUEST",
+          "ui": "Show inline validation error on resolution summary form."
+        },
+        {
+          "state": "resolve_not_resolvable",
+          "condition": "POST /api/tickets/{ticketId}/resolve returns 409 TICKET_NOT_RESOLVABLE",
+          "ui": "Show conflict message that ticket is already resolved or cannot be resolved from current state; refresh ticket details."
+        },
+        {
+          "state": "resolve_ticket_not_found",
+          "condition": "POST /api/tickets/{ticketId}/resolve returns 404",
+          "ui": "Show blocking message that ticket no longer exists."
+        },
+        {
+          "state": "resolve_write_failed",
+          "condition": "POST /api/tickets/{ticketId}/resolve returns 500 RESOLUTION_EVENT_WRITE_FAILED",
+          "ui": "Show high-severity error banner advising retry or support escalation; do not assume final ticket state without re-fetching GET /api/tickets/{ticketId}."
+        }
+      ],
+      "components": [
+        "AppHeader",
+        "Breadcrumbs",
+        "TicketHeader",
+        "TicketMetadataPanel",
+        "TicketDescriptionCard",
+        "CustomerInfoCard",
+        "TriageGuidancePanel",
+        "GuidanceSummary",
+        "RecommendedActionsList",
+        "ConfidenceBadge",
+        "SimilarResolvedTicketsPanel",
+        "SimilarTicketCard",
+        "ResolveTicketButton",
+        "ResolveTicketModal",
+        "ResolutionSummaryInput",
+        "SuccessToast",
+        "InlineErrorAlert",
+        "RetryButton",
+        "PageSkeleton"
+      ]
+    },
+    {
+      "page_id": "access_denied",
+      "title": "Access Denied",
+      "purpose": "Inform an authenticated user that they are not permitted to use this internal-only POV.",
+      "personas": [
+        "Support Agent"
+      ],
+      "user_stories": [
+        "As an unauthorized user, I need clear feedback that I cannot access this internal tool."
+      ],
+      "data_requirements": [
+        {
+          "name": "optional_user_context",
+          "needed_for": "display signed-in identity if available",
+          "source_endpoint": "GET /api/me",
+          "required": false
+        }
+      ],
+      "api_consumption": [],
+      "user_actions": [
+        {
+          "action": "return_or_sign_out",
+          "result": "Use deployment-specific auth/navigation option outside the API contract."
+        }
+      ],
+      "loading_states": [],
+      "error_states": [],
+      "components": [
+        "CenteredMessageCard",
+        "AccessDeniedIllustration"
+      ]
+    },
+    {
+      "page_id": "generic_not_found",
+      "title": "Not Found",
+      "purpose": "Fallback screen for unknown routes or unresolved navigation targets.",
+      "personas": [
+        "Support Agent"
+      ],
+      "user_stories": [
+        "As a user, I need a way back when I land on an invalid route."
+      ],
+      "data_requirements": [],
+      "api_consumption": [],
+      "user_actions": [
+        {
+          "action": "go_to_ticket_lookup",
+          "result": "Navigate to /tickets."
+        }
+      ],
+      "loading_states": [],
+      "error_states": [],
+      "components": [
+        "CenteredMessageCard",
+        "BackToLookupButton"
+      ]
+    }
+  ],
+  "shared_components": [
+    {
+      "name": "AppHeader",
+      "purpose": "Global header with app title and signed-in user badge."
+    },
+    {
+      "name": "UserProfileBadge",
+      "purpose": "Display current internal user name/email/role from /api/me."
+    },
+    {
+      "name": "InlineErrorAlert",
+      "purpose": "Reusable inline error presentation for page and panel errors."
+    },
+    {
+      "name": "CenteredMessageCard",
+      "purpose": "Reusable access denied and not found content container."
+    },
+    {
+      "name": "RetryButton",
+      "purpose": "Retry failed API calls for panel or page sections."
+    },
+    {
+      "name": "PageSkeleton",
+      "purpose": "Reusable skeleton layout for route-level loading."
+    }
+  ],
+  "data_constraints_and_gaps": [
+    {
+      "gap": "No endpoint exists for creating, editing, or regenerating triage guidance.",
+      "frontend_implication": "Triage guidance must be presented as read-only. Do not offer regenerate/edit actions."
+    },
+    {
+      "gap": "No endpoint exists for changing a ticket to in_progress or any status other than resolved.",
+      "frontend_implication": "Do not design workflow controls for intermediate status transitions."
+    },
+    {
+      "gap": "No endpoint exists for listing resolution history or audit events.",
+      "frontend_implication": "Do not include a resolution history timeline beyond the resolve response and current ticket fields."
+    },
+    {
+      "gap": "No endpoint exists to fetch full details of an arbitrary similar resolved ticket by id unless the user navigates to that ticket's own /api/tickets/{ticketId} detail.",
+      "frontend_implication": "The similar resolved tickets panel can show the summary fields returned by GET /similar-resolved-tickets and may link to /tickets/:ticketId only if viewing resolved tickets in the same detail screen is acceptable UX."
+    }
+  ]
+}
