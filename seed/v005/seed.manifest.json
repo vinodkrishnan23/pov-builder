@@ -1,0 +1,82 @@
+{
+  "artifacts": [
+    {
+      "bytes": 236,
+      "key": "seed/v005/REPAIR_NOTES.md",
+      "sha256": "83f4d756e3c6265d3fe6d801b3bcc76c1a8eb81a0b0de51cfdb07a03b82b5170"
+    },
+    {
+      "bytes": 2177,
+      "key": "seed/v005/SEED_README.md",
+      "sha256": "7dea0e3948ca986039edba2e9f175f21a7fffaf9fef2b3fa9b57072d3e32f8b1"
+    },
+    {
+      "bytes": 72,
+      "key": "seed/v005/package.json",
+      "sha256": "6b6859469e1ba43184eb667b77b89a1a7449e46fb8d2f098c2fc3d47af42c1f9"
+    },
+    {
+      "bytes": 9548,
+      "key": "seed/v005/seed.js",
+      "sha256": "ed1f58285cf62f289a835296f146eb175931b33d6c7a02c4150d17e9811ead48"
+    }
+  ],
+  "code_version": "v005",
+  "correlation": {
+    "poc_id": "1790241012873",
+    "producer": "poc-data-seed",
+    "run_id": "run_01M3CXGK5SV60KESMVADAYPQP4",
+    "task_id": "task_01M3CXGK5SHX131TYK85CDEX12",
+    "trace_id": "trace_01M3CXGK5SV60KESMVADAYPQP4"
+  },
+  "defaults_applied": [
+    "support_teams: seed count 20",
+    "tickets: seed count 20",
+    "dashboard_metric_snapshots: seed count 20",
+    "QP-2: synthetic vector dimensions 8",
+    "support_teams: derived query index _id",
+    "tickets: derived query index triage_suggestion.suggested_team_id",
+    "dashboard_metric_snapshots: derived query index bucket_start",
+    "dashboard_metric_snapshots: derived query index metric_type",
+    "dashboard_metric_snapshots: derived query index priority",
+    "dashboard_metric_snapshots: derived query index product_line",
+    "dashboard_metric_snapshots: derived query index time_granularity",
+    "dashboard_metric_snapshots: derived query index team_id",
+    "tickets: derived query index created_at",
+    "tickets: derived query index assigned_team_id",
+    "tickets: derived query index resolution_time_minutes",
+    "tickets: derived query index resolved_at",
+    "tickets: derived query index status"
+  ],
+  "inputs": {
+    "data_model": {
+      "commit_sha": "9d354da609c0bef7d34f9163a456cc534f4da3ff",
+      "key": "spec_architect/data_model.json",
+      "sha256": "6baa8964bc0a237fa7974170d84f8aface3a0422da8addd886a2c0f91f2907b2"
+    },
+    "query_patterns": {
+      "commit_sha": "44e04324bb365029d61b63333d8ba1dd9cc01b53",
+      "key": "spec_architect/query_patterns.json",
+      "sha256": "ceb148d9a1ffc87ba84371cf8fc1efb29ec9d06e39d313fcee68cf887fcedc18"
+    }
+  },
+  "poc_id": "1790241012873",
+  "producer": "poc-data-seed",
+  "repair": {
+    "failure_code": "VALIDATION_FAILED",
+    "finding": "Missing declared index on dashboard_metric_snapshots",
+    "repaired_index": {
+      "bucket_start": 1,
+      "metric_type": 1,
+      "priority": 1,
+      "product_line": 1,
+      "team_id": 1,
+      "time_granularity": 1
+    }
+  },
+  "storage": {
+    "branch": "vinod-krishnan-mongodb-com/trigger-shard",
+    "provider": "github",
+    "repository": "vinodkrishnan23/pov-builder"
+  }
+}
