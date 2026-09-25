@@ -1,0 +1,502 @@
+{
+  "version": "1.0",
+  "pov_name": "internal_support_ticket_triage",
+  "auth": {
+    "description": "All endpoints require an authenticated internal user context. The backend must validate the acting user via qp8_validate_internal_user_access before executing the endpoint logic.",
+    "authentication": {
+      "type": "internal_user_context",
+      "request_conveyance": "Implementation-specific (for example session or bearer token). The contract assumes the resolved internal user id is available to the backend as authenticated_user_id."
+    },
+    "authorization": {
+      "allowed_roles": [
+        "support_agent",
+        "admin"
+      ]
+    }
+  },
+  "endpoints": [
+    {
+      "operation_id": "validateInternalAccess",
+      "method": "GET",
+      "path": "/api/me",
+      "purpose": "Validate that the current caller is an active internal user allowed to use the POV and return basic profile information for the signed-in user.",
+      "request": {
+        "path_params": {},
+        "query_params": {},
+        "headers": {
+          "Authorization": "string, required by deployment auth mechanism"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "user": {
+            "id": "objectId",
+            "email": "string",
+            "name": "string",
+            "role": "support_agent|admin",
+            "is_active": "boolean"
+          }
+        }
+      },
+      "errors": [
+        {
+          "status": 401,
+          "code": "UNAUTHENTICATED",
+          "message": "Authentication is missing or invalid."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "User is not an active internal support user or admin."
+        },
+        {
+          "status": 404,
+          "code": "USER_NOT_FOUND",
+          "message": "Authenticated internal user record was not found."
+        }
+      ],
+      "backing": "qp8_validate_internal_user_access"
+    },
+    {
+      "operation_id": "searchTickets",
+      "method": "GET",
+      "path": "/api/tickets",
+      "purpose": "Search support tickets by text and optionally filter by status so an agent can find a ticket to open for triage.",
+      "request": {
+        "path_params": {},
+        "query_params": {
+          "q": {
+            "type": "string",
+            "required": true,
+            "description": "Search text applied to ticket_number, subject, and description."
+          },
+          "status": {
+            "type": "array<string>",
+            "required": false,
+            "allowed_values": [
+              "open",
+              "in_progress",
+              "resolved"
+            ],
+            "description": "Optional status filter. If omitted, backend should execute the query pattern without the status narrowing condition or with all statuses, matching implementation choice consistent with qp3 intent."
+          }
+        },
+        "headers": {
+          "Authorization": "string, required by deployment auth mechanism"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "tickets": [
+            {
+              "id": "objectId",
+              "ticket_number": "string",
+              "subject": "string",
+              "product_area": "string|null",
+              "priority": "low|medium|high|urgent|null",
+              "status": "open|in_progress|resolved",
+              "created_at": "date",
+              "updated_at": "date"
+            }
+          ],
+          "count": "number"
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_QUERY",
+          "message": "Search text is missing or one or more status values are invalid."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHENTICATED",
+          "message": "Authentication is missing or invalid."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "User is not allowed to access this internal POV."
+        }
+      ],
+      "backing": {
+        "access_validation": "qp8_validate_internal_user_access",
+        "data_query": "qp3_ticket_search_for_lookup"
+      }
+    },
+    {
+      "operation_id": "getTicketById",
+      "method": "GET",
+      "path": "/api/tickets/{ticketId}",
+      "purpose": "Fetch a single support ticket by id for triage review, including embedded guidance reference ids for similar resolved tickets.",
+      "request": {
+        "path_params": {
+          "ticketId": "objectId, required"
+        },
+        "query_params": {},
+        "headers": {
+          "Authorization": "string, required by deployment auth mechanism"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "ticket": {
+            "id": "objectId",
+            "ticket_number": "string",
+            "subject": "string",
+            "description": "string",
+            "customer_name": "string|null",
+            "customer_email": "string|null",
+            "product_area": "string|null",
+            "priority": "low|medium|high|urgent|null",
+            "status": "open|in_progress|resolved",
+            "created_at": "date",
+            "updated_at": "date",
+            "resolved_at": "date|null",
+            "resolution_summary": "string|null",
+            "triage_guidance": {
+              "generated_at": "date",
+              "summary": "string",
+              "suggested_category": "string|null",
+              "suggested_priority": "string|null",
+              "recommended_actions": [
+                "string"
+              ],
+              "confidence": "number|null"
+            },
+            "similar_resolved_ticket_ids": [
+              "objectId"
+            ]
+          }
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_TICKET_ID",
+          "message": "ticketId is not a valid object id."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHENTICATED",
+          "message": "Authentication is missing or invalid."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "User is not allowed to access this internal POV."
+        },
+        {
+          "status": 404,
+          "code": "TICKET_NOT_FOUND",
+          "message": "Ticket was not found."
+        }
+      ],
+      "backing": {
+        "access_validation": "qp8_validate_internal_user_access",
+        "data_query": "qp2_ticket_lookup_by_id"
+      }
+    },
+    {
+      "operation_id": "getTicketByNumber",
+      "method": "GET",
+      "path": "/api/tickets/by-number/{ticketNumber}",
+      "purpose": "Fetch a single support ticket by exact ticket number when the agent knows the ticket number.",
+      "request": {
+        "path_params": {
+          "ticketNumber": "string, required"
+        },
+        "query_params": {},
+        "headers": {
+          "Authorization": "string, required by deployment auth mechanism"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "ticket": {
+            "id": "objectId",
+            "ticket_number": "string",
+            "subject": "string",
+            "description": "string",
+            "customer_name": "string|null",
+            "customer_email": "string|null",
+            "product_area": "string|null",
+            "priority": "low|medium|high|urgent|null",
+            "status": "open|in_progress|resolved",
+            "created_at": "date",
+            "updated_at": "date",
+            "resolved_at": "date|null",
+            "resolution_summary": "string|null",
+            "triage_guidance": {
+              "generated_at": "date",
+              "summary": "string",
+              "suggested_category": "string|null",
+              "suggested_priority": "string|null",
+              "recommended_actions": [
+                "string"
+              ],
+              "confidence": "number|null"
+            },
+            "similar_resolved_ticket_ids": [
+              "objectId"
+            ]
+          }
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_TICKET_NUMBER",
+          "message": "ticketNumber is missing or invalid."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHENTICATED",
+          "message": "Authentication is missing or invalid."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "User is not allowed to access this internal POV."
+        },
+        {
+          "status": 404,
+          "code": "TICKET_NOT_FOUND",
+          "message": "Ticket was not found."
+        }
+      ],
+      "backing": {
+        "access_validation": "qp8_validate_internal_user_access",
+        "data_query": "qp1_ticket_lookup_by_ticket_number"
+      }
+    },
+    {
+      "operation_id": "getTicketTriageGuidance",
+      "method": "GET",
+      "path": "/api/tickets/{ticketId}/triage-guidance",
+      "purpose": "Fetch the current ticket details together with embedded AI-suggested triage guidance for the triage experience.",
+      "request": {
+        "path_params": {
+          "ticketId": "objectId, required"
+        },
+        "query_params": {},
+        "headers": {
+          "Authorization": "string, required by deployment auth mechanism"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "ticket": {
+            "id": "objectId",
+            "ticket_number": "string",
+            "subject": "string",
+            "description": "string",
+            "product_area": "string|null",
+            "priority": "low|medium|high|urgent|null",
+            "status": "open|in_progress|resolved"
+          },
+          "triage_guidance": {
+            "generated_at": "date",
+            "summary": "string",
+            "suggested_category": "string|null",
+            "suggested_priority": "string|null",
+            "recommended_actions": [
+              "string"
+            ],
+            "confidence": "number|null"
+          },
+          "similar_resolved_ticket_ids": [
+            "objectId"
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_TICKET_ID",
+          "message": "ticketId is not a valid object id."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHENTICATED",
+          "message": "Authentication is missing or invalid."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "User is not allowed to access this internal POV."
+        },
+        {
+          "status": 404,
+          "code": "TICKET_NOT_FOUND",
+          "message": "Ticket was not found."
+        }
+      ],
+      "backing": {
+        "access_validation": "qp8_validate_internal_user_access",
+        "data_query": "qp4_ticket_with_ai_guidance"
+      }
+    },
+    {
+      "operation_id": "getSimilarResolvedTickets",
+      "method": "GET",
+      "path": "/api/tickets/{ticketId}/similar-resolved-tickets",
+      "purpose": "Return the resolved tickets linked as similar references for the current ticket.",
+      "request": {
+        "path_params": {
+          "ticketId": "objectId, required"
+        },
+        "query_params": {},
+        "headers": {
+          "Authorization": "string, required by deployment auth mechanism"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "similar_resolved_tickets": [
+            {
+              "id": "objectId",
+              "ticket_number": "string",
+              "subject": "string",
+              "product_area": "string|null",
+              "priority": "low|medium|high|urgent|null",
+              "resolved_at": "date|null",
+              "resolution_summary": "string|null",
+              "triage_guidance_summary": "string|null"
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_TICKET_ID",
+          "message": "ticketId is not a valid object id."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHENTICATED",
+          "message": "Authentication is missing or invalid."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "User is not allowed to access this internal POV."
+        },
+        {
+          "status": 404,
+          "code": "TICKET_NOT_FOUND",
+          "message": "Source ticket was not found."
+        }
+      ],
+      "backing": {
+        "access_validation": "qp8_validate_internal_user_access",
+        "data_query": "qp5_fetch_similar_resolved_tickets"
+      }
+    },
+    {
+      "operation_id": "resolveTicket",
+      "method": "POST",
+      "path": "/api/tickets/{ticketId}/resolve",
+      "purpose": "Mark a ticket as resolved and record an audit event capturing which internal user performed the action.",
+      "request": {
+        "path_params": {
+          "ticketId": "objectId, required"
+        },
+        "query_params": {},
+        "headers": {
+          "Authorization": "string, required by deployment auth mechanism"
+        },
+        "body": {
+          "resolution_summary": {
+            "type": "string",
+            "required": false,
+            "description": "Optional summary of how the ticket was resolved."
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "ticket": {
+            "id": "objectId",
+            "status": "resolved",
+            "resolved_at": "date",
+            "resolution_summary": "string|null",
+            "updated_at": "date"
+          },
+          "resolution_event": {
+            "id": "objectId",
+            "ticket_id": "objectId",
+            "resolved_by_user_id": "objectId",
+            "resolved_at": "date",
+            "resolution_summary": "string|null",
+            "status_after_action": "resolved"
+          }
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_TICKET_ID",
+          "message": "ticketId is not a valid object id."
+        },
+        {
+          "status": 400,
+          "code": "INVALID_REQUEST",
+          "message": "Request body is invalid."
+        },
+        {
+          "status": 401,
+          "code": "UNAUTHENTICATED",
+          "message": "Authentication is missing or invalid."
+        },
+        {
+          "status": 403,
+          "code": "FORBIDDEN",
+          "message": "User is not allowed to access this internal POV."
+        },
+        {
+          "status": 404,
+          "code": "TICKET_NOT_FOUND",
+          "message": "Ticket was not found."
+        },
+        {
+          "status": 409,
+          "code": "TICKET_NOT_RESOLVABLE",
+          "message": "Ticket is already resolved or is not in a resolvable state."
+        },
+        {
+          "status": 500,
+          "code": "RESOLUTION_EVENT_WRITE_FAILED",
+          "message": "Ticket status may have been updated but writing the audit event failed; backend should use a transaction to avoid this state."
+        }
+      ],
+      "backing": {
+        "access_validation": "qp8_validate_internal_user_access",
+        "write_queries": [
+          "qp6_resolve_ticket_update",
+          "qp7_create_resolution_event"
+        ],
+        "transaction_required": true
+      }
+    }
+  ],
+  "notes": [
+    "No endpoint has been defined for creating, editing, or regenerating triage guidance because the authoritative data model and query patterns only support viewing current embedded guidance, not managing it.",
+    "No endpoint has been defined for listing resolution history because the query patterns include only creation of resolution events, not retrieval of event history.",
+    "No customer-facing access endpoints are included; all contract paths are internal-only by design and rely on internal user validation."
+  ]
+}
