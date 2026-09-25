@@ -1,0 +1,1230 @@
+{
+  "app_name": "BRMS Execution Log POV Console",
+  "base_route": "/",
+  "route_groups": [
+    {
+      "group": "global-operations",
+      "routes": [
+        {
+          "path": "/operations/customers",
+          "page_id": "customer-logging-settings-page"
+        }
+      ]
+    },
+    {
+      "group": "customer-scoped",
+      "routes": [
+        {
+          "path": "/customers/:customerId",
+          "page_id": "customer-home-page"
+        },
+        {
+          "path": "/customers/:customerId/requests/lookup",
+          "page_id": "execution-request-lookup-page"
+        },
+        {
+          "path": "/customers/:customerId/requests/:requestOrCorrelationId",
+          "page_id": "execution-request-drilldown-page"
+        },
+        {
+          "path": "/customers/:customerId/search/attributes",
+          "page_id": "execution-search-by-attribute-page"
+        },
+        {
+          "path": "/customers/:customerId/search/rule-steps",
+          "page_id": "rule-step-search-page"
+        },
+        {
+          "path": "/customers/:customerId/search/json-path",
+          "page_id": "execution-json-path-search-page"
+        },
+        {
+          "path": "/customers/:customerId/dashboards/execution-summary",
+          "page_id": "execution-dashboard-summary-page"
+        },
+        {
+          "path": "/customers/:customerId/dashboards/segment-breakdown",
+          "page_id": "execution-dashboard-segment-page"
+        },
+        {
+          "path": "/customers/:customerId/policies/:policyId/analytics/outcomes-by-version",
+          "page_id": "policy-outcomes-by-version-page"
+        },
+        {
+          "path": "/customers/:customerId/policies/:policyId/analytics/compare-versions",
+          "page_id": "policy-version-compare-page"
+        },
+        {
+          "path": "/customers/:customerId/policies/:policyId/policy-versions/:policyVersionId/analytics/rejection-rules",
+          "page_id": "rejection-rules-page"
+        },
+        {
+          "path": "/customers/:customerId/insights",
+          "page_id": "execution-insights-query-page"
+        },
+        {
+          "path": "/customers/:customerId/admin-users",
+          "page_id": "admin-users-page"
+        },
+        {
+          "path": "/customers/:customerId/pov-admin",
+          "page_id": "customer-pov-admin-page"
+        },
+        {
+          "path": "/customers/:customerId/policies/:policyId/pov-admin",
+          "page_id": "policy-pov-admin-page"
+        },
+        {
+          "path": "/customers/:customerId/policies/:policyId/versions/:policyVersionId/pov-admin",
+          "page_id": "policy-version-pov-admin-page"
+        },
+        {
+          "path": "/customers/:customerId/insights/create",
+          "page_id": "execution-insight-create-page"
+        }
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "page_id": "customer-logging-settings-page",
+      "title": "Customer Logging Settings",
+      "route": "/operations/customers",
+      "purpose": "Provide cross-customer operational visibility into logging enablement, retention, purge timing, and deployment cloud. Also offers entry points to create a new customer record and drill into a selected customer context.",
+      "data_requirements": [
+        "Cross-customer customer logging settings list including customer_id, name, industry, deployment_cloud, logging_enabled, retention_days, purge_after, updated_at."
+      ],
+      "api_endpoints_consumed": [
+        {
+          "operation_id": "listCustomerLoggingSettings",
+          "usage": "Initial page load and manual refresh."
+        },
+        {
+          "operation_id": "createCustomer",
+          "usage": "Create customer from modal/drawer form."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "View all customer logging settings"
+        },
+        {
+          "action": "Filter/sort client-side on returned fields",
+          "note": "No server-side filtering endpoint is defined; filtering must be local to current result set."
+        },
+        {
+          "action": "Open create customer form"
+        },
+        {
+          "action": "Submit create customer"
+        },
+        {
+          "action": "Navigate to selected customer home page"
+        }
+      ],
+      "loading_states": [
+        "Initial full-page skeleton/table shimmer while customer settings load",
+        "Inline spinner on refresh",
+        "Modal submit loading state for create customer"
+      ],
+      "error_states": [
+        {
+          "state": "List load forbidden",
+          "handling": "Show access-denied empty state; do not expose cross-customer data."
+        },
+        {
+          "state": "Create customer validation error",
+          "handling": "Map INVALID_REQUEST_BODY to field/form errors."
+        },
+        {
+          "state": "Create customer conflict",
+          "handling": "Show duplicate customer_id error from CUSTOMER_ALREADY_EXISTS."
+        },
+        {
+          "state": "Generic network/server error",
+          "handling": "Show retry banner and preserve any cached list."
+        }
+      ]
+    },
+    {
+      "page_id": "customer-home-page",
+      "title": "Customer Workspace Home",
+      "route": "/customers/:customerId",
+      "purpose": "Act as a customer-scoped landing page with navigation cards to request lookup, searches, dashboards, analytics, admin users, insights, and POV administration. Also surfaces the current customer's logging settings using data already available from operational views only if passed via navigation state; otherwise this page remains primarily navigational because no dedicated get-customer endpoint exists.",
+      "data_requirements": [
+        "Customer ID from route",
+        "Optional navigation context from customer logging settings list if user arrived from operations page"
+      ],
+      "api_endpoints_consumed": [],
+      "user_actions": [
+        {
+          "action": "Navigate to request lookup"
+        },
+        {
+          "action": "Navigate to attribute search"
+        },
+        {
+          "action": "Navigate to rule-step search"
+        },
+        {
+          "action": "Navigate to JSON path search"
+        },
+        {
+          "action": "Navigate to dashboards"
+        },
+        {
+          "action": "Navigate to policy analytics routes when policy_id is known"
+        },
+        {
+          "action": "Navigate to admin users"
+        },
+        {
+          "action": "Navigate to insights query/create"
+        },
+        {
+          "action": "Navigate to POV admin pages"
+        }
+      ],
+      "loading_states": [
+        "No required API-backed loading state for base page"
+      ],
+      "error_states": [
+        {
+          "state": "Unknown customer context entered manually",
+          "handling": "Show informational note that customer existence cannot be prevalidated here because no get-customer endpoint is defined; downstream screens will validate through their own API calls."
+        }
+      ]
+    },
+    {
+      "page_id": "execution-request-lookup-page",
+      "title": "Execution Request Lookup",
+      "route": "/customers/:customerId/requests/lookup",
+      "purpose": "Let an authorized user retrieve a specific execution request by request ID or correlation ID, primarily for audit and troubleshooting journeys.",
+      "data_requirements": [
+        "Customer ID from route",
+        "User-entered request_or_correlation_id",
+        "Optional include_payloads toggle"
+      ],
+      "api_endpoints_consumed": [
+        {
+          "operation_id": "getExecutionRequest",
+          "usage": "Lookup summary details before drilldown or as lightweight retrieval."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "Enter request ID or correlation ID"
+        },
+        {
+          "action": "Toggle include payloads on/off"
+        },
+        {
+          "action": "Submit lookup"
+        },
+        {
+          "action": "Open full drilldown page for found request using returned request_id or entered correlation ID"
+        }
+      ],
+      "loading_states": [
+        "Inline form submit spinner",
+        "Result card skeleton while lookup is running"
+      ],
+      "error_states": [
+        {
+          "state": "Invalid path/input",
+          "handling": "Show validation message for malformed customer/request identifier."
+        },
+        {
+          "state": "Request not found",
+          "handling": "Show empty lookup result with guidance to verify request/correlation ID and customer scope."
+        },
+        {
+          "state": "Forbidden",
+          "handling": "Show access-denied state."
+        }
+      ]
+    },
+    {
+      "page_id": "execution-request-drilldown-page",
+      "title": "Execution Request Drilldown",
+      "route": "/customers/:customerId/requests/:requestOrCorrelationId",
+      "purpose": "Display a complete request investigation view, including request/response payloads and ordered rule-step execution trail in one screen for auditability and troubleshooting.",
+      "data_requirements": [
+        "Customer ID from route",
+        "Request or correlation ID from route",
+        "Top-level request summary fields",
+        "Rule step list with step metadata and snapshots"
+      ],
+      "api_endpoints_consumed": [
+        {
+          "operation_id": "getExecutionRequestDrilldown",
+          "usage": "Primary page load for combined summary and rule steps."
+        },
+        {
+          "operation_id": "getExecutionInsights",
+          "usage": "Optional secondary panel querying request-specific insights using request_id after drilldown loads."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "View request metadata, status, outcome, duration, and payloads"
+        },
+        {
+          "action": "Expand/collapse JSON viewers for request and response payloads"
+        },
+        {
+          "action": "Browse ordered rule steps"
+        },
+        {
+          "action": "Expand individual rule step details including input/output/intermediate values"
+        },
+        {
+          "action": "Query request-specific insights once request_id is known"
+        },
+        {
+          "action": "Copy request_id or correlation_id"
+        },
+        {
+          "action": "Navigate back to lookup/search results"
+        }
+      ],
+      "loading_states": [
+        "Full-page loading skeleton for summary + steps",
+        "Deferred panel loading for request insights"
+      ],
+      "error_states": [
+        {
+          "state": "Drilldown not found",
+          "handling": "Show not-found state for execution request."
+        },
+        {
+          "state": "Forbidden",
+          "handling": "Show access-denied state."
+        },
+        {
+          "state": "Insights query invalid/unavailable",
+          "handling": "Hide optional insights panel behind explicit request_id query and show non-blocking inline error if insights fail."
+        }
+      ]
+    },
+    {
+      "page_id": "execution-search-by-attribute-page",
+      "title": "Search Execution Requests by Attribute",
+      "route": "/customers/:customerId/search/attributes",
+      "purpose": "Search execution requests using a flattened request-payload attribute path/value within a date range.",
+      "data_requirements": [
+        "Customer ID from route",
+        "User-entered start_at/end_at",
+        "attribute_path",
+        "attribute_value string",
+        "page_size",
+        "Search result summaries"
+      ],
+      "api_endpoints_consumed": [
+        {
+          "operation_id": "searchExecutionRequestsByAttribute",
+          "usage": "Search submission and reruns on criteria change."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "Enter date range"
+        },
+        {
+          "action": "Enter flattened attribute path"
+        },
+        {
+          "action": "Enter string attribute value"
+        },
+        {
+          "action": "Set page size"
+        },
+        {
+          "action": "Run search"
+        },
+        {
+          "action": "Open a selected request drilldown"
+        }
+      ],
+      "loading_states": [
+        "Form submit loading",
+        "Results table skeleton",
+        "Empty-state placeholder before first search"
+      ],
+      "error_states": [
+        {
+          "state": "Invalid search criteria",
+          "handling": "Map INVALID_SEARCH_CRITERIA to form-level and field-level guidance."
+        },
+        {
+          "state": "Forbidden",
+          "handling": "Show access-denied state."
+        },
+        {
+          "state": "No results",
+          "handling": "Show zero-results empty state with current criteria summary."
+        }
+      ]
+    },
+    {
+      "page_id": "rule-step-search-page",
+      "title": "Search Rule Steps by Rule and Variable",
+      "route": "/customers/:customerId/search/rule-steps",
+      "purpose": "Search rule-step executions by rule name and flattened variable/value within a date range, supporting content-based troubleshooting and analysis.",
+      "data_requirements": [
+        "Customer ID from route",
+        "start_at/end_at",
+        "rule_name",
+        "variable_path",
+        "variable_value string",
+        "page_size",
+        "Search results containing request and step identifiers"
+      ],
+      "api_endpoints_consumed": [
+        {
+          "operation_id": "searchRuleStepsByRuleAndVariable",
+          "usage": "Primary search operation."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "Enter date range"
+        },
+        {
+          "action": "Enter rule name"
+        },
+        {
+          "action": "Enter flattened variable path"
+        },
+        {
+          "action": "Enter string variable value"
+        },
+        {
+          "action": "Set page size"
+        },
+        {
+          "action": "Run search"
+        },
+        {
+          "action": "Open related request drilldown from a result row"
+        }
+      ],
+      "loading_states": [
+        "Form submit loading",
+        "Result list skeleton",
+        "Empty initial state"
+      ],
+      "error_states": [
+        {
+          "state": "Invalid criteria",
+          "handling": "Show validation and API error text."
+        },
+        {
+          "state": "Forbidden",
+          "handling": "Show access denied."
+        },
+        {
+          "state": "No results",
+          "handling": "Show empty state with option to adjust search."
+        }
+      ]
+    },
+    {
+      "page_id": "execution-json-path-search-page",
+      "title": "Search Execution JSON by Dynamic Path",
+      "route": "/customers/:customerId/search/json-path",
+      "purpose": "Search known nested paths directly in request/response content when flattened attribute search is insufficient.",
+      "data_requirements": [
+        "Customer ID from route",
+        "start_at/end_at",
+        "dynamic_path",
+        "value",
+        "page_size",
+        "search_in fixed to request_or_response per API contract",
+        "Result summaries including payloads"
+      ],
+      "api_endpoints_consumed": [
+        {
+          "operation_id": "searchExecutionContentByDynamicPath",
+          "usage": "Primary dynamic-path search."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "Enter date range"
+        },
+        {
+          "action": "Enter dynamic JSON path"
+        },
+        {
+          "action": "Enter string value"
+        },
+        {
+          "action": "Set page size"
+        },
+        {
+          "action": "Run search"
+        },
+        {
+          "action": "Inspect lightweight payload snippets from results"
+        },
+        {
+          "action": "Open full request drilldown"
+        }
+      ],
+      "loading_states": [
+        "Search submit loading",
+        "Results card/table skeleton"
+      ],
+      "error_states": [
+        {
+          "state": "Unsafe/unsupported path or invalid criteria",
+          "handling": "Show INVALID_SEARCH_CRITERIA guidance and note that only supported paths can be queried."
+        },
+        {
+          "state": "Forbidden",
+          "handling": "Show access denied."
+        },
+        {
+          "state": "No results",
+          "handling": "Show zero-results state."
+        }
+      ]
+    },
+    {
+      "page_id": "execution-dashboard-summary-page",
+      "title": "Execution Summary Dashboard",
+      "route": "/customers/:customerId/dashboards/execution-summary",
+      "purpose": "Visualize daily execution volumes, outcomes, and average duration over a selected time range.",
+      "data_requirements": [
+        "Customer ID from route",
+        "start_at/end_at",
+        "Daily aggregated dashboard items with day, final_outcome, count, avg_duration_ms"
+      ],
+      "api_endpoints_consumed": [
+        {
+          "operation_id": "getDashboardSummaryByDay",
+          "usage": "Load and refresh dashboard chart data."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "Select date range"
+        },
+        {
+          "action": "Load dashboard"
+        },
+        {
+          "action": "Toggle chart/table presentation client-side"
+        },
+        {
+          "action": "Inspect day/outcome trend details"
+        }
+      ],
+      "loading_states": [
+        "Chart skeleton",
+        "Refresh spinner when changing dates"
+      ],
+      "error_states": [
+        {
+          "state": "Invalid date range",
+          "handling": "Show date validation state."
+        },
+        {
+          "state": "Forbidden",
+          "handling": "Show access denied."
+        },
+        {
+          "state": "No data in range",
+          "handling": "Show no-data chart empty state."
+        }
+      ]
+    },
+    {
+      "page_id": "execution-dashboard-segment-page",
+      "title": "Segment Breakdown Dashboard",
+      "route": "/customers/:customerId/dashboards/segment-breakdown",
+      "purpose": "Report execution outcomes grouped by a selected flattened input attribute, such as age band or other known request attribute path.",
+      "data_requirements": [
+        "Customer ID from route",
+        "start_at/end_at",
+        "segment_attribute_path",
+        "Aggregated items by segment_value and final_outcome"
+      ],
+      "api_endpoints_consumed": [
+        {
+          "operation_id": "getDashboardBreakdownBySegment",
+          "usage": "Load grouped segment analysis."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "Select date range"
+        },
+        {
+          "action": "Enter flattened segment attribute path"
+        },
+        {
+          "action": "Load segment breakdown"
+        },
+        {
+          "action": "Switch between stacked chart and table client-side"
+        }
+      ],
+      "loading_states": [
+        "Chart/table skeleton",
+        "Refresh spinner"
+      ],
+      "error_states": [
+        {
+          "state": "Invalid report criteria",
+          "handling": "Show validation for date range and segment attribute path."
+        },
+        {
+          "state": "Forbidden",
+          "handling": "Show access denied."
+        },
+        {
+          "state": "No data",
+          "handling": "Show empty state."
+        }
+      ]
+    },
+    {
+      "page_id": "policy-outcomes-by-version-page",
+      "title": "Policy Outcomes by Version",
+      "route": "/customers/:customerId/policies/:policyId/analytics/outcomes-by-version",
+      "purpose": "Show outcome distributions and request totals across policy versions for a single policy over a time window.",
+      "data_requirements": [
+        "Customer ID from route",
+        "Policy ID from route",
+        "start_at/end_at",
+        "Version-level outcome distributions"
+      ],
+      "api_endpoints_consumed": [
+        {
+          "operation_id": "analyzeOutcomesByPolicyVersion",
+          "usage": "Primary analytics load."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "Select date range"
+        },
+        {
+          "action": "Load analytics"
+        },
+        {
+          "action": "Compare outcome mix visually across versions"
+        },
+        {
+          "action": "Navigate to compare versions screen when version IDs are known"
+        },
+        {
+          "action": "Navigate to rejection rules screen for a selected version"
+        }
+      ],
+      "loading_states": [
+        "Analytics chart skeleton",
+        "Refresh spinner"
+      ],
+      "error_states": [
+        {
+          "state": "Invalid date range",
+          "handling": "Show form validation."
+        },
+        {
+          "state": "Forbidden",
+          "handling": "Show access denied."
+        },
+        {
+          "state": "No analytics data",
+          "handling": "Show empty state and retain filters."
+        }
+      ]
+    },
+    {
+      "page_id": "policy-version-compare-page",
+      "title": "Compare Policy Versions",
+      "route": "/customers/:customerId/policies/:policyId/analytics/compare-versions",
+      "purpose": "Compare two policy versions on volume, approvals, rejections, approval rate, and average duration, with contextual rule definitions for the selected versions.",
+      "data_requirements": [
+        "Customer ID from route",
+        "Policy ID from route",
+        "version_a and version_b entered or supplied via deep link state",
+        "start_at/end_at",
+        "Comparison metrics",
+        "Selected version context including embedded rule definitions"
+      ],
+      "api_endpoints_consumed": [
+        {
+          "operation_id": "comparePolicyVersions",
+          "usage": "Primary metrics comparison request."
+        },
+        {
+          "operation_id": "getPolicyVersionsForComparison",
+          "usage": "Load embedded rule-definition context for selected versions."
+        },
+        {
+          "operation_id": "createExecutionInsight",
+          "usage": "Optional save of a manually-authored comparison note/insight from the compare screen."
+        },
+        {
+          "operation_id": "getExecutionInsights",
+          "usage": "Optional query of existing insights for a chosen policy_version_id and time window; must be run separately per single version because API does not support dual-version query in one call."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "Enter/select version A ID"
+        },
+        {
+          "action": "Enter/select version B ID"
+        },
+        {
+          "action": "Select date range"
+        },
+        {
+          "action": "Run comparison"
+        },
+        {
+          "action": "View metric deltas and side-by-side version details"
+        },
+        {
+          "action": "Inspect embedded rule definitions for each version"
+        },
+        {
+          "action": "Create a manual comparison insight/note"
+        }
+      ],
+      "loading_states": [
+        "Comparison results skeleton",
+        "Parallel loading indicators for metrics and compare-context panels",
+        "Insight save button loading"
+      ],
+      "error_states": [
+        {
+          "state": "Invalid compare request",
+          "handling": "Show validation that both version IDs and valid date range are required."
+        },
+        {
+          "state": "Forbidden",
+          "handling": "Show access denied."
+        },
+        {
+          "state": "Compare-context unavailable",
+          "handling": "Show non-blocking warning if version context load fails while preserving metrics if available."
+        },
+        {
+          "state": "No comparison data",
+          "handling": "Show empty state indicating no executions in range for selected versions."
+        }
+      ]
+    },
+    {
+      "page_id": "rejection-rules-page",
+      "title": "Top Rejection Rules",
+      "route": "/customers/:customerId/policies/:policyId/policy-versions/:policyVersionId/analytics/rejection-rules",
+      "purpose": "Identify which rules most frequently appear in rejected requests for a given policy version.",
+      "data_requirements": [
+        "Customer ID",
+        "Policy ID",
+        "Policy version ID from route",
+        "start_at/end_at",
+        "Ranked rejection rule counts"
+      ],
+      "api_endpoints_consumed": [
+        {
+          "operation_id": "getTopRulesForRejectedOutcomes",
+          "usage": "Primary chart/table load."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "Select date range"
+        },
+        {
+          "action": "Load top rejection rules"
+        },
+        {
+          "action": "Sort client-side by rejected_request_count"
+        },
+        {
+          "action": "Use results as investigative context for policy tuning discussions"
+        }
+      ],
+      "loading_states": [
+        "Bar chart/table skeleton",
+        "Refresh spinner"
+      ],
+      "error_states": [
+        {
+          "state": "Invalid date range",
+          "handling": "Show validation."
+        },
+        {
+          "state": "Forbidden",
+          "handling": "Show access denied."
+        },
+        {
+          "state": "No rejected outcomes in range",
+          "handling": "Show no-data state."
+        }
+      ]
+    },
+    {
+      "page_id": "execution-insights-query-page",
+      "title": "Execution Insights Query",
+      "route": "/customers/:customerId/insights",
+      "purpose": "Retrieve derived execution insights either for a single request or for a policy-version time window. Supports exploratory AI/manual/aggregation-generated notes already stored in the system.",
+      "data_requirements": [
+        "Customer ID from route",
+        "Either request_id OR policy_version_id + start_at + end_at",
+        "Insight result items with summary_text, structured_findings, generated_by, model_name"
+      ],
+      "api_endpoints_consumed": [
+        {
+          "operation_id": "getExecutionInsights",
+          "usage": "Primary insight retrieval."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "Choose query mode: by request or by policy version + time window"
+        },
+        {
+          "action": "Enter request_id or policy_version_id/date range"
+        },
+        {
+          "action": "Run insight query"
+        },
+        {
+          "action": "Inspect structured findings and metadata"
+        },
+        {
+          "action": "Navigate to create insight page"
+        }
+      ],
+      "loading_states": [
+        "Form submit loading",
+        "Insight card skeleton"
+      ],
+      "error_states": [
+        {
+          "state": "Invalid insight query",
+          "handling": "Show clear mode-specific validation: either request_id, or policy_version_id with start_at and end_at."
+        },
+        {
+          "state": "Forbidden",
+          "handling": "Show access denied."
+        },
+        {
+          "state": "No insights found",
+          "handling": "Show empty state with create-insight CTA."
+        }
+      ]
+    },
+    {
+      "page_id": "admin-users-page",
+      "title": "Authorized Admin Users",
+      "route": "/customers/:customerId/admin-users",
+      "purpose": "View and manage active authorized admin users for execution-log access within a customer.",
+      "data_requirements": [
+        "Customer ID from route",
+        "Admin user list",
+        "Create/update form fields"
+      ],
+      "api_endpoints_consumed": [
+        {
+          "operation_id": "listAuthorizedAdminUsers",
+          "usage": "Initial load and refresh."
+        },
+        {
+          "operation_id": "createAdminUser",
+          "usage": "Create new admin user."
+        },
+        {
+          "operation_id": "updateAdminUser",
+          "usage": "Edit existing admin user."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "View admin users"
+        },
+        {
+          "action": "Open create admin user form"
+        },
+        {
+          "action": "Submit new admin user"
+        },
+        {
+          "action": "Edit user profile, roles, email, or active status"
+        },
+        {
+          "action": "Activate/deactivate user"
+        }
+      ],
+      "loading_states": [
+        "Table skeleton on load",
+        "Inline row mutation spinner",
+        "Modal submit loading"
+      ],
+      "error_states": [
+        {
+          "state": "Invalid customer path",
+          "handling": "Show invalid customer message."
+        },
+        {
+          "state": "Forbidden",
+          "handling": "Show access denied."
+        },
+        {
+          "state": "Customer not found on create",
+          "handling": "Show create failure tied to missing customer."
+        },
+        {
+          "state": "Duplicate user on create",
+          "handling": "Show ADMIN_USER_ALREADY_EXISTS conflict."
+        },
+        {
+          "state": "Admin user not found on update",
+          "handling": "Refresh list and show stale-data warning."
+        }
+      ]
+    },
+    {
+      "page_id": "customer-pov-admin-page",
+      "title": "Customer POV Administration",
+      "route": "/customers/:customerId/pov-admin",
+      "purpose": "Edit customer metadata and operational logging settings for the POV. This is not a full customer profile page; it relies on route-scoped customer_id and update behavior defined in the API contract.",
+      "data_requirements": [
+        "Customer ID from route",
+        "Editable fields: name, industry, deployment_cloud, logging_enabled, retention_days",
+        "Optional initial values passed from operations list or previous workflow because no dedicated get-customer endpoint exists"
+      ],
+      "api_endpoints_consumed": [
+        {
+          "operation_id": "updateCustomer",
+          "usage": "Submit changes to customer metadata/settings."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "Edit customer metadata and logging settings"
+        },
+        {
+          "action": "Save updates"
+        }
+      ],
+      "loading_states": [
+        "Form submit loading"
+      ],
+      "error_states": [
+        {
+          "state": "No initial customer data available",
+          "handling": "Render editable form with customer_id context but explain that current values cannot be fetched independently because no get-customer endpoint exists."
+        },
+        {
+          "state": "Invalid request body",
+          "handling": "Show validation errors."
+        },
+        {
+          "state": "Customer not found",
+          "handling": "Show not-found state."
+        },
+        {
+          "state": "Forbidden",
+          "handling": "Show access denied."
+        }
+      ]
+    },
+    {
+      "page_id": "policy-pov-admin-page",
+      "title": "Policy POV Administration",
+      "route": "/customers/:customerId/policies/:policyId/pov-admin",
+      "purpose": "Create or update policy metadata used by analytics and comparison workflows in the POV.",
+      "data_requirements": [
+        "Customer ID from route",
+        "Optional policy ID from route",
+        "Fields: policy_name, service_name, service_endpoint, status"
+      ],
+      "api_endpoints_consumed": [
+        {
+          "operation_id": "createPolicy",
+          "usage": "Used when entering a new policy record from this page if policy does not yet exist."
+        },
+        {
+          "operation_id": "updatePolicy",
+          "usage": "Used when editing an existing policy record."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "Create policy metadata"
+        },
+        {
+          "action": "Edit policy metadata if policy_id already known"
+        },
+        {
+          "action": "Save changes"
+        },
+        {
+          "action": "Navigate to policy analytics routes once IDs are available"
+        }
+      ],
+      "loading_states": [
+        "Form submit loading"
+      ],
+      "error_states": [
+        {
+          "state": "Cannot preload policy details",
+          "handling": "Explain that no generic get/list policy endpoint exists, so edit mode requires known values from prior workflow or manual entry."
+        },
+        {
+          "state": "Policy already exists on create",
+          "handling": "Show conflict error."
+        },
+        {
+          "state": "Policy not found on update",
+          "handling": "Show not-found state."
+        },
+        {
+          "state": "Customer not found on create",
+          "handling": "Show create failure."
+        },
+        {
+          "state": "Forbidden",
+          "handling": "Show access denied."
+        }
+      ]
+    },
+    {
+      "page_id": "policy-version-pov-admin-page",
+      "title": "Policy Version POV Administration",
+      "route": "/customers/:customerId/policies/:policyId/versions/:policyVersionId/pov-admin",
+      "purpose": "Create or update a policy version and its embedded rule definitions for later comparison and analytics context.",
+      "data_requirements": [
+        "Customer ID",
+        "Policy ID",
+        "Optional policy_version_id",
+        "Fields: version_label, version_number, published_at, is_active, rule_definitions[]"
+      ],
+      "api_endpoints_consumed": [
+        {
+          "operation_id": "createPolicyVersion",
+          "usage": "Create a new policy version record."
+        },
+        {
+          "operation_id": "updatePolicyVersion",
+          "usage": "Update an existing policy version record."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "Add/edit policy version metadata"
+        },
+        {
+          "action": "Add/remove/edit embedded rule definitions"
+        },
+        {
+          "action": "Save policy version"
+        }
+      ],
+      "loading_states": [
+        "Form submit loading"
+      ],
+      "error_states": [
+        {
+          "state": "Cannot preload existing version automatically",
+          "handling": "Explain no generic get/list policy version endpoint exists; edit mode depends on known current values or compare-context workflow."
+        },
+        {
+          "state": "Policy not found on create",
+          "handling": "Show dependency error."
+        },
+        {
+          "state": "Policy version already exists on create",
+          "handling": "Show conflict."
+        },
+        {
+          "state": "Policy version not found on update",
+          "handling": "Show not-found state."
+        },
+        {
+          "state": "Forbidden",
+          "handling": "Show access denied."
+        }
+      ]
+    },
+    {
+      "page_id": "execution-insight-create-page",
+      "title": "Create Execution Insight",
+      "route": "/customers/:customerId/insights/create",
+      "purpose": "Create a derived execution insight record, whether manually written, aggregation-generated metadata entered by an operator, or placeholder AI-generated note metadata.",
+      "data_requirements": [
+        "Customer ID",
+        "Insight form fields including request_id/policy_id/policy_version_id, insight_type, source_window, summary_text, structured_findings, generated_by, model_name"
+      ],
+      "api_endpoints_consumed": [
+        {
+          "operation_id": "createExecutionInsight",
+          "usage": "Submit new insight record."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "Enter insight metadata"
+        },
+        {
+          "action": "Optionally tie insight to request or policy/policy version"
+        },
+        {
+          "action": "Submit insight"
+        },
+        {
+          "action": "Navigate to insights query page to retrieve it later"
+        }
+      ],
+      "loading_states": [
+        "Form submit loading"
+      ],
+      "error_states": [
+        {
+          "state": "Invalid request body",
+          "handling": "Show field validation errors."
+        },
+        {
+          "state": "Forbidden",
+          "handling": "Show access denied."
+        }
+      ]
+    }
+  ],
+  "components": [
+    {
+      "component_id": "app-shell",
+      "purpose": "Global layout with top nav, customer context, breadcrumbs, and page container."
+    },
+    {
+      "component_id": "customer-context-header",
+      "purpose": "Displays current customer_id and contextual actions/navigation."
+    },
+    {
+      "component_id": "side-navigation",
+      "purpose": "Provides links to request lookup, searches, dashboards, analytics, insights, admin users, and POV admin."
+    },
+    {
+      "component_id": "page-header",
+      "purpose": "Standardized title, description, route context, and action area."
+    },
+    {
+      "component_id": "api-status-banner",
+      "purpose": "Renders non-field API errors, forbidden messages, retry actions, and informational limitations."
+    },
+    {
+      "component_id": "loading-skeleton",
+      "purpose": "Reusable skeletons for cards, tables, forms, charts, and drilldown views."
+    },
+    {
+      "component_id": "empty-state-panel",
+      "purpose": "Reusable no-results/no-data/access guidance component."
+    },
+    {
+      "component_id": "date-range-picker",
+      "purpose": "Collects start_at and end_at for analytics and search screens."
+    },
+    {
+      "component_id": "json-viewer",
+      "purpose": "Pretty-print, collapse, and copy JSON payloads/snapshots."
+    },
+    {
+      "component_id": "request-summary-card",
+      "purpose": "Displays execution request metadata and top-level outcome details."
+    },
+    {
+      "component_id": "rule-step-timeline",
+      "purpose": "Ordered list/timeline of rule steps with status and duration."
+    },
+    {
+      "component_id": "rule-step-detail-panel",
+      "purpose": "Expandable detail area for input/output/intermediate values and errors."
+    },
+    {
+      "component_id": "search-form-attribute",
+      "purpose": "Form for flattened attribute search criteria."
+    },
+    {
+      "component_id": "search-form-rule-step",
+      "purpose": "Form for rule name + variable path/value criteria."
+    },
+    {
+      "component_id": "search-form-json-path",
+      "purpose": "Form for dynamic JSON path criteria with safety/help text."
+    },
+    {
+      "component_id": "results-table",
+      "purpose": "Reusable tabular result presentation with row click navigation."
+    },
+    {
+      "component_id": "chart-outcomes-by-day",
+      "purpose": "Visualizes daily volumes/outcomes/duration."
+    },
+    {
+      "component_id": "chart-segment-breakdown",
+      "purpose": "Displays grouped outcome counts by selected segment attribute."
+    },
+    {
+      "component_id": "chart-policy-version-outcomes",
+      "purpose": "Shows version-level outcome distributions."
+    },
+    {
+      "component_id": "comparison-metrics-panel",
+      "purpose": "Renders two-version KPI comparison and deltas."
+    },
+    {
+      "component_id": "version-rule-definition-compare",
+      "purpose": "Side-by-side display of embedded rule definitions from selected versions."
+    },
+    {
+      "component_id": "insight-card-list",
+      "purpose": "Displays insight summaries, metadata, and structured findings."
+    },
+    {
+      "component_id": "customer-create-form",
+      "purpose": "Create-customer modal form."
+    },
+    {
+      "component_id": "customer-settings-form",
+      "purpose": "Edit customer logging settings and metadata."
+    },
+    {
+      "component_id": "admin-user-table",
+      "purpose": "List of authorized admin users with row actions."
+    },
+    {
+      "component_id": "admin-user-form",
+      "purpose": "Create/update admin user form."
+    },
+    {
+      "component_id": "policy-form",
+      "purpose": "Create/update policy metadata form."
+    },
+    {
+      "component_id": "policy-version-form",
+      "purpose": "Create/update policy version with embedded rule definitions."
+    },
+    {
+      "component_id": "rule-definition-editor",
+      "purpose": "Manage repeated rule definition entries inside policy version form."
+    },
+    {
+      "component_id": "execution-insight-form",
+      "purpose": "Create manual/derived insight records."
+    },
+    {
+      "component_id": "lookup-form",
+      "purpose": "Request/correlation ID lookup form with include payloads option."
+    }
+  ]
+}
