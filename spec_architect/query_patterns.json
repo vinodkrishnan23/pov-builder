@@ -1,0 +1,863 @@
+{
+  "QP1": {
+    "id": "QP1",
+    "name": "Get execution audit trail by request ID",
+    "serves": [
+      "UC1",
+      "UJ1",
+      "FR10"
+    ],
+    "collections": [
+      "execution_requests"
+    ],
+    "query": {
+      "collection": "execution_requests",
+      "type": "findOne",
+      "filter": {
+        "request_id": "<request_id>"
+      },
+      "projection": {
+        "_id": 0,
+        "tenant_id": 1,
+        "request_id": 1,
+        "correlation_id": 1,
+        "policy_id": 1,
+        "policy_version": 1,
+        "invocation_channel": 1,
+        "logging_enabled": 1,
+        "request_received_at": 1,
+        "execution_completed_at": 1,
+        "status": 1,
+        "final_outcome": 1,
+        "outcome_reason_codes": 1,
+        "request_payload": 1,
+        "response_payload": 1,
+        "rule_step_count": 1,
+        "rule_steps": 1,
+        "ingestion_metadata": 1,
+        "retention": 1
+      }
+    },
+    "purpose": "Retrieve the full stored audit record for one request, including input, output, and all rule-level steps."
+  },
+  "QP2": {
+    "id": "QP2",
+    "name": "Get execution audit trail by correlation ID",
+    "serves": [
+      "UC1",
+      "UJ1",
+      "FR10"
+    ],
+    "collections": [
+      "execution_requests"
+    ],
+    "query": {
+      "collection": "execution_requests",
+      "type": "findOne",
+      "filter": {
+        "correlation_id": "<correlation_id>"
+      },
+      "projection": {
+        "_id": 0,
+        "tenant_id": 1,
+        "request_id": 1,
+        "correlation_id": 1,
+        "policy_id": 1,
+        "policy_version": 1,
+        "invocation_channel": 1,
+        "logging_enabled": 1,
+        "request_received_at": 1,
+        "execution_completed_at": 1,
+        "status": 1,
+        "final_outcome": 1,
+        "outcome_reason_codes": 1,
+        "request_payload": 1,
+        "response_payload": 1,
+        "rule_step_count": 1,
+        "rule_steps": 1,
+        "ingestion_metadata": 1,
+        "retention": 1
+      }
+    },
+    "purpose": "Retrieve the full stored audit record when the caller has correlation ID instead of request ID."
+  },
+  "QP3": {
+    "id": "QP3",
+    "name": "Get request timeline with rule-step ordering",
+    "serves": [
+      "UC1",
+      "UJ1",
+      "FR2"
+    ],
+    "collections": [
+      "execution_requests"
+    ],
+    "query": {
+      "collection": "execution_requests",
+      "type": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "request_id": "<request_id>"
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "request_id": 1,
+            "policy_id": 1,
+            "policy_version": 1,
+            "final_outcome": 1,
+            "request_received_at": 1,
+            "execution_completed_at": 1,
+            "rule_steps": 1
+          }
+        },
+        {
+          "$unwind": {
+            "path": "$rule_steps",
+            "preserveNullAndEmptyArrays": true
+          }
+        },
+        {
+          "$sort": {
+            "rule_steps.step_no": 1
+          }
+        },
+        {
+          "$project": {
+            "request_id": 1,
+            "policy_id": 1,
+            "policy_version": 1,
+            "final_outcome": 1,
+            "request_received_at": 1,
+            "execution_completed_at": 1,
+            "step_no": "$rule_steps.step_no",
+            "logged_at": "$rule_steps.logged_at",
+            "rule_id": "$rule_steps.rule_id",
+            "rule_name": "$rule_steps.rule_name",
+            "rule_sequence": "$rule_steps.rule_sequence",
+            "stage_name": "$rule_steps.stage_name",
+            "step_status": "$rule_steps.step_status",
+            "decision": "$rule_steps.decision",
+            "reason": "$rule_steps.reason",
+            "lookup_performed": "$rule_steps.lookup_performed",
+            "input_snapshot": "$rule_steps.input_snapshot",
+            "output_snapshot": "$rule_steps.output_snapshot"
+          }
+        }
+      ]
+    },
+    "purpose": "Present a chronological step-by-step timeline for a request investigation view."
+  },
+  "QP4": {
+    "id": "QP4",
+    "name": "Search execution logs by nested JSON content",
+    "serves": [
+      "UC2",
+      "UJ2",
+      "FR16"
+    ],
+    "collections": [
+      "execution_requests"
+    ],
+    "query": {
+      "collection": "execution_requests",
+      "type": "aggregate",
+      "pipeline": [
+        {
+          "$search": {
+            "index": "search_logged_content",
+            "compound": {
+              "must": [
+                {
+                  "text": {
+                    "query": "<search_term_or_phrase>",
+                    "path": [
+                      "request_payload",
+                      "response_payload",
+                      "rule_steps.input_snapshot",
+                      "rule_steps.output_snapshot",
+                      "rule_steps.reason",
+                      "outcome_reason_codes",
+                      "final_outcome"
+                    ]
+                  }
+                }
+              ],
+              "filter": [
+                {
+                  "equals": {
+                    "path": "tenant_id",
+                    "value": "<tenant_id>"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "$match": {
+            "logging_enabled": true
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "request_id": 1,
+            "correlation_id": 1,
+            "tenant_id": 1,
+            "policy_id": 1,
+            "policy_version": 1,
+            "request_received_at": 1,
+            "status": 1,
+            "final_outcome": 1,
+            "outcome_reason_codes": 1,
+            "score": {
+              "$meta": "searchScore"
+            }
+          }
+        },
+        {
+          "$sort": {
+            "score": -1,
+            "request_received_at": -1
+          }
+        },
+        {
+          "$limit": 50
+        }
+      ]
+    },
+    "purpose": "Find execution requests based on values or terms inside logged JSON payloads and rule-step content."
+  },
+  "QP5": {
+    "id": "QP5",
+    "name": "Filter execution requests by structured payload and outcome criteria",
+    "serves": [
+      "UC2",
+      "UJ2",
+      "FR16"
+    ],
+    "collections": [
+      "execution_requests"
+    ],
+    "query": {
+      "collection": "execution_requests",
+      "type": "find",
+      "filter": {
+        "tenant_id": "<tenant_id>",
+        "policy_id": "<policy_id>",
+        "policy_version": "<policy_version>",
+        "request_received_at": {
+          "$gte": "<from_date>",
+          "$lt": "<to_date>"
+        },
+        "final_outcome": "<outcome>",
+        "logging_enabled": true,
+        "payload_summary.<field_name>": "<field_value>"
+      },
+      "projection": {
+        "_id": 0,
+        "request_id": 1,
+        "policy_id": 1,
+        "policy_version": 1,
+        "request_received_at": 1,
+        "status": 1,
+        "final_outcome": 1,
+        "outcome_reason_codes": 1,
+        "payload_summary": 1
+      },
+      "sort": {
+        "request_received_at": -1
+      },
+      "limit": 100
+    },
+    "purpose": "Retrieve requests matching common structured filters, especially frequently extracted payload-summary fields plus outcome and time range."
+  },
+  "QP6": {
+    "id": "QP6",
+    "name": "Find requests where a specific rule or step condition occurred",
+    "serves": [
+      "UC2",
+      "UC1",
+      "FR2",
+      "FR16"
+    ],
+    "collections": [
+      "execution_requests"
+    ],
+    "query": {
+      "collection": "execution_requests",
+      "type": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "tenant_id": "<tenant_id>",
+            "request_received_at": {
+              "$gte": "<from_date>",
+              "$lt": "<to_date>"
+            }
+          }
+        },
+        {
+          "$unwind": "$rule_steps"
+        },
+        {
+          "$match": {
+            "rule_steps.rule_id": "<rule_id>",
+            "rule_steps.step_status": "<step_status>",
+            "rule_steps.decision": "<decision>"
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "request_id": 1,
+            "policy_id": 1,
+            "policy_version": 1,
+            "request_received_at": 1,
+            "final_outcome": 1,
+            "step_no": "$rule_steps.step_no",
+            "logged_at": "$rule_steps.logged_at",
+            "rule_id": "$rule_steps.rule_id",
+            "rule_name": "$rule_steps.rule_name",
+            "stage_name": "$rule_steps.stage_name",
+            "step_status": "$rule_steps.step_status",
+            "decision": "$rule_steps.decision",
+            "reason": "$rule_steps.reason"
+          }
+        },
+        {
+          "$sort": {
+            "request_received_at": -1
+          }
+        },
+        {
+          "$limit": 100
+        }
+      ]
+    },
+    "purpose": "Locate requests where a given rule fired, failed, was skipped, or made a specific intermediate decision."
+  },
+  "QP7": {
+    "id": "QP7",
+    "name": "Compare policy-version outcome trends from pre-aggregated daily metrics",
+    "serves": [
+      "UC3",
+      "UJ2",
+      "BO3",
+      "BO4",
+      "FR17"
+    ],
+    "collections": [
+      "analytics_daily_policy_outcomes"
+    ],
+    "query": {
+      "collection": "analytics_daily_policy_outcomes",
+      "type": "find",
+      "filter": {
+        "tenant_id": "<tenant_id>",
+        "policy_id": "<policy_id>",
+        "metric_date": {
+          "$gte": "<from_date>",
+          "$lte": "<to_date>"
+        },
+        "policy_version": {
+          "$in": [
+            "<version_a>",
+            "<version_b>"
+          ]
+        }
+      },
+      "projection": {
+        "_id": 0,
+        "metric_date": 1,
+        "policy_id": 1,
+        "policy_version": 1,
+        "total_requests": 1,
+        "approved_count": 1,
+        "rejected_count": 1,
+        "other_outcome_counts": 1,
+        "avg_rule_step_count": 1,
+        "top_reason_codes": 1
+      },
+      "sort": {
+        "metric_date": 1,
+        "policy_version": 1
+      }
+    },
+    "purpose": "Drive dashboard charts comparing approval/rejection trends and top reasons across policy versions over time."
+  },
+  "QP8": {
+    "id": "QP8",
+    "name": "Compute approval-rate impact between policy versions from raw requests",
+    "serves": [
+      "UC3",
+      "BO4",
+      "FR17"
+    ],
+    "collections": [
+      "execution_requests"
+    ],
+    "query": {
+      "collection": "execution_requests",
+      "type": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "tenant_id": "<tenant_id>",
+            "policy_id": "<policy_id>",
+            "policy_version": {
+              "$in": [
+                "<version_a>",
+                "<version_b>"
+              ]
+            },
+            "request_received_at": {
+              "$gte": "<from_date>",
+              "$lt": "<to_date>"
+            },
+            "status": "completed"
+          }
+        },
+        {
+          "$group": {
+            "_id": {
+              "policy_version": "$policy_version"
+            },
+            "total_requests": {
+              "$sum": 1
+            },
+            "approved_count": {
+              "$sum": {
+                "$cond": [
+                  {
+                    "$eq": [
+                      "$final_outcome",
+                      "approved"
+                    ]
+                  },
+                  1,
+                  0
+                ]
+              }
+            },
+            "rejected_count": {
+              "$sum": {
+                "$cond": [
+                  {
+                    "$eq": [
+                      "$final_outcome",
+                      "rejected"
+                    ]
+                  },
+                  1,
+                  0
+                ]
+              }
+            },
+            "avg_rule_step_count": {
+              "$avg": "$rule_step_count"
+            },
+            "reason_code_sets": {
+              "$push": "$outcome_reason_codes"
+            }
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "policy_version": "$_id.policy_version",
+            "total_requests": 1,
+            "approved_count": 1,
+            "rejected_count": 1,
+            "approval_rate": {
+              "$cond": [
+                {
+                  "$gt": [
+                    "$total_requests",
+                    0
+                  ]
+                },
+                {
+                  "$divide": [
+                    "$approved_count",
+                    "$total_requests"
+                  ]
+                },
+                0
+              ]
+            },
+            "rejection_rate": {
+              "$cond": [
+                {
+                  "$gt": [
+                    "$total_requests",
+                    0
+                  ]
+                },
+                {
+                  "$divide": [
+                    "$rejected_count",
+                    "$total_requests"
+                  ]
+                },
+                0
+              ]
+            },
+            "avg_rule_step_count": 1,
+            "reason_code_sets": 1
+          }
+        },
+        {
+          "$sort": {
+            "policy_version": 1
+          }
+        }
+      ]
+    },
+    "purpose": "Calculate side-by-side outcome rates from raw execution data when analysts need on-demand comparison rather than prebuilt daily summaries."
+  },
+  "QP9": {
+    "id": "QP9",
+    "name": "Break down rejection reasons for a policy version and period",
+    "serves": [
+      "UC3",
+      "UJ2",
+      "BO3",
+      "BO4"
+    ],
+    "collections": [
+      "execution_requests"
+    ],
+    "query": {
+      "collection": "execution_requests",
+      "type": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "tenant_id": "<tenant_id>",
+            "policy_id": "<policy_id>",
+            "policy_version": "<policy_version>",
+            "request_received_at": {
+              "$gte": "<from_date>",
+              "$lt": "<to_date>"
+            },
+            "final_outcome": "rejected"
+          }
+        },
+        {
+          "$unwind": {
+            "path": "$outcome_reason_codes",
+            "preserveNullAndEmptyArrays": false
+          }
+        },
+        {
+          "$group": {
+            "_id": "$outcome_reason_codes",
+            "rejection_count": {
+              "$sum": 1
+            }
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "reason_code": "$_id",
+            "rejection_count": 1
+          }
+        },
+        {
+          "$sort": {
+            "rejection_count": -1
+          }
+        },
+        {
+          "$limit": 20
+        }
+      ]
+    },
+    "purpose": "Show the most common rejection reasons to explain why outcomes shifted after policy changes."
+  },
+  "QP10": {
+    "id": "QP10",
+    "name": "List recent outcomes for externally invoked requests",
+    "serves": [
+      "UC4",
+      "FR12"
+    ],
+    "collections": [
+      "execution_requests"
+    ],
+    "query": {
+      "collection": "execution_requests",
+      "type": "find",
+      "filter": {
+        "tenant_id": "<tenant_id>",
+        "invocation_channel": {
+          "$in": [
+            "api",
+            "mobile",
+            "portal",
+            "banking_app"
+          ]
+        },
+        "request_received_at": {
+          "$gte": "<from_date>",
+          "$lt": "<to_date>"
+        }
+      },
+      "projection": {
+        "_id": 0,
+        "request_id": 1,
+        "correlation_id": 1,
+        "policy_id": 1,
+        "policy_version": 1,
+        "invocation_channel": 1,
+        "request_received_at": 1,
+        "execution_completed_at": 1,
+        "status": 1,
+        "final_outcome": 1,
+        "response_payload": 1
+      },
+      "sort": {
+        "request_received_at": -1
+      },
+      "limit": 100
+    },
+    "purpose": "Retrieve stored final outcomes and responses for requests originating from external consuming applications, without exposing rule-step internals."
+  },
+  "QP11": {
+    "id": "QP11",
+    "name": "Monitor ingestion and partially logged requests",
+    "serves": [
+      "UC5",
+      "FR5",
+      "FR6",
+      "FR7"
+    ],
+    "collections": [
+      "execution_requests"
+    ],
+    "query": {
+      "collection": "execution_requests",
+      "type": "find",
+      "filter": {
+        "tenant_id": "<tenant_id>",
+        "status": {
+          "$in": [
+            "received",
+            "in_progress",
+            "failed",
+            "partially_logged"
+          ]
+        },
+        "request_received_at": {
+          "$gte": "<from_date>",
+          "$lt": "<to_date>"
+        }
+      },
+      "projection": {
+        "_id": 0,
+        "request_id": 1,
+        "correlation_id": 1,
+        "policy_id": 1,
+        "policy_version": 1,
+        "status": 1,
+        "request_received_at": 1,
+        "execution_completed_at": 1,
+        "rule_step_count": 1,
+        "ingestion_metadata": 1,
+        "updated_at": 1
+      },
+      "sort": {
+        "request_received_at": -1
+      },
+      "limit": 100
+    },
+    "purpose": "Track requests that are still ingesting, failed during ingestion, or have incomplete logs."
+  },
+  "QP12": {
+    "id": "QP12",
+    "name": "Identify requests eligible for purge by retention policy",
+    "serves": [
+      "UC5",
+      "FR19"
+    ],
+    "collections": [
+      "execution_requests"
+    ],
+    "query": {
+      "collection": "execution_requests",
+      "type": "find",
+      "filter": {
+        "tenant_id": "<tenant_id>",
+        "retention.expire_at": {
+          "$lte": "<as_of_date>"
+        },
+        "$or": [
+          {
+            "retention.purge_hold": {
+              "$exists": false
+            }
+          },
+          {
+            "retention.purge_hold": false
+          }
+        ]
+      },
+      "projection": {
+        "_id": 0,
+        "request_id": 1,
+        "policy_id": 1,
+        "policy_version": 1,
+        "request_received_at": 1,
+        "status": 1,
+        "retention": 1
+      },
+      "sort": {
+        "retention.expire_at": 1
+      },
+      "limit": 1000
+    },
+    "purpose": "List execution-log documents that are past their retention date and not under purge hold."
+  },
+  "QP13": {
+    "id": "QP13",
+    "name": "Summarize retention backlog by class",
+    "serves": [
+      "UC5",
+      "BO2",
+      "FR19"
+    ],
+    "collections": [
+      "execution_requests"
+    ],
+    "query": {
+      "collection": "execution_requests",
+      "type": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "tenant_id": "<tenant_id>"
+          }
+        },
+        {
+          "$group": {
+            "_id": "$retention.retention_class",
+            "document_count": {
+              "$sum": 1
+            },
+            "oldest_expire_at": {
+              "$min": "$retention.expire_at"
+            },
+            "newest_expire_at": {
+              "$max": "$retention.expire_at"
+            }
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "retention_class": "$_id",
+            "document_count": 1,
+            "oldest_expire_at": 1,
+            "newest_expire_at": 1
+          }
+        },
+        {
+          "$sort": {
+            "document_count": -1
+          }
+        }
+      ]
+    },
+    "purpose": "Provide an operational view of log volume by retention class to support retention and growth-management decisions."
+  },
+  "QP14": {
+    "id": "QP14",
+    "name": "Lookup policy metadata with associated rules for analytics context",
+    "serves": [
+      "UC3",
+      "UC1",
+      "FR13"
+    ],
+    "collections": [
+      "policies",
+      "rules"
+    ],
+    "query": {
+      "collection": "policies",
+      "type": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "policy_id": "<policy_id>",
+            "version": "<policy_version>"
+          }
+        },
+        {
+          "$lookup": {
+            "from": "rules",
+            "let": {
+              "pid": "$policy_id",
+              "pver": "$version"
+            },
+            "pipeline": [
+              {
+                "$match": {
+                  "$expr": {
+                    "$and": [
+                      {
+                        "$eq": [
+                          "$policy_id",
+                          "$$pid"
+                        ]
+                      },
+                      {
+                        "$eq": [
+                          "$policy_version",
+                          "$$pver"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "$sort": {
+                  "sequence": 1
+                }
+              },
+              {
+                "$project": {
+                  "_id": 0,
+                  "rule_id": 1,
+                  "name": 1,
+                  "sequence": 1,
+                  "description": 1,
+                  "is_lookup_enabled": 1
+                }
+              }
+            ],
+            "as": "rules"
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "policy_id": 1,
+            "name": 1,
+            "version": 1,
+            "status": 1,
+            "published_at": 1,
+            "consolidated_input_schema": 1,
+            "rules": 1
+          }
+        }
+      ]
+    },
+    "purpose": "Fetch a policy version and its ordered rule definitions to give context during audit review or policy-impact analysis."
+  }
+}
