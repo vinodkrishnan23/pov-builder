@@ -1,0 +1,348 @@
+{
+  "qp1_ticket_lookup_by_ticket_number": {
+    "id": "qp1_ticket_lookup_by_ticket_number",
+    "name": "Lookup ticket by exact ticket number",
+    "serves": [
+      "uc1"
+    ],
+    "collections": [
+      "support_tickets"
+    ],
+    "for": "Open a specific support ticket for triage when the agent knows the ticket number.",
+    "query": {
+      "collection": "support_tickets",
+      "operation": "findOne",
+      "filter": {
+        "ticket_number": "<ticket_number>",
+        "internal_only": true
+      },
+      "projection": {
+        "_id": 1,
+        "ticket_number": 1,
+        "subject": 1,
+        "description": 1,
+        "customer_name": 1,
+        "customer_email": 1,
+        "product_area": 1,
+        "priority": 1,
+        "status": 1,
+        "created_at": 1,
+        "updated_at": 1,
+        "resolved_at": 1,
+        "resolution_summary": 1,
+        "triage_guidance": 1,
+        "similar_resolved_ticket_ids": 1
+      }
+    }
+  },
+  "qp2_ticket_lookup_by_id": {
+    "id": "qp2_ticket_lookup_by_id",
+    "name": "Lookup ticket by ticket id",
+    "serves": [
+      "uc1"
+    ],
+    "collections": [
+      "support_tickets"
+    ],
+    "for": "Open a specific support ticket for triage when the application already has the ticket document id.",
+    "query": {
+      "collection": "support_tickets",
+      "operation": "findOne",
+      "filter": {
+        "_id": "<ticket_id>",
+        "internal_only": true
+      },
+      "projection": {
+        "_id": 1,
+        "ticket_number": 1,
+        "subject": 1,
+        "description": 1,
+        "customer_name": 1,
+        "customer_email": 1,
+        "product_area": 1,
+        "priority": 1,
+        "status": 1,
+        "created_at": 1,
+        "updated_at": 1,
+        "resolved_at": 1,
+        "resolution_summary": 1,
+        "triage_guidance": 1,
+        "similar_resolved_ticket_ids": 1
+      }
+    }
+  },
+  "qp3_ticket_search_for_lookup": {
+    "id": "qp3_ticket_search_for_lookup",
+    "name": "Search tickets for lookup",
+    "serves": [
+      "uc1"
+    ],
+    "collections": [
+      "support_tickets"
+    ],
+    "for": "Let a support agent search tickets by text and optionally narrow by status while trying to find the right ticket to open.",
+    "query": {
+      "collection": "support_tickets",
+      "operation": "find",
+      "filter": {
+        "internal_only": true,
+        "$and": [
+          {
+            "$or": [
+              {
+                "ticket_number": {
+                  "$regex": "<search_text>",
+                  "$options": "i"
+                }
+              },
+              {
+                "subject": {
+                  "$regex": "<search_text>",
+                  "$options": "i"
+                }
+              },
+              {
+                "description": {
+                  "$regex": "<search_text>",
+                  "$options": "i"
+                }
+              }
+            ]
+          },
+          {
+            "status": {
+              "$in": "<optional_status_list>"
+            }
+          }
+        ]
+      },
+      "projection": {
+        "_id": 1,
+        "ticket_number": 1,
+        "subject": 1,
+        "product_area": 1,
+        "priority": 1,
+        "status": 1,
+        "created_at": 1,
+        "updated_at": 1
+      },
+      "sort": {
+        "updated_at": -1
+      },
+      "limit": 25
+    }
+  },
+  "qp4_ticket_with_ai_guidance": {
+    "id": "qp4_ticket_with_ai_guidance",
+    "name": "Fetch ticket with embedded AI triage guidance",
+    "serves": [
+      "uc2"
+    ],
+    "collections": [
+      "support_tickets"
+    ],
+    "for": "Show the current ticket details together with its embedded AI-suggested triage guidance.",
+    "query": {
+      "collection": "support_tickets",
+      "operation": "findOne",
+      "filter": {
+        "_id": "<ticket_id>",
+        "internal_only": true
+      },
+      "projection": {
+        "_id": 1,
+        "ticket_number": 1,
+        "subject": 1,
+        "description": 1,
+        "product_area": 1,
+        "priority": 1,
+        "status": 1,
+        "triage_guidance.generated_at": 1,
+        "triage_guidance.summary": 1,
+        "triage_guidance.suggested_category": 1,
+        "triage_guidance.suggested_priority": 1,
+        "triage_guidance.recommended_actions": 1,
+        "triage_guidance.confidence": 1,
+        "similar_resolved_ticket_ids": 1
+      }
+    }
+  },
+  "qp5_fetch_similar_resolved_tickets": {
+    "id": "qp5_fetch_similar_resolved_tickets",
+    "name": "Fetch similar resolved tickets for a ticket",
+    "serves": [
+      "uc2"
+    ],
+    "collections": [
+      "support_tickets"
+    ],
+    "for": "Retrieve the resolved ticket records linked as similar examples for the current ticket.",
+    "query": {
+      "collection": "support_tickets",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "_id": "<ticket_id>",
+            "internal_only": true
+          }
+        },
+        {
+          "$project": {
+            "similar_resolved_ticket_ids": 1
+          }
+        },
+        {
+          "$lookup": {
+            "from": "support_tickets",
+            "let": {
+              "similarIds": "$similar_resolved_ticket_ids"
+            },
+            "pipeline": [
+              {
+                "$match": {
+                  "$expr": {
+                    "$and": [
+                      {
+                        "$in": [
+                          "$_id",
+                          "$$similarIds"
+                        ]
+                      },
+                      {
+                        "$eq": [
+                          "$status",
+                          "resolved"
+                        ]
+                      },
+                      {
+                        "$eq": [
+                          "$internal_only",
+                          true
+                        ]
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "$project": {
+                  "_id": 1,
+                  "ticket_number": 1,
+                  "subject": 1,
+                  "product_area": 1,
+                  "priority": 1,
+                  "resolved_at": 1,
+                  "resolution_summary": 1,
+                  "triage_guidance.summary": 1
+                }
+              },
+              {
+                "$sort": {
+                  "resolved_at": -1
+                }
+              }
+            ],
+            "as": "similar_resolved_tickets"
+          }
+        },
+        {
+          "$project": {
+            "_id": 0,
+            "similar_resolved_tickets": 1
+          }
+        }
+      ]
+    }
+  },
+  "qp6_resolve_ticket_update": {
+    "id": "qp6_resolve_ticket_update",
+    "name": "Mark ticket resolved",
+    "serves": [
+      "uc3"
+    ],
+    "collections": [
+      "support_tickets"
+    ],
+    "for": "Update a ticket's status to resolved and store resolution details when an agent completes handling.",
+    "query": {
+      "collection": "support_tickets",
+      "operation": "updateOne",
+      "filter": {
+        "_id": "<ticket_id>",
+        "internal_only": true,
+        "status": {
+          "$in": [
+            "open",
+            "in_progress"
+          ]
+        }
+      },
+      "update": {
+        "$set": {
+          "status": "resolved",
+          "resolved_at": "<resolved_at>",
+          "resolution_summary": "<resolution_summary>",
+          "updated_at": "<resolved_at>"
+        }
+      }
+    }
+  },
+  "qp7_create_resolution_event": {
+    "id": "qp7_create_resolution_event",
+    "name": "Create ticket resolution audit event",
+    "serves": [
+      "uc3"
+    ],
+    "collections": [
+      "ticket_resolution_events"
+    ],
+    "for": "Record an audit-style event showing which internal user resolved the ticket and when.",
+    "query": {
+      "collection": "ticket_resolution_events",
+      "operation": "insertOne",
+      "document": {
+        "ticket_id": "<ticket_id>",
+        "resolved_by_user_id": "<internal_user_id>",
+        "resolved_at": "<resolved_at>",
+        "resolution_summary": "<resolution_summary>",
+        "status_after_action": "resolved"
+      }
+    }
+  },
+  "qp8_validate_internal_user_access": {
+    "id": "qp8_validate_internal_user_access",
+    "name": "Validate internal user access",
+    "serves": [
+      "uc1",
+      "uc2",
+      "uc3"
+    ],
+    "collections": [
+      "internal_users"
+    ],
+    "for": "Confirm the acting user is an active internal support user or admin before allowing POV access.",
+    "query": {
+      "collection": "internal_users",
+      "operation": "findOne",
+      "filter": {
+        "_id": "<internal_user_id>",
+        "is_active": true,
+        "internal_only": true,
+        "role": {
+          "$in": [
+            "support_agent",
+            "admin"
+          ]
+        }
+      },
+      "projection": {
+        "_id": 1,
+        "email": 1,
+        "name": 1,
+        "role": 1,
+        "is_active": 1
+      }
+    }
+  }
+}
