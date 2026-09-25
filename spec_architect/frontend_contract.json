@@ -1,0 +1,609 @@
+{
+  "app_name": "Streaming Progress Endpoint POV Validator",
+  "scope_alignment": "Frontend only supports creating, updating, recording, listing, and inspecting end-to-end validation runs for the fixed streaming progress endpoint, strictly using the authoritative API contract.",
+  "routes": [
+    {
+      "path": "/",
+      "redirect_to": "/test-runs"
+    },
+    {
+      "path": "/test-runs",
+      "page_id": "test_run_list_page"
+    },
+    {
+      "path": "/test-runs/new",
+      "page_id": "create_test_run_page"
+    },
+    {
+      "path": "/test-runs/:test_run_id",
+      "page_id": "test_run_detail_page"
+    },
+    {
+      "path": "/test-runs/:test_run_id/inspection",
+      "page_id": "test_run_inspection_page"
+    }
+  ],
+  "pages": [
+    {
+      "page_id": "test_run_list_page",
+      "route": "/test-runs",
+      "title": "Validation Runs",
+      "purpose": "View recent end-to-end validation runs for the streaming progress endpoint, filter by key metadata, and navigate to detailed inspection.",
+      "data_requirements": [
+        {
+          "name": "test_runs",
+          "description": "Recent validation runs with latest outcome metadata.",
+          "source": "API",
+          "endpoint": "listTestRuns",
+          "fields": [
+            "items._id",
+            "items.run_name",
+            "items.status",
+            "items.started_at",
+            "items.completed_at",
+            "items.endpoint_path",
+            "items.endpoint_method",
+            "items.environment",
+            "items.initiated_by",
+            "items.summary.total_events",
+            "items.summary.expected_final_state",
+            "items.summary.observed_final_state",
+            "items.summary.pass_reason",
+            "items.summary.failure_reason"
+          ]
+        }
+      ],
+      "api_consumption": [
+        {
+          "operationId": "listTestRuns",
+          "method": "GET",
+          "path": "/test-runs",
+          "usage": "Initial page load and filter refresh."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "Filter runs by endpoint path",
+          "api": "listTestRuns",
+          "details": "Applies endpoint_path query parameter."
+        },
+        {
+          "action": "Filter runs by environment",
+          "api": "listTestRuns",
+          "details": "Applies environment query parameter."
+        },
+        {
+          "action": "Filter runs by status",
+          "api": "listTestRuns",
+          "details": "Applies status query parameter."
+        },
+        {
+          "action": "Filter runs by start date range",
+          "api": "listTestRuns",
+          "details": "Applies started_at_gte and/or started_at_lte query parameters."
+        },
+        {
+          "action": "Limit number of returned runs",
+          "api": "listTestRuns",
+          "details": "Applies limit query parameter."
+        },
+        {
+          "action": "Open create run screen",
+          "navigation": "/test-runs/new"
+        },
+        {
+          "action": "Open run detail",
+          "navigation": "/test-runs/:test_run_id"
+        },
+        {
+          "action": "Open run inspection",
+          "navigation": "/test-runs/:test_run_id/inspection"
+        }
+      ],
+      "loading_states": [
+        "Initial skeleton table/cards while GET /test-runs is in progress.",
+        "Inline loading indicator when filters are changed and list is refreshing."
+      ],
+      "error_states": [
+        {
+          "case": "Invalid query parameters (400 INVALID_QUERY)",
+          "ui_response": "Show filter-level error message indicating invalid status, date, or limit input and preserve current inputs for correction."
+        },
+        {
+          "case": "Unexpected fetch failure",
+          "ui_response": "Show full-page or inline retry state with last attempted filters."
+        }
+      ],
+      "empty_states": [
+        "No test runs returned: show empty list message and CTA to create a new run.",
+        "No results for current filters: show clear-filters option."
+      ],
+      "components": [
+        "PageHeader",
+        "RunFilters",
+        "RunListTable",
+        "RunStatusBadge",
+        "RunSummarySnippet",
+        "EmptyState",
+        "ErrorState",
+        "LoadingTable",
+        "PrimaryButton"
+      ]
+    },
+    {
+      "page_id": "create_test_run_page",
+      "route": "/test-runs/new",
+      "title": "Create Validation Run",
+      "purpose": "Register a new queued validation run before or at test start.",
+      "data_requirements": [
+        {
+          "name": "new_test_run_form",
+          "description": "User-entered metadata required to create a test run.",
+          "source": "User input",
+          "fields": [
+            "run_name",
+            "status",
+            "started_at",
+            "endpoint_path",
+            "endpoint_method",
+            "environment",
+            "initiated_by",
+            "summary.total_events",
+            "summary.expected_final_state"
+          ]
+        }
+      ],
+      "api_consumption": [
+        {
+          "operationId": "createTestRun",
+          "method": "POST",
+          "path": "/test-runs",
+          "usage": "Submit new queued validation run."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "Enter run metadata",
+          "details": "Capture endpoint path, method, start time, optional environment, initiator, run name, and optional expected summary values."
+        },
+        {
+          "action": "Submit create form",
+          "api": "createTestRun",
+          "details": "POST body must include status='queued', started_at, endpoint_path, endpoint_method."
+        },
+        {
+          "action": "Cancel creation",
+          "navigation": "/test-runs"
+        },
+        {
+          "action": "After success, navigate to run detail",
+          "navigation": "/test-runs/:test_run_id"
+        }
+      ],
+      "loading_states": [
+        "Disable submit button and show in-progress state during POST /test-runs."
+      ],
+      "error_states": [
+        {
+          "case": "Invalid request (400 INVALID_REQUEST)",
+          "ui_response": "Show field and/or form errors for missing required values, unsupported fields, invalid method, or non-queued status."
+        },
+        {
+          "case": "Unexpected create failure",
+          "ui_response": "Show retryable form-level error without losing entered values."
+        }
+      ],
+      "empty_states": [],
+      "components": [
+        "PageHeader",
+        "TestRunForm",
+        "DateTimeInput",
+        "EndpointMethodSelect",
+        "EnvironmentInput",
+        "InitiatedByInput",
+        "ExpectedSummaryFields",
+        "FormActions",
+        "InlineError",
+        "PrimaryButton",
+        "SecondaryButton"
+      ]
+    },
+    {
+      "page_id": "test_run_detail_page",
+      "route": "/test-runs/:test_run_id",
+      "title": "Validation Run Detail",
+      "purpose": "Inspect one validation run, view ordered event history, and support manual lifecycle/event recording during an end-to-end test.",
+      "data_requirements": [
+        {
+          "name": "test_run_metadata",
+          "description": "Core run metadata and latest persisted summary.",
+          "source": "API",
+          "endpoint": "getTestRunById",
+          "fields": [
+            "_id",
+            "run_name",
+            "status",
+            "started_at",
+            "completed_at",
+            "endpoint_path",
+            "endpoint_method",
+            "environment",
+            "initiated_by",
+            "summary.total_events",
+            "summary.expected_final_state",
+            "summary.observed_final_state",
+            "summary.pass_reason",
+            "summary.failure_reason"
+          ]
+        },
+        {
+          "name": "ordered_progress_events",
+          "description": "Ordered progress event stream for the run.",
+          "source": "API",
+          "endpoint": "getOrderedProgressEvents",
+          "fields": [
+            "items._id",
+            "items.sequence_number",
+            "items.event_timestamp",
+            "items.event_type",
+            "items.progress_percent",
+            "items.message",
+            "items.raw_payload",
+            "items.is_terminal",
+            "items.validation.is_expected_order",
+            "items.validation.is_valid_payload",
+            "items.validation.notes"
+          ]
+        }
+      ],
+      "api_consumption": [
+        {
+          "operationId": "getTestRunById",
+          "method": "GET",
+          "path": "/test-runs/{test_run_id}",
+          "usage": "Load run metadata."
+        },
+        {
+          "operationId": "getOrderedProgressEvents",
+          "method": "GET",
+          "path": "/test-runs/{test_run_id}/events",
+          "usage": "Load event stream."
+        },
+        {
+          "operationId": "updateTestRunStatus",
+          "method": "PATCH",
+          "path": "/test-runs/{test_run_id}/status",
+          "usage": "Manually update lifecycle state or final outcome details."
+        },
+        {
+          "operationId": "appendProgressEvent",
+          "method": "POST",
+          "path": "/test-runs/{test_run_id}/events",
+          "usage": "Manually append observed streamed event during testing."
+        },
+        {
+          "operationId": "getTestRunWithEvents",
+          "method": "GET",
+          "path": "/test-runs/{test_run_id}/full",
+          "usage": "Optional optimization for a single-call detail hydration instead of separate metadata + events calls."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "Refresh metadata and events",
+          "api": "getTestRunById + getOrderedProgressEvents",
+          "details": "Manual refresh because no streaming/subscription endpoint exists in the API contract."
+        },
+        {
+          "action": "Mark run as running",
+          "api": "updateTestRunStatus",
+          "details": "PATCH status=running."
+        },
+        {
+          "action": "Mark run as passed",
+          "api": "updateTestRunStatus",
+          "details": "PATCH status=passed with optional completed_at and summary.observed_final_state/pass_reason."
+        },
+        {
+          "action": "Mark run as failed",
+          "api": "updateTestRunStatus",
+          "details": "PATCH status=failed with optional completed_at and summary.observed_final_state/failure_reason."
+        },
+        {
+          "action": "Mark run as cancelled",
+          "api": "updateTestRunStatus",
+          "details": "PATCH status=cancelled with optional completed_at."
+        },
+        {
+          "action": "Append event",
+          "api": "appendProgressEvent",
+          "details": "Record observed event with required sequence_number and event_timestamp; optional payload and validation details."
+        },
+        {
+          "action": "Navigate to focused inspection view",
+          "navigation": "/test-runs/:test_run_id/inspection"
+        }
+      ],
+      "loading_states": [
+        "Page-level loading while run metadata and events are fetched.",
+        "Section-level loading when only events are refreshing.",
+        "Inline submit spinners for status update and event append forms."
+      ],
+      "error_states": [
+        {
+          "case": "Invalid or malformed run id (400 INVALID_ID on GET)",
+          "ui_response": "Show invalid run identifier message and link back to run list."
+        },
+        {
+          "case": "Run not found (404 NOT_FOUND on metadata/full fetch)",
+          "ui_response": "Show not found state with navigation back to run list."
+        },
+        {
+          "case": "Invalid status patch request (400 INVALID_REQUEST)",
+          "ui_response": "Show validation errors on status form."
+        },
+        {
+          "case": "Run not found on status patch (404 NOT_FOUND)",
+          "ui_response": "Show stale record warning and prompt to return to list."
+        },
+        {
+          "case": "Invalid event append request (400 INVALID_REQUEST)",
+          "ui_response": "Show event form validation errors."
+        },
+        {
+          "case": "Events fetch error",
+          "ui_response": "Show retryable error within event stream section while preserving loaded metadata if available."
+        }
+      ],
+      "empty_states": [
+        "No progress events recorded yet: show empty event stream message and manual append event CTA."
+      ],
+      "components": [
+        "PageHeader",
+        "RunMetadataPanel",
+        "RunStatusBadge",
+        "StatusUpdateForm",
+        "EventAppendForm",
+        "EventStreamTable",
+        "JsonPayloadViewer",
+        "ValidationPill",
+        "RefreshButton",
+        "InlineError",
+        "EmptyState",
+        "LoadingPanel"
+      ]
+    },
+    {
+      "page_id": "test_run_inspection_page",
+      "route": "/test-runs/:test_run_id/inspection",
+      "title": "Run Inspection Summary",
+      "purpose": "Review computed event-derived summary metrics and quickly inspect terminal or anomalous events for one run.",
+      "data_requirements": [
+        {
+          "name": "run_metadata",
+          "description": "Basic run identity/context for page header.",
+          "source": "API",
+          "endpoint": "getTestRunById",
+          "fields": [
+            "_id",
+            "run_name",
+            "status",
+            "started_at",
+            "completed_at",
+            "endpoint_path",
+            "endpoint_method",
+            "environment",
+            "initiated_by",
+            "summary.expected_final_state",
+            "summary.observed_final_state",
+            "summary.pass_reason",
+            "summary.failure_reason"
+          ]
+        },
+        {
+          "name": "computed_summary",
+          "description": "Metrics derived from captured events.",
+          "source": "API",
+          "endpoint": "getTestRunSummaryFromEvents",
+          "fields": [
+            "test_run_id",
+            "total_events",
+            "first_event_at",
+            "last_event_at",
+            "terminal_event.sequence_number",
+            "terminal_event.event_type",
+            "terminal_event.progress_percent",
+            "terminal_event.message",
+            "invalid_payload_count",
+            "out_of_order_count",
+            "observed_final_state"
+          ]
+        },
+        {
+          "name": "anomalous_or_terminal_events",
+          "description": "Filtered set of terminal and anomalous events.",
+          "source": "API",
+          "endpoint": "getTerminalOrAnomalousEvents",
+          "fields": [
+            "items._id",
+            "items.sequence_number",
+            "items.event_timestamp",
+            "items.event_type",
+            "items.progress_percent",
+            "items.message",
+            "items.is_terminal",
+            "items.validation.is_expected_order",
+            "items.validation.is_valid_payload",
+            "items.validation.notes"
+          ]
+        }
+      ],
+      "api_consumption": [
+        {
+          "operationId": "getTestRunById",
+          "method": "GET",
+          "path": "/test-runs/{test_run_id}",
+          "usage": "Load run context."
+        },
+        {
+          "operationId": "getTestRunSummaryFromEvents",
+          "method": "GET",
+          "path": "/test-runs/{test_run_id}/summary",
+          "usage": "Load computed metrics."
+        },
+        {
+          "operationId": "getTerminalOrAnomalousEvents",
+          "method": "GET",
+          "path": "/test-runs/{test_run_id}/events/anomalies",
+          "usage": "Load terminal/anomalous events."
+        }
+      ],
+      "user_actions": [
+        {
+          "action": "Refresh computed inspection data",
+          "api": "getTestRunSummaryFromEvents + getTerminalOrAnomalousEvents"
+        },
+        {
+          "action": "Navigate back to run detail",
+          "navigation": "/test-runs/:test_run_id"
+        },
+        {
+          "action": "Use anomalies list to identify issues for manual status update on detail page",
+          "navigation": "Contextual return to detail page; no direct anomaly resolution endpoint exists."
+        }
+      ],
+      "loading_states": [
+        "Page-level loading while all inspection resources are fetched.",
+        "Card/list-level loading placeholders during refresh."
+      ],
+      "error_states": [
+        {
+          "case": "Invalid run id (400 INVALID_ID)",
+          "ui_response": "Show invalid identifier state."
+        },
+        {
+          "case": "Run not found for metadata (404 NOT_FOUND)",
+          "ui_response": "Show missing run state."
+        },
+        {
+          "case": "No events found for summary computation (404 NOT_FOUND from summary endpoint)",
+          "ui_response": "Show no-event summary state; still allow anomalies request result rendering if available and link to detail page to append events."
+        },
+        {
+          "case": "Anomalies fetch invalid id (400 INVALID_ID)",
+          "ui_response": "Show retry-disabled invalid id state."
+        },
+        {
+          "case": "Unexpected fetch failure",
+          "ui_response": "Show partial-content tolerant error banners per section."
+        }
+      ],
+      "empty_states": [
+        "No anomalous or terminal events returned: show clean-run message.",
+        "No events available yet for summary: show guidance to record or ingest events from detail page."
+      ],
+      "components": [
+        "PageHeader",
+        "RunContextHeader",
+        "SummaryMetricCards",
+        "TerminalEventCard",
+        "AnomalyList",
+        "ValidationBadge",
+        "SectionError",
+        "SectionLoading",
+        "BackLink"
+      ]
+    }
+  ],
+  "shared_components": [
+    {
+      "component": "PageHeader",
+      "purpose": "Consistent title, breadcrumbs, and primary actions."
+    },
+    {
+      "component": "RunFilters",
+      "purpose": "Collect filter criteria for run listing."
+    },
+    {
+      "component": "RunListTable",
+      "purpose": "Display pageless list of recent runs using returned items only; no pagination assumptions because contract exposes only limit."
+    },
+    {
+      "component": "RunStatusBadge",
+      "purpose": "Visual status indicator for queued/running/passed/failed/cancelled."
+    },
+    {
+      "component": "RunSummarySnippet",
+      "purpose": "Compact rendering of summary fields available on list rows."
+    },
+    {
+      "component": "TestRunForm",
+      "purpose": "Form wrapper for create run inputs aligned to createTestRun request schema."
+    },
+    {
+      "component": "StatusUpdateForm",
+      "purpose": "PATCH status submission form limited to allowed fields."
+    },
+    {
+      "component": "EventAppendForm",
+      "purpose": "POST progress event form limited to appendProgressEvent schema."
+    },
+    {
+      "component": "RunMetadataPanel",
+      "purpose": "Structured display of run metadata and persisted summary fields."
+    },
+    {
+      "component": "EventStreamTable",
+      "purpose": "Ordered event display with optional raw payload expansion."
+    },
+    {
+      "component": "JsonPayloadViewer",
+      "purpose": "Read-only rendering of raw_payload objects."
+    },
+    {
+      "component": "SummaryMetricCards",
+      "purpose": "Display computed event-derived metrics from summary endpoint."
+    },
+    {
+      "component": "TerminalEventCard",
+      "purpose": "Highlight terminal event details from computed summary."
+    },
+    {
+      "component": "AnomalyList",
+      "purpose": "Display terminal/anomalous event subset with validation flags."
+    },
+    {
+      "component": "ValidationPill",
+      "purpose": "Render event validation booleans and notes."
+    },
+    {
+      "component": "EmptyState",
+      "purpose": "Reusable no-data state."
+    },
+    {
+      "component": "ErrorState",
+      "purpose": "Reusable page-level error state."
+    },
+    {
+      "component": "SectionError",
+      "purpose": "Reusable section-level error message."
+    },
+    {
+      "component": "LoadingTable",
+      "purpose": "Skeleton state for list/table areas."
+    },
+    {
+      "component": "LoadingPanel",
+      "purpose": "Skeleton state for detail/inspection panels."
+    }
+  ],
+  "frontend_constraints": [
+    "No frontend feature should imply backend test execution because the API contract has no endpoint to start or orchestrate a test against the streaming endpoint beyond creating a run record.",
+    "No live auto-stream UI contract should assume SSE/WebSocket support; refresh must be manual or client-timed polling implemented against existing GET endpoints only.",
+    "No delete UI for runs or events should be offered because no delete endpoints exist.",
+    "No event edit UI should be offered because events are append-only in the API contract.",
+    "No full run edit UI should be offered; only lifecycle/status updates via PATCH /test-runs/{test_run_id}/status are supported.",
+    "No cross-run analytics dashboard beyond list filtering should be offered because the contract provides no aggregate analytics endpoints.",
+    "Pagination beyond a simple limit control should not be assumed because the list endpoint exposes limit but no cursor/page metadata."
+  ]
+}
