@@ -1,0 +1,412 @@
+{
+  "qp1": {
+    "id": "qp1",
+    "name": "Get ticket details with AI guidance and embedded triage notes",
+    "serves": [
+      "uc2"
+    ],
+    "collections": [
+      "tickets"
+    ],
+    "query": {
+      "collection": "tickets",
+      "operation": "findOne",
+      "filter": {
+        "ticket_number": "<ticket_number>"
+      },
+      "projection": {
+        "ticket_number": 1,
+        "title": 1,
+        "description": 1,
+        "status": 1,
+        "priority": 1,
+        "category": 1,
+        "tags": 1,
+        "reporter_name": 1,
+        "assignee_name": 1,
+        "created_at": 1,
+        "updated_at": 1,
+        "triage_notes": 1,
+        "ai_guidance": 1,
+        "similar_ticket_ids": 1,
+        "resolution_summary": 1,
+        "closed_at": 1
+      }
+    },
+    "purpose": "Open a specific internal ticket during triage and show its current details, AI guidance, triage notes, and references to similar tickets."
+  },
+  "qp2": {
+    "id": "qp2",
+    "name": "List active or recently updated tickets for triage queue",
+    "serves": [
+      "uc2"
+    ],
+    "collections": [
+      "tickets"
+    ],
+    "query": {
+      "collection": "tickets",
+      "operation": "find",
+      "filter": {
+        "status": {
+          "$in": [
+            "Open",
+            "In Progress",
+            "Pending Triage"
+          ]
+        },
+        "updated_at": {
+          "$gte": "<since_date>"
+        }
+      },
+      "projection": {
+        "ticket_number": 1,
+        "title": 1,
+        "status": 1,
+        "priority": 1,
+        "category": 1,
+        "assignee_name": 1,
+        "updated_at": 1
+      },
+      "sort": {
+        "updated_at": -1
+      },
+      "limit": "<limit>"
+    },
+    "purpose": "Show a triage queue of tickets that are still active or were updated recently."
+  },
+  "qp3": {
+    "id": "qp3",
+    "name": "Keyword or text search for similar historical tickets",
+    "serves": [
+      "uc2"
+    ],
+    "collections": [
+      "tickets"
+    ],
+    "query": {
+      "collection": "tickets",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$search": {
+            "index": "textual_ticket_lookup",
+            "text": {
+              "query": "<query_text>",
+              "path": [
+                "title",
+                "description",
+                "resolution_summary",
+                "tags"
+              ]
+            }
+          }
+        },
+        {
+          "$match": {
+            "_id": {
+              "$ne": "<current_ticket_id>"
+            }
+          }
+        },
+        {
+          "$project": {
+            "ticket_number": 1,
+            "title": 1,
+            "status": 1,
+            "priority": 1,
+            "category": 1,
+            "resolution_summary": 1,
+            "updated_at": 1,
+            "score": {
+              "$meta": "searchScore"
+            }
+          }
+        },
+        {
+          "$sort": {
+            "score": -1,
+            "updated_at": -1
+          }
+        },
+        {
+          "$limit": "<limit>"
+        }
+      ]
+    },
+    "purpose": "Find historically similar tickets using the search index over ticket text fields to support similar-ticket lookup during triage."
+  },
+  "qp4": {
+    "id": "qp4",
+    "name": "Resolve and display referenced similar tickets for a current ticket",
+    "serves": [
+      "uc2"
+    ],
+    "collections": [
+      "tickets"
+    ],
+    "query": {
+      "collection": "tickets",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "ticket_number": "<ticket_number>"
+          }
+        },
+        {
+          "$project": {
+            "ticket_number": 1,
+            "title": 1,
+            "similar_ticket_ids": 1
+          }
+        },
+        {
+          "$lookup": {
+            "from": "tickets",
+            "localField": "similar_ticket_ids",
+            "foreignField": "_id",
+            "as": "similar_tickets"
+          }
+        },
+        {
+          "$project": {
+            "ticket_number": 1,
+            "title": 1,
+            "similar_tickets": {
+              "$map": {
+                "input": "$similar_tickets",
+                "as": "t",
+                "in": {
+                  "_id": "$$t._id",
+                  "ticket_number": "$$t.ticket_number",
+                  "title": "$$t.title",
+                  "status": "$$t.status",
+                  "priority": "$$t.priority",
+                  "category": "$$t.category",
+                  "resolution_summary": "$$t.resolution_summary",
+                  "updated_at": "$$t.updated_at",
+                  "closed_at": "$$t.closed_at"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "purpose": "Load the current ticket together with the full details of its pre-linked similar historical tickets for triage review."
+  },
+  "qp5": {
+    "id": "qp5",
+    "name": "Get fix details to validate",
+    "serves": [
+      "uc1"
+    ],
+    "collections": [
+      "fixes"
+    ],
+    "query": {
+      "collection": "fixes",
+      "operation": "findOne",
+      "filter": {
+        "fix_key": "<fix_key>"
+      },
+      "projection": {
+        "fix_key": 1,
+        "title": 1,
+        "description": 1,
+        "system_area": 1,
+        "status": 1,
+        "implemented_at": 1,
+        "owner_name": 1,
+        "related_ticket_ids": 1,
+        "created_at": 1,
+        "updated_at": 1
+      }
+    },
+    "purpose": "Open the fix record that an engineer or QA user wants to validate."
+  },
+  "qp6": {
+    "id": "qp6",
+    "name": "Get validation history for a fix ordered by most recent run",
+    "serves": [
+      "uc1"
+    ],
+    "collections": [
+      "fix_validations"
+    ],
+    "query": {
+      "collection": "fix_validations",
+      "operation": "find",
+      "filter": {
+        "fix_id": "<fix_id>"
+      },
+      "projection": {
+        "validation_name": 1,
+        "validator_name": 1,
+        "timeout_threshold_ms": 1,
+        "observed_duration_ms": 1,
+        "result": 1,
+        "holds_under_margin": 1,
+        "notes": 1,
+        "validated_at": 1,
+        "evidence": 1
+      },
+      "sort": {
+        "validated_at": -1
+      },
+      "limit": "<limit>"
+    },
+    "purpose": "Review past validation runs for a fix, including timeout thresholds, observed durations, and whether the fix held under margin."
+  },
+  "qp7": {
+    "id": "qp7",
+    "name": "Determine latest validation outcome and margin status for a fix",
+    "serves": [
+      "uc1"
+    ],
+    "collections": [
+      "fix_validations"
+    ],
+    "query": {
+      "collection": "fix_validations",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "fix_id": "<fix_id>"
+          }
+        },
+        {
+          "$sort": {
+            "validated_at": -1
+          }
+        },
+        {
+          "$limit": 1
+        },
+        {
+          "$project": {
+            "fix_id": 1,
+            "validation_name": 1,
+            "validator_name": 1,
+            "timeout_threshold_ms": 1,
+            "observed_duration_ms": 1,
+            "result": 1,
+            "holds_under_margin": 1,
+            "validated_at": 1,
+            "notes": 1,
+            "evidence": 1
+          }
+        }
+      ]
+    },
+    "purpose": "Answer whether the most recent validation indicates that the fix still holds under the configured timeout margin."
+  },
+  "qp8": {
+    "id": "qp8",
+    "name": "Get fix with related tickets and latest validation summary",
+    "serves": [
+      "uc1"
+    ],
+    "collections": [
+      "fixes",
+      "tickets",
+      "fix_validations"
+    ],
+    "query": {
+      "collection": "fixes",
+      "operation": "aggregate",
+      "pipeline": [
+        {
+          "$match": {
+            "fix_key": "<fix_key>"
+          }
+        },
+        {
+          "$lookup": {
+            "from": "tickets",
+            "localField": "related_ticket_ids",
+            "foreignField": "_id",
+            "as": "related_tickets"
+          }
+        },
+        {
+          "$lookup": {
+            "from": "fix_validations",
+            "let": {
+              "fixId": "$_id"
+            },
+            "pipeline": [
+              {
+                "$match": {
+                  "$expr": {
+                    "$eq": [
+                      "$fix_id",
+                      "$$fixId"
+                    ]
+                  }
+                }
+              },
+              {
+                "$sort": {
+                  "validated_at": -1
+                }
+              },
+              {
+                "$limit": 1
+              },
+              {
+                "$project": {
+                  "validation_name": 1,
+                  "validator_name": 1,
+                  "timeout_threshold_ms": 1,
+                  "observed_duration_ms": 1,
+                  "result": 1,
+                  "holds_under_margin": 1,
+                  "validated_at": 1,
+                  "notes": 1,
+                  "evidence": 1
+                }
+              }
+            ],
+            "as": "latest_validation"
+          }
+        },
+        {
+          "$project": {
+            "fix_key": 1,
+            "title": 1,
+            "description": 1,
+            "system_area": 1,
+            "status": 1,
+            "implemented_at": 1,
+            "owner_name": 1,
+            "updated_at": 1,
+            "related_tickets": {
+              "$map": {
+                "input": "$related_tickets",
+                "as": "t",
+                "in": {
+                  "_id": "$$t._id",
+                  "ticket_number": "$$t.ticket_number",
+                  "title": "$$t.title",
+                  "status": "$$t.status",
+                  "priority": "$$t.priority",
+                  "updated_at": "$$t.updated_at"
+                }
+              }
+            },
+            "latest_validation": {
+              "$arrayElemAt": [
+                "$latest_validation",
+                0
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "purpose": "Provide a single view of the fix being validated, the tickets associated with it, and the newest validation result."
+  }
+}
