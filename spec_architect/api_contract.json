@@ -1,0 +1,512 @@
+{
+  "pov_name": "newgen_brms_execution_logs",
+  "version": "1.0.0",
+  "notes": [
+    "Endpoints are limited to operations directly supported by the authoritative data model and query patterns.",
+    "No write/update endpoint is defined for execution_requests or rule_execution_logs because the source of truth for ingestion is asynchronous queue/API ingestion in the existing system, and no authoritative query pattern was provided for runtime write APIs.",
+    "Retention purge execution is represented only as a preview/list endpoint backed by QP13 plus an administrative purge trigger using straightforward deleteMany CRUD implied by the data model; no archival endpoint is defined because archival is explicitly an open question/out of scope for the POV.",
+    "Authorization details are out of scope for the data model, but endpoints that expose detailed logs are intended for admin/authorized roles only per FR9."
+  ],
+  "base_path": "/api/v1",
+  "resources": {
+    "customers": {
+      "endpoints": [
+        {
+          "operation_id": "getCustomerLoggingConfig",
+          "method": "GET",
+          "path": "/customers/{customerId}/logging-config",
+          "purpose": "Retrieve customer-level logging enablement, retention settings, deployment mode, and authorized log viewer roles.",
+          "request": {
+            "path_params": {
+              "customerId": "string"
+            },
+            "query_params": {},
+            "body": null
+          },
+          "response": {
+            "status": 200,
+            "body": {
+              "customer_id": "string",
+              "customer_name": "string",
+              "deployment_mode": "on_prem|aws|azure|gcp|other_customer_cloud",
+              "logging_enabled": "boolean",
+              "retention_policy": {
+                "retention_days": "number|null",
+                "purge_mode": "ttl|scheduled_purge|manual|null",
+                "purge_after_field": "request_received_at|completed_at|null"
+              },
+              "authorized_log_viewer_roles": [
+                "string"
+              ],
+              "updated_at": "date-time"
+            }
+          },
+          "errors": [
+            {
+              "status": 404,
+              "code": "CUSTOMER_NOT_FOUND",
+              "message": "No customer configuration found for the supplied customerId."
+            },
+            {
+              "status": 400,
+              "code": "INVALID_CUSTOMER_ID",
+              "message": "customerId is missing or malformed."
+            }
+          ],
+          "backing": "QP12"
+        },
+        {
+          "operation_id": "upsertCustomerLoggingConfig",
+          "method": "PUT",
+          "path": "/customers/{customerId}/logging-config",
+          "purpose": "Create or update customer-level logging configuration, including whether execution logging is enabled and the retention policy.",
+          "request": {
+            "path_params": {
+              "customerId": "string"
+            },
+            "query_params": {},
+            "body": {
+              "customer_name": "string",
+              "deployment_mode": "on_prem|aws|azure|gcp|other_customer_cloud",
+              "logging_enabled": "boolean",
+              "retention_policy": {
+                "retention_days": "number|null",
+                "purge_mode": "ttl|scheduled_purge|manual|null",
+                "purge_after_field": "request_received_at|completed_at|null"
+              },
+              "authorized_log_viewer_roles": [
+                "string"
+              ]
+            }
+          },
+          "response": {
+            "status": 200,
+            "body": {
+              "customer_id": "string",
+              "customer_name": "string",
+              "deployment_mode": "on_prem|aws|azure|gcp|other_customer_cloud",
+              "logging_enabled": "boolean",
+              "retention_policy": {
+                "retention_days": "number|null",
+                "purge_mode": "ttl|scheduled_purge|manual|null",
+                "purge_after_field": "request_received_at|completed_at|null"
+              },
+              "authorized_log_viewer_roles": [
+                "string"
+              ],
+              "created_at": "date-time",
+              "updated_at": "date-time"
+            }
+          },
+          "errors": [
+            {
+              "status": 400,
+              "code": "VALIDATION_ERROR",
+              "message": "One or more fields are invalid."
+            },
+            {
+              "status": 409,
+              "code": "CUSTOMER_ID_MISMATCH",
+              "message": "customerId in path must match body/customer context if provided."
+            }
+          ],
+          "backing": "customers.updateOne({customer_id}, {$set: ...}, {upsert: true}) as straightforward CRUD implied by the data model"
+        }
+      ]
+    },
+    "requests": {
+      "endpoints": [
+        {
+          "operation_id": "getRequestSummary",
+          "method": "GET",
+          "path": "/customers/{customerId}/requests/{requestId}",
+          "purpose": "Fetch the request-level execution log entry for a specific request ID so an admin or API consumer can inspect the full input/output and final outcome.",
+          "request": {
+            "path_params": {
+              "customerId": "string",
+              "requestId": "string"
+            },
+            "query_params": {},
+            "body": null
+          },
+          "response": {
+            "status": 200,
+            "body": {
+              "customer_id": "string",
+              "request_id": "string",
+              "correlation_id": "string|null",
+              "policy_id": "string",
+              "policy_version": "string",
+              "request_received_at": "date-time",
+              "completed_at": "date-time|null",
+              "duration_ms": "number|null",
+              "channel": "string|null",
+              "request_payload": "object",
+              "response_payload": "object|null",
+              "intermediate_summary": "object|null",
+              "outcome": {
+                "decision": "string|null",
+                "status": "string|null",
+                "score": "number|null",
+                "reason_codes": [
+                  "string"
+                ]
+              },
+              "analytics_dimensions": "object|null",
+              "executed_rule_names": [
+                "string"
+              ],
+              "rule_execution_count": "number|null",
+              "logging_ingest": {
+                "ingested_at": "date-time|null",
+                "ingest_source": "kafka|queue|api|batch|null",
+                "ingest_status": "received|persisted|error|null"
+              }
+            }
+          },
+          "errors": [
+            {
+              "status": 404,
+              "code": "REQUEST_NOT_FOUND",
+              "message": "No execution request found for the supplied customerId and requestId."
+            },
+            {
+              "status": 400,
+              "code": "INVALID_REQUEST_ID",
+              "message": "requestId is missing or malformed."
+            }
+          ],
+          "backing": "QP1"
+        },
+        {
+          "operation_id": "getRequestSummaryByCorrelationId",
+          "method": "GET",
+          "path": "/customers/{customerId}/requests/by-correlation/{correlationId}",
+          "purpose": "Fetch the request-level execution log entry for a specific correlation ID when that identifier is used instead of request ID.",
+          "request": {
+            "path_params": {
+              "customerId": "string",
+              "correlationId": "string"
+            },
+            "query_params": {},
+            "body": null
+          },
+          "response": {
+            "status": 200,
+            "body": {
+              "customer_id": "string",
+              "request_id": "string",
+              "correlation_id": "string|null",
+              "policy_id": "string",
+              "policy_version": "string",
+              "request_received_at": "date-time",
+              "completed_at": "date-time|null",
+              "duration_ms": "number|null",
+              "channel": "string|null",
+              "request_payload": "object",
+              "response_payload": "object|null",
+              "intermediate_summary": "object|null",
+              "outcome": {
+                "decision": "string|null",
+                "status": "string|null",
+                "score": "number|null",
+                "reason_codes": [
+                  "string"
+                ]
+              },
+              "analytics_dimensions": "object|null",
+              "executed_rule_names": [
+                "string"
+              ],
+              "rule_execution_count": "number|null",
+              "logging_ingest": {
+                "ingested_at": "date-time|null",
+                "ingest_source": "kafka|queue|api|batch|null",
+                "ingest_status": "received|persisted|error|null"
+              }
+            }
+          },
+          "errors": [
+            {
+              "status": 404,
+              "code": "REQUEST_NOT_FOUND",
+              "message": "No execution request found for the supplied customerId and correlationId."
+            },
+            {
+              "status": 400,
+              "code": "INVALID_CORRELATION_ID",
+              "message": "correlationId is missing or malformed."
+            }
+          ],
+          "backing": "QP1"
+        },
+        {
+          "operation_id": "getRequestRuleTrace",
+          "method": "GET",
+          "path": "/customers/{customerId}/requests/{requestId}/rule-trace",
+          "purpose": "Return the detailed, ordered rule-by-rule and stage-by-stage execution trace for a request.",
+          "request": {
+            "path_params": {
+              "customerId": "string",
+              "requestId": "string"
+            },
+            "query_params": {},
+            "body": null
+          },
+          "response": {
+            "status": 200,
+            "body": {
+              "request_id": "string",
+              "rule_execution_trace": [
+                {
+                  "request_id": "string",
+                  "policy_id": "string",
+                  "policy_version": "string",
+                  "rule_log_seq": "number",
+                  "rule_id": "string|null",
+                  "rule_name": "string",
+                  "rule_type": "string|null",
+                  "stage_name": "string|null",
+                  "executed_at": "date-time",
+                  "duration_ms": "number|null",
+                  "execution_result": "matched|not_matched|executed|skipped|error|null",
+                  "condition_expression": "string|null",
+                  "input_snapshot": "object|null",
+                  "output_snapshot": "object|null",
+                  "intermediate_values": "object|null",
+                  "variables_touched": [
+                    {
+                      "name": "string",
+                      "value": "mixed",
+                      "value_type": "string|null",
+                      "path": "string|null"
+                    }
+                  ],
+                  "error": {
+                    "code": "string|null",
+                    "message": "string|null"
+                  }
+                }
+              ]
+            }
+          },
+          "errors": [
+            {
+              "status": 404,
+              "code": "REQUEST_RULE_TRACE_NOT_FOUND",
+              "message": "No rule execution trace found for the supplied customerId and requestId."
+            },
+            {
+              "status": 400,
+              "code": "INVALID_REQUEST_ID",
+              "message": "requestId is missing or malformed."
+            }
+          ],
+          "backing": "QP2"
+        },
+        {
+          "operation_id": "getRequestDrilldown",
+          "method": "GET",
+          "path": "/customers/{customerId}/requests/{requestId}/drilldown",
+          "purpose": "Return a single payload containing both the request-level execution record and all associated rule execution details.",
+          "request": {
+            "path_params": {
+              "customerId": "string",
+              "requestId": "string"
+            },
+            "query_params": {},
+            "body": null
+          },
+          "response": {
+            "status": 200,
+            "body": {
+              "customer_id": "string",
+              "request_id": "string",
+              "correlation_id": "string|null",
+              "policy_id": "string",
+              "policy_version": "string",
+              "request_received_at": "date-time",
+              "completed_at": "date-time|null",
+              "duration_ms": "number|null",
+              "channel": "string|null",
+              "request_payload": "object",
+              "response_payload": "object|null",
+              "intermediate_summary": "object|null",
+              "outcome": {
+                "decision": "string|null",
+                "status": "string|null",
+                "score": "number|null",
+                "reason_codes": [
+                  "string"
+                ]
+              },
+              "analytics_dimensions": "object|null",
+              "executed_rule_names": [
+                "string"
+              ],
+              "rule_execution_count": "number|null",
+              "rule_execution_trace": [
+                {
+                  "request_id": "string",
+                  "rule_log_seq": "number",
+                  "rule_id": "string|null",
+                  "rule_name": "string",
+                  "rule_type": "string|null",
+                  "stage_name": "string|null",
+                  "executed_at": "date-time",
+                  "duration_ms": "number|null",
+                  "execution_result": "matched|not_matched|executed|skipped|error|null",
+                  "condition_expression": "string|null",
+                  "input_snapshot": "object|null",
+                  "output_snapshot": "object|null",
+                  "intermediate_values": "object|null",
+                  "variables_touched": [
+                    {
+                      "name": "string",
+                      "value": "mixed",
+                      "value_type": "string|null",
+                      "path": "string|null"
+                    }
+                  ],
+                  "error": {
+                    "code": "string|null",
+                    "message": "string|null"
+                  }
+                }
+              ]
+            }
+          },
+          "errors": [
+            {
+              "status": 404,
+              "code": "REQUEST_NOT_FOUND",
+              "message": "No execution request found for the supplied customerId and requestId."
+            },
+            {
+              "status": 400,
+              "code": "INVALID_REQUEST_ID",
+              "message": "requestId is missing or malformed."
+            }
+          ],
+          "backing": "QP3"
+        },
+        {
+          "operation_id": "getRequestDrilldownByCorrelationId",
+          "method": "GET",
+          "path": "/customers/{customerId}/requests/by-correlation/{correlationId}/drilldown",
+          "purpose": "Return a single payload containing both the request-level execution record and all associated rule execution details when correlation ID is the lookup key.",
+          "request": {
+            "path_params": {
+              "customerId": "string",
+              "correlationId": "string"
+            },
+            "query_params": {},
+            "body": null
+          },
+          "response": {
+            "status": 200,
+            "body": {
+              "customer_id": "string",
+              "request_id": "string",
+              "correlation_id": "string|null",
+              "policy_id": "string",
+              "policy_version": "string",
+              "request_received_at": "date-time",
+              "completed_at": "date-time|null",
+              "duration_ms": "number|null",
+              "channel": "string|null",
+              "request_payload": "object",
+              "response_payload": "object|null",
+              "intermediate_summary": "object|null",
+              "outcome": {
+                "decision": "string|null",
+                "status": "string|null",
+                "score": "number|null",
+                "reason_codes": [
+                  "string"
+                ]
+              },
+              "analytics_dimensions": "object|null",
+              "executed_rule_names": [
+                "string"
+              ],
+              "rule_execution_count": "number|null",
+              "rule_execution_trace": [
+                {
+                  "request_id": "string",
+                  "rule_log_seq": "number",
+                  "rule_id": "string|null",
+                  "rule_name": "string",
+                  "rule_type": "string|null",
+                  "stage_name": "string|null",
+                  "executed_at": "date-time",
+                  "duration_ms": "number|null",
+                  "execution_result": "matched|not_matched|executed|skipped|error|null",
+                  "condition_expression": "string|null",
+                  "input_snapshot": "object|null",
+                  "output_snapshot": "object|null",
+                  "intermediate_values": "object|null",
+                  "variables_touched": [
+                    {
+                      "name": "string",
+                      "value": "mixed",
+                      "value_type": "string|null",
+                      "path": "string|null"
+                    }
+                  ],
+                  "error": {
+                    "code": "string|null",
+                    "message": "string|null"
+                  }
+                }
+              ]
+            }
+          },
+          "errors": [
+            {
+              "status": 404,
+              "code": "REQUEST_NOT_FOUND",
+              "message": "No execution request found for the supplied customerId and correlationId."
+            },
+            {
+              "status": 400,
+              "code": "INVALID_CORRELATION_ID",
+              "message": "correlationId is missing or malformed."
+            }
+          ],
+          "backing": "QP3"
+        },
+        {
+          "operation_id": "searchRequests",
+          "method": "GET",
+          "path": "/customers/{customerId}/requests",
+          "purpose": "List candidate execution requests by date/time and basic metadata before drilling into a specific request.",
+          "request": {
+            "path_params": {
+              "customerId": "string"
+            },
+            "query_params": {
+              "from_ts": "date-time, required",
+              "to_ts": "date-time, required",
+              "policy_id": "string, optional",
+              "policy_version": "string, optional",
+              "channel": "string, optional",
+              "decision": "string, optional",
+              "status": "string, optional",
+              "page_size": "number, optional, default 50, max implementation-defined"
+            }
+          },
+          "body": null
+        },
+        "response\":{\"status\":200,\"body\":{\"items\":[{\"request_id\":\"string\",\"correlation_id\":\"string|null\",\"policy_id\":\"string\",\"policy_version\":\"string\",\"request_received_at\":\"date-time\",\"completed_at\":\"date-time|null\",\"duration_ms\":\"number|null\",\"channel\":\"string|null\",\"outcome\":{\"decision\":\"string|null\",\"status\":\"string|null\",\"score\":\"number|null\",\"reason_codes\":[\"string\"]},\"analytics_dimensions\":\"object|null\",\"executed_rule_names\":[\"string\"],\"rule_execution_count\":\"number|null\"}],\"page_size\":\"number\",\"next_page_token\":\"string|null\"}},\"errors\":[{\"status\":400,\"code\":\"INVALID_DATE_RANGE\",\"message\":\"from_ts and to_ts are required and must form a valid range.\"}],\"backing\":\"QP4\"},{\"operation_id\":\"searchRequestsByExecutedRule\",\"method\":\"GET\",\"path\":\"/customers/{customerId}/requests/by-rule\",\"purpose\":\"Find request executions where a specific rule fired, using the denormalized rule-name list on the request record.\",\"request\":{\"path_params\":{\"customerId\":\"string\"},\"query_params\":{\"from_ts\":\"date-time, required\",\"to_ts\":\"date-time, required\",\"rule_name\":\"string, required\",\"policy_id\":\"string, optional\",\"policy_version\":\"string, optional\",\"decision\":\"string, optional\",\"page_size\":\"number, optional, default 50, max implementation-defined\"},\"body\":null},\"response\":{\"status\":200,\"body\":{\"items\":[{\"request_id\":\"string\",\"correlation_id\":\"string|null\",\"policy_id\":\"string\",\"policy_version\":\"string\",\"request_received_at\":\"date-time\",\"outcome\":{\"decision\":\"string|null\",\"status\":\"string|null\",\"score\":\"number|null\",\"reason_codes\":[\"string\"]},\"executed_rule_names\":[\"string\"],\"analytics_dimensions\":\"object|null\"}],\"page_size\":\"number\",\"next_page_token\":\"string|null\"}},\"errors\":[{\"status\":400,\"code\":\"RULE_NAME_REQUIRED\",\"message\":\"rule_name is required.\"},{\"status\":400,\"code\":\"INVALID_DATE_RANGE\",\"message\":\"from_ts and to_ts are required and must form a valid range.\"}],\"backing\":\"QP5\"},{\"operation_id\":\"searchRequestsByJsonField\",\"method\":\"POST\",\"path\":\"/customers/{customerId}/requests/search-json\",\"purpose\":\"Find request-level executions by a value inside stored request, response, or intermediate JSON content using a dynamic field path.\",\"request\":{\"path_params\":{\"customerId\":\"string\"},\"query_params\":{},\"body\":{\"from_ts\":\"date-time\",\"to_ts\":\"date-time\",\"json_path\":\"string\",\"value\":\"mixed\"}},\"response\":{\"status\":200,\"body\":{\"items\":[{\"request_id\":\"string\",\"correlation_id\":\"string|null\",\"policy_id\":\"string\",\"policy_version\":\"string\",\"request_received_at\":\"date-time\",\"outcome\":{\"decision\":\"string|null\",\"status\":\"string|null\",\"score\":\"number|null\",\"reason_codes\":[\"string\"]},\"request_payload\":\"object\",\"response_payload\":\"object|null\",\"intermediate_summary\":\"object|null\"}],\"page_size\":\"number\",\"next_page_token\":\"string|null\"}},\"errors\":[{\"status\":400,\"code\":\"INVALID_JSON_SEARCH\",\"message\":\"from_ts, to_ts, json_path, and value are required.\"},{\"status\":400,\"code\":\"UNSAFE_JSON_PATH\",\"message\":\"json_path must be a valid allowed dotted path.\"}],\"backing\":\"QP7\"},{\"operation_id\":\"customExtractByRequestIds\",\"method\":\"POST\",\"path\":\"/customers/{customerId}/requests/custom-extract\",\"purpose\":\"Return a reusable extract for a supplied set of request IDs so delivery teams can build tailored outputs.\",\"request\":{\"path_params\":{\"customerId\":\"string\"},\"query_params\":{},\"body\":{\"request_ids\":[\"string\"]}},\"response\":{\"status\":200,\"body\":{\"items\":[{\"request_id\":\"string\",\"correlation_id\":\"string|null\",\"policy_id\":\"string\",\"policy_version\":\"string\",\"request_received_at\":\"date-time\",\"completed_at\":\"date-time|null\",\"outcome\":{\"decision\":\"string|null\",\"status\":\"string|null\",\"score\":\"number|null\",\"reason_codes\":[\"string\"]},\"analytics_dimensions\":\"object|null\",\"request_payload\":\"object\",\"response_payload\":\"object|null\",\"rule_logs\":[{\"request_id\":\"string\",\"rule_log_seq\":\"number\",\"rule_name\":\"string\",\"stage_name\":\"string|null\",\"execution_result\":\"matched|not_matched|executed|skipped|error|null\",\"variables_touched\":[{\"name\":\"string\",\"value\":\"mixed\",\"value_type\":\"string|null\",\"path\":\"string|null\"}],\"intermediate_values\":\"object|null\",\"error\":{\"code\":\"string|null\",\"message\":\"string|null\"}}]}]}},\"errors\":[{\"status\":400,\"code\":\"REQUEST_IDS_REQUIRED\",\"message\":\"request_ids must contain at least one request ID.\"},{\"status\":413,\"code\":\"TOO_MANY_REQUEST_IDS\",\"message\":\"request_ids exceeds the implementation limit for a single extract request.\"}],\"backing\":\"QP11\"}]},",
+        "rule_logs\":{\"endpoints\":[{\"operation_id\":\"searchRuleExecutionLogs\",\"method\":\"GET\",\"path\":\"/customers/{customerId}/rule-executions\",\"purpose\":\"Locate individual rule execution events where a named variable had a particular value, supporting deep troubleshooting and content-based search.\",\"request\":{\"path_params\":{\"customerId\":\"string\"},\"query_params\":{\"from_ts\":\"date-time, required\",\"to_ts\":\"date-time, required\",\"rule_name\":\"string, optional\",\"stage_name\":\"string, optional\",\"execution_result\":\"matched|not_matched|executed|skipped|error, optional\",\"variable_name\":\"string, required for variable/value search\",\"variable_value\":\"mixed, required for variable/value search\",\"page_size\":\"number, optional, default 50, max implementation-defined\"},\"body\":null},\"response\":{\"status\":200,\"body\":{\"items\":[{\"request_id\":\"string\",\"correlation_id\":\"string|null\",\"policy_id\":\"string\",\"policy_version\":\"string\",\"rule_log_seq\":\"number\",\"rule_name\":\"string\",\"stage_name\":\"string|null\",\"executed_at\":\"date-time\",\"execution_result\":\"matched|not_matched|executed|skipped|error|null\",\"variables_touched\":[{\"name\":\"string\",\"value\":\"mixed\",\"value_type\":\"string|null\",\"path\":\"string|null\"}],\"output_snapshot\":\"object|null\",\"error\":{\"code\":\"string|null\",\"message\":\"string|null\"}}],\"page_size\":\"number\",\"next_page_token\":\"string|null\"}},\"errors\":[{\"status\":400,\"code\":\"INVALID_DATE_RANGE\",\"message\":\"from_ts and to_ts are required and must form a valid range.\"},{\"status\":400,\"code\":\"VARIABLE_SEARCH_REQUIRES_NAME_AND_VALUE\",\"message\":\"variable_name and variable_value are required for this query pattern.\"}],\"backing\":\"QP6\"}]},",
+        "analytics\":{\"endpoints\":[{\"operation_id\":\"compareOutcomesByPolicyVersion\",\"method\":\"GET\",\"path\":\"/customers/{customerId}/analytics/policies/{policyId}/versions/outcomes\",\"purpose\":\"Show how outcomes differ across versions of the same policy so teams can see approval/rejection shifts and related score or latency changes.\",\"request\":{\"path_params\":{\"customerId\":\"string\",\"policyId\":\"string\"},\"query_params\":{\"from_ts\":\"date-time, required\",\"to_ts\":\"date-time, required\"},\"body\":null},\"response\":{\"status\":200,\"body\":{\"items\":[{\"policy_version\":\"string\",\"total_requests\":\"number\",\"decision_breakdown\":[{\"decision\":\"string|null\",\"count\":\"number\"}],\"avg_score\":\"number|null\",\"avg_duration_ms\":\"number|null\"}]}},\"errors\":[{\"status\":400,\"code\":\"INVALID_DATE_RANGE\",\"message\":\"from_ts and to_ts are required and must form a valid range.\"}],\"backing\":\"QP8\"},{\"operation_id\":\"analyzeOutcomesByDimension\",\"method\":\"GET\",\"path\":\"/customers/{customerId}/analytics/outcomes/by-dimension/{dimensionName}\",\"purpose\":\"Produce report-ready metrics such as approval rates by age band, region, or segment using flattened analytics dimensions.\",\"request\":{\"path_params\":{\"customerId\":\"string\",\"dimensionName\":\"string\"},\"query_params\":{\"from_ts\":\"date-time, required\",\"to_ts\":\"date-time, required\",\"policy_id\":\"string, optional\",\"policy_version\":\"string, optional\"},\"body\":null},\"response\":{\"status\":200,\"body\":{\"items\":[{\"dimension_value\":\"string|null\",\"total_requests\":\"number\",\"decision_breakdown\":[{\"decision\":\"string|null\",\"count\":\"number\",\"avg_score\":\"number|null\"}]}]}} ,\"errors\":[{\"status\":400,\"code\":\"INVALID_DATE_RANGE\",\"message\":\"from_ts and to_ts are required and must form a valid range.\"},{\"status\":400,\"code\":\"INVALID_DIMENSION_NAME\",\"message\":\"dimensionName must map to an allowed analytics_dimensions field.\"}],\"backing\":\"QP9\"},{\"operation_id\":\"identifyRuleImpactPatternsByPolicyVersion\",\"method\":\"GET\",\"path\":\"/customers/{customerId}/analytics/policies/{policyId}/rule-impact\",\"purpose\":\"Reveal which rules are firing differently across policy versions, helping explain business-impact changes beyond top-level approval rates.\",\"request\":{\"path_params\":{\"customerId\":\"string\",\"policyId\":\"string\"},\"query_params\":{\"from_ts\":\"date-time, required\",\"to_ts\":\"date-time, required\"},\"body\":null},\"response\":{\"status\":200,\"body\":{\"items\":[{\"policy_version\":\"string\",\"rule_name\":\"string\",\"total_executions\":\"number\",\"result_breakdown\":[{\"execution_result\":\"matched|not_matched|executed|skipped|error|null\",\"count\":\"number\"}],\"avg_rule_duration_ms\":\"number|null\"}]}} ,\"errors\":[{\"status\":400,\"code\":\"INVALID_DATE_RANGE\",\"message\":\"from_ts and to_ts are required and must form a valid range.\"}],\"backing\":\"QP10\"}]},",
+        "retention\":{\"endpoints\":[{\"operation_id\":\"previewRetentionPurgeCandidates\",\"method\":\"GET\",\"path\":\"/customers/{customerId}/retention/purge-candidates\",\"purpose\":\"List request and rule-log documents that have reached their retention cutoff so scheduled purge jobs or lifecycle tooling can inspect what is eligible for deletion.\",\"request\":{\"path_params\":{\"customerId\":\"string\"},\"query_params\":{\"purge_cutoff_ts\":\"date-time, required\"},\"body\":null},\"response\":{\"status\":200,\"body\":{\"execution_requests\":[{\"_id\":\"objectId\",\"request_id\":\"string\",\"expires_at\":\"date-time\"}],\"rule_execution_logs\":[{\"_id\":\"objectId\",\"request_id\":\"string\",\"rule_log_seq\":\"number\",\"expires_at\":\"date-time\"}]}} ,\"errors\":[{\"status\":400,\"code\":\"PURGE_CUTOFF_REQUIRED\",\"message\":\"purge_cutoff_ts is required.\"}],\"backing\":\"QP13\"},{\"operation_id\":\"executeRetentionPurge\",\"method\":\"POST\",\"path\":\"/customers/{customerId}/retention/purge\",\"purpose\":\"Delete request and rule-log documents whose expires_at is at or before the supplied cutoff timestamp. This is an administrative purge action for the POV and does not perform archival.\",\"request\":{\"path_params\":{\"customerId\":\"string\"},\"query_params\":{},\"body\":{\"purge_cutoff_ts\":\"date-time\",\"confirm\":\"boolean\"}},\"response\":{\"status\":200,\"body\":{\"customer_id\":\"string\",\"purge_cutoff_ts\":\"date-time\",\"deleted_counts\":{\"execution_requests\":\"number\",\"rule_execution_logs\":\"number\"}}},\"errors\":[{\"status\":400,\"code\":\"PURGE_CONFIRMATION_REQUIRED\",\"message\":\"confirm must be true to execute purge.\"},{\"status\":400,\"code\":\"PURGE_CUTOFF_REQUIRED\",\"message\":\"purge_cutoff_ts is required.\"}],\"backing\":\"execution_requests.deleteMany({customer_id, expires_at: {$lte: purge_cutoff_ts}}) and rule_execution_logs.deleteMany({customer_id, expires_at: {$lte: purge_cutoff_ts}}) as straightforward CRUD following QP13 candidate selection\"}]}},",
+        "omissions\":[{\"area\":\"Policy management CRUD\",\"reason\":\"The data model includes a policies collection, but no authoritative query pattern was provided for listing, creating, or updating policies in this POV. Adding such endpoints would redesign beyond the supplied query patterns.\"},{\"area\":\"Execution log ingestion API\",\"reason\":\"FR5 describes asynchronous ingestion via Kafka/queue or similar. The authoritative query patterns do not define a write ingestion API contract for execution_requests/rule_execution_logs, so none is invented here.\"},{\"area\":\"Archival/export lifecycle APIs\",\"reason\":\"Archival is explicitly listed as an open question and not a confirmed POV requirement.\"},{\"area\":\"Generic free-form search across all nested JSON and rule snapshots\",\"reason\":\"Only QP6 and QP7 are authoritative for variable/value and dynamic-path request JSON search. A broader arbitrary search API is not defined.\"}]},",
+        "backend_architecture\":\"A practical backend for this contract can be implemented as a small set of feature-oriented modules over MongoDB. An API layer exposes the REST endpoints and performs request validation, auth checks, and customer scoping. A customer-config module handles GET/PUT of customer logging settings against the customers collection. A request-audit module implements request summary lookup, correlation-ID lookup, request listing, rule-trace retrieval, full drill-down retrieval, JSON-path search, and custom extracts by composing QP1, QP3, QP4, QP5, QP7, and QP11. A rule-execution-search module serves deep troubleshooting searches over rule_execution_logs using QP2 and QP6. An analytics module owns the three aggregate-report endpoints backed by QP8, QP9, and QP10, including safe mapping of dimensionName path parameters to allowed analytics_dimensions fields before building the aggregation pipeline. A retention module supports operational lifecycle management: one service previews purge candidates using QP13, and another executes administrative deleteMany operations on execution_requests and rule_execution_logs for confirmed purge cutoffs. Under these feature modules, a repository/data-access layer should encapsulate the exact MongoDB find/findOne/aggregate/deleteMany/updateOne calls so endpoint handlers remain thin and traceable to the named query patterns. Cross-cutting middleware should enforce authorized access to detailed log endpoints per customer role configuration, validate date ranges and dynamic JSON paths, and attach customer context so every query is scoped by customer_id as required by the data model and single-tenant deployment assumptions.\"}\u5927\u53d1\u5b98\u7f51 to=functions.ApiContractDesignOutput \u300a\u51e4\u51f0\u5927\u53c2\u8003json  \u5929\u5929\u4e2d\u5f69\u7968\u4e70ByValidator{",
+        "backend_architecture",
+        "status"
+      ]
+    }
+  }
+}
