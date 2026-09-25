@@ -1,0 +1,1137 @@
+{
+  "version": "1.0",
+  "pov_scope": "Validate an end-to-end streaming support-ticket triage scenario that includes AI-suggested guidance and accommodates longer timeout behavior.",
+  "resources": [
+    {
+      "name": "support_tickets",
+      "endpoints": [
+        {
+          "operationId": "listTicketsNeedingTriage",
+          "method": "GET",
+          "path": "/tickets",
+          "purpose": "List internal support tickets that are new or currently in triage so the support team can select work items.",
+          "query_parameters": {
+            "status_in": {
+              "type": "array[string]",
+              "required": false,
+              "allowed_values": [
+                "new",
+                "in_triage"
+              ],
+              "default": [
+                "new",
+                "in_triage"
+              ],
+              "notes": "Only values supported by query pattern qp8 should be used in this POV."
+            }
+          },
+          "request_body": null,
+          "responses": {
+            "200": {
+              "description": "Tickets needing triage attention.",
+              "body": {
+                "tickets": [
+                  {
+                    "id": "string",
+                    "ticket_number": "string",
+                    "title": "string",
+                    "requester": {
+                      "employee_id": "string",
+                      "name": "string",
+                      "department": "string"
+                    },
+                    "status": "new|in_triage",
+                    "priority": "low|medium|high|urgent|null",
+                    "category": "string|null",
+                    "created_at": "date-time",
+                    "updated_at": "date-time",
+                    "latest_triage_run_id": "string|null"
+                  }
+                ],
+                "count": "number"
+              }
+            },
+            "400": {
+              "description": "Invalid query parameter value.",
+              "body": {
+                "error": {
+                  "code": "INVALID_QUERY_PARAMETER",
+                  "message": "One or more query parameters are invalid."
+                }
+              }
+            },
+            "500": {
+              "description": "Unexpected server error.",
+              "body": {
+                "error": {
+                  "code": "INTERNAL_ERROR",
+                  "message": "Unexpected server error."
+                }
+              }
+            }
+          },
+          "backing": "qp8_list_tickets_needing_triage"
+        },
+        {
+          "operationId": "getTicketTriageWorkspace",
+          "method": "GET",
+          "path": "/tickets/{ticketId}/workspace",
+          "purpose": "Load a ticket for triage review, including its current/latest triage run and AI-suggested guidance.",
+          "path_parameters": {
+            "ticketId": {
+              "type": "string",
+              "required": true
+            }
+          },
+          "request_body": null,
+          "responses": {
+            "200": {
+              "description": "Ticket triage workspace.",
+              "body": {
+                "ticket": {
+                  "id": "string",
+                  "ticket_number": "string",
+                  "title": "string",
+                  "description": "string",
+                  "requester": {
+                    "employee_id": "string",
+                    "name": "string",
+                    "department": "string"
+                  },
+                  "status": "new|in_triage|triaged|closed",
+                  "priority": "low|medium|high|urgent|null",
+                  "category": "string|null",
+                  "created_at": "date-time",
+                  "updated_at": "date-time"
+                },
+                "latest_run": {
+                  "id": "string",
+                  "run_type": "verification|triage",
+                  "status": "queued|running|completed|failed|timed_out|cancelled",
+                  "started_at": "date-time",
+                  "completed_at": "date-time|null",
+                  "timeout_ms": "number",
+                  "duration_ms": "number|null",
+                  "streaming": {
+                    "enabled": "boolean",
+                    "last_event_at": "date-time|null",
+                    "event_count": "number",
+                    "completion_reason": "completed|failed|timed_out|cancelled|null"
+                  },
+                  "verification_result": {
+                    "success": "boolean|null",
+                    "notes": "string|null"
+                  }
+                },
+                "guidance_suggestions": [
+                  {
+                    "id": "string",
+                    "generated_at": "date-time",
+                    "guidance_text": "string",
+                    "guidance_type": "resolution_step|categorization|prioritization|routing|general|null",
+                    "confidence_score": "number|null",
+                    "applied": "boolean|null",
+                    "model_info": {
+                      "provider": "string",
+                      "model_name": "string",
+                      "model_version": "string"
+                    }
+                  }
+                ]
+              }
+            },
+            "404": {
+              "description": "Ticket not found.",
+              "body": {
+                "error": {
+                  "code": "TICKET_NOT_FOUND",
+                  "message": "No support ticket was found for the provided ticketId."
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid ticketId.",
+              "body": {
+                "error": {
+                  "code": "INVALID_TICKET_ID",
+                  "message": "ticketId must be a valid identifier."
+                }
+              }
+            },
+            "500": {
+              "description": "Unexpected server error.",
+              "body": {
+                "error": {
+                  "code": "INTERNAL_ERROR",
+                  "message": "Unexpected server error."
+                }
+              }
+            }
+          },
+          "backing": "qp1_get_ticket_triage_workspace"
+        },
+        {
+          "operationId": "createSupportTicket",
+          "method": "POST",
+          "path": "/tickets",
+          "purpose": "Create a new internal support ticket.",
+          "request_body": {
+            "content_type": "application/json",
+            "required": true,
+            "schema": {
+              "ticket_number": "string",
+              "title": "string",
+              "description": "string",
+              "requester": {
+                "employee_id": "string",
+                "name": "string",
+                "department": "string"
+              },
+              "status": "new|in_triage|triaged|closed",
+              "priority": "low|medium|high|urgent",
+              "category": "string",
+              "latest_triage_run_id": "string|null"
+            }
+          },
+          "responses": {
+            "201": {
+              "description": "Support ticket created.",
+              "body": {
+                "id": "string",
+                "ticket_number": "string",
+                "title": "string",
+                "description": "string",
+                "requester": {
+                  "employee_id": "string",
+                  "name": "string",
+                  "department": "string"
+                },
+                "status": "new|in_triage|triaged|closed",
+                "priority": "low|medium|high|urgent|null",
+                "category": "string|null",
+                "created_at": "date-time",
+                "updated_at": "date-time",
+                "latest_triage_run_id": "string|null"
+              }
+            },
+            "400": {
+              "description": "Invalid request body or missing required fields.",
+              "body": {
+                "error": {
+                  "code": "VALIDATION_ERROR",
+                  "message": "Request body failed validation."
+                }
+              }
+            },
+            "409": {
+              "description": "Ticket_number conflict if uniqueness is enforced by the implementation.",
+              "body": {
+                "error": {
+                  "code": "TICKET_CONFLICT",
+                  "message": "A ticket with the same ticket_number already exists."
+                }
+              }
+            },
+            "500": {
+              "description": "Unexpected server error.",
+              "body": {
+                "error": {
+                  "code": "INTERNAL_ERROR",
+                  "message": "Unexpected server error."
+                }
+              }
+            }
+          },
+          "backing": "CRUD insertOne on support_tickets"
+        },
+        {
+          "operationId": "updateSupportTicket",
+          "method": "PATCH",
+          "path": "/tickets/{ticketId}",
+          "purpose": "Update mutable support ticket fields such as status, priority, category, requester, or latest triage run reference.",
+          "path_parameters": {
+            "ticketId": {
+              "type": "string",
+              "required": true
+            }
+          },
+          "request_body": {
+            "content_type": "application/json",
+            "required": true,
+            "schema": {
+              "title": "string",
+              "description": "string",
+              "requester": {
+                "employee_id": "string",
+                "name": "string",
+                "department": "string"
+              },
+              "status": "new|in_triage|triaged|closed",
+              "priority": "low|medium|high|urgent|null",
+              "category": "string|null",
+              "latest_triage_run_id": "string|null"
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Support ticket updated.",
+              "body": {
+                "id": "string",
+                "ticket_number": "string",
+                "title": "string",
+                "description": "string",
+                "requester": {
+                  "employee_id": "string",
+                  "name": "string",
+                  "department": "string"
+                },
+                "status": "new|in_triage|triaged|closed",
+                "priority": "low|medium|high|urgent|null",
+                "category": "string|null",
+                "created_at": "date-time",
+                "updated_at": "date-time",
+                "latest_triage_run_id": "string|null"
+              }
+            },
+            "400": {
+              "description": "Invalid ticketId or invalid field values.",
+              "body": {
+                "error": {
+                  "code": "VALIDATION_ERROR",
+                  "message": "Request failed validation."
+                }
+              }
+            },
+            "404": {
+              "description": "Ticket not found.",
+              "body": {
+                "error": {
+                  "code": "TICKET_NOT_FOUND",
+                  "message": "No support ticket was found for the provided ticketId."
+                }
+              }
+            },
+            "500": {
+              "description": "Unexpected server error.",
+              "body": {
+                "error": {
+                  "code": "INTERNAL_ERROR",
+                  "message": "Unexpected server error."
+                }
+              }
+            }
+          },
+          "backing": "CRUD updateOne on support_tickets"
+        }
+      ]
+    },
+    {
+      "name": "triage_runs",
+      "endpoints": [
+        {
+          "operationId": "getTicketRunHistory",
+          "method": "GET",
+          "path": "/tickets/{ticketId}/runs",
+          "purpose": "Review all verification or triage runs for a given ticket, including streaming progress and completion or timeout outcomes.",
+          "path_parameters": {
+            "ticketId": {
+              "type": "string",
+              "required": true
+            }
+          },
+          "request_body": null,
+          "responses": {
+            "200": {
+              "description": "Run history for ticket.",
+              "body": {
+                "ticket_id": "string",
+                "runs": [
+                  {
+                    "id": "string",
+                    "ticket_id": "string",
+                    "run_type": "verification|triage",
+                    "status": "queued|running|completed|failed|timed_out|cancelled",
+                    "started_at": "date-time",
+                    "completed_at": "date-time|null",
+                    "timeout_ms": "number",
+                    "duration_ms": "number|null",
+                    "streaming": {
+                      "enabled": "boolean",
+                      "last_event_at": "date-time|null",
+                      "event_count": "number",
+                      "completion_reason": "completed|failed|timed_out|cancelled|null"
+                    },
+                    "verification_result": {
+                      "success": "boolean|null",
+                      "notes": "string|null"
+                    },
+                    "created_at": "date-time",
+                    "updated_at": "date-time"
+                  }
+                ],
+                "count": "number"
+              }
+            },
+            "400": {
+              "description": "Invalid ticketId.",
+              "body": {
+                "error": {
+                  "code": "INVALID_TICKET_ID",
+                  "message": "ticketId must be a valid identifier."
+                }
+              }
+            },
+            "404": {
+              "description": "Ticket not found or no runs found. If implementation distinguishes, prefer ticket existence check first via support_tickets.",
+              "body": {
+                "error": {
+                  "code": "TICKET_OR_RUNS_NOT_FOUND",
+                  "message": "No matching ticket or triage runs were found."
+                }
+              }
+            },
+            "500": {
+              "description": "Unexpected server error.",
+              "body": {
+                "error": {
+                  "code": "INTERNAL_ERROR",
+                  "message": "Unexpected server error."
+                }
+              }
+            }
+          },
+          "backing": "qp3_get_ticket_run_history"
+        },
+        {
+          "operationId": "listActiveStreamingRuns",
+          "method": "GET",
+          "path": "/runs/active",
+          "purpose": "Monitor currently running streaming verification or triage executions and the tickets they belong to.",
+          "query_parameters": {},
+          "request_body": null,
+          "responses": {
+            "200": {
+              "description": "Active streaming runs.",
+              "body": {
+                "runs": [
+                  {
+                    "id": "string",
+                    "ticket_id": "string",
+                    "run_type": "verification|triage",
+                    "status": "running",
+                    "started_at": "date-time",
+                    "timeout_ms": "number",
+                    "duration_ms": "number|null",
+                    "streaming": {
+                      "enabled": "boolean",
+                      "last_event_at": "date-time|null",
+                      "event_count": "number",
+                      "completion_reason": "completed|failed|timed_out|cancelled|null"
+                    },
+                    "ticket": {
+                      "ticket_number": "string",
+                      "title": "string",
+                      "status": "new|in_triage|triaged|closed",
+                      "priority": "low|medium|high|urgent|null"
+                    }
+                  }
+                ],
+                "count": "number"
+              }
+            },
+            "500": {
+              "description": "Unexpected server error.",
+              "body": {
+                "error": {
+                  "code": "INTERNAL_ERROR",
+                  "message": "Unexpected server error."
+                }
+              }
+            }
+          },
+          "backing": "qp5_list_active_streaming_runs"
+        },
+        {
+          "operationId": "listRunsNearOrOverTimeout",
+          "method": "GET",
+          "path": "/runs/timeout-watch",
+          "purpose": "Identify long-running streaming executions that are approaching or have exceeded their timeout window during verification.",
+          "query_parameters": {
+            "min_utilization_pct": {
+              "type": "number",
+              "required": false,
+              "default": 80,
+              "notes": "This contract exposes the threshold concept, but the authoritative query pattern is fixed at 80% for this POV. Implementations should reject unsupported custom values rather than redesign the query."
+            }
+          },
+          "request_body": null,
+          "responses": {
+            "200": {
+              "description": "Runs near or over timeout threshold.",
+              "body": {
+                "runs": [
+                  {
+                    "id": "string",
+                    "ticket_id": "string",
+                    "status": "queued|running|completed|failed|timed_out",
+                    "started_at": "date-time",
+                    "completed_at": "date-time|null",
+                    "timeout_ms": "number",
+                    "duration_ms": "number|null",
+                    "elapsed_ms": "number|null",
+                    "timeout_utilization_pct": "number|null",
+                    "streaming": {
+                      "enabled": "boolean",
+                      "last_event_at": "date-time|null",
+                      "event_count": "number",
+                      "completion_reason": "completed|failed|timed_out|cancelled|null"
+                    },
+                    "verification_result": {
+                      "success": "boolean|null",
+                      "notes": "string|null"
+                    }
+                  }
+                ],
+                "count": "number"
+              }
+            },
+            "400": {
+              "description": "Unsupported threshold value.",
+              "body": {
+                "error": {
+                  "code": "UNSUPPORTED_THRESHOLD",
+                  "message": "Only the default timeout threshold supported by the query pattern is available in this POV."
+                }
+              }
+            },
+            "500": {
+              "description": "Unexpected server error.",
+              "body": {
+                "error": {
+                  "code": "INTERNAL_ERROR",
+                  "message": "Unexpected server error."
+                }
+              }
+            }
+          },
+          "backing": "qp6_find_runs_near_or_over_timeout"
+        },
+        {
+          "operationId": "getVerificationSummary",
+          "method": "GET",
+          "path": "/runs/{triageRunId}/verification-summary",
+          "purpose": "Summarize whether a verification run completed successfully, how many stream events occurred, whether guidance was generated, and whether timeout limits were respected.",
+          "path_parameters": {
+            "triageRunId": {
+              "type": "string",
+              "required": true
+            }
+          },
+          "request_body": null,
+          "responses": {
+            "200": {
+              "description": "Verification summary for run.",
+              "body": {
+                "id": "string",
+                "ticket_id": "string",
+                "status": "queued|running|completed|failed|timed_out|cancelled",
+                "started_at": "date-time",
+                "completed_at": "date-time|null",
+                "timeout_ms": "number",
+                "duration_ms": "number|null",
+                "elapsed_ms": "number|null",
+                "streaming_enabled": "boolean",
+                "recorded_event_count": "number",
+                "actual_event_count": "number",
+                "guidance_count": "number",
+                "completion_reason": "completed|failed|timed_out|cancelled|null",
+                "verification_success": "boolean|null",
+                "verification_notes": "string|null",
+                "completed_within_timeout": "boolean|null"
+              }
+            },
+            "400": {
+              "description": "Invalid triageRunId.",
+              "body": {
+                "error": {
+                  "code": "INVALID_RUN_ID",
+                  "message": "triageRunId must be a valid identifier."
+                }
+              }
+            },
+            "404": {
+              "description": "Verification run not found.",
+              "body": {
+                "error": {
+                  "code": "VERIFICATION_RUN_NOT_FOUND",
+                  "message": "No verification run was found for the provided triageRunId."
+                }
+              }
+            },
+            "500": {
+              "description": "Unexpected server error.",
+              "body": {
+                "error": {
+                  "code": "INTERNAL_ERROR",
+                  "message": "Unexpected server error."
+                }
+              }
+            }
+          },
+          "backing": "qp7_get_verification_summary"
+        },
+        {
+          "operationId": "createTriageRun",
+          "method": "POST",
+          "path": "/tickets/{ticketId}/runs",
+          "purpose": "Create a new verification or triage run for a support ticket.",
+          "path_parameters": {
+            "ticketId": {
+              "type": "string",
+              "required": true
+            }
+          },
+          "request_body": {
+            "content_type": "application/json",
+            "required": true,
+            "schema": {
+              "run_type": "verification|triage",
+              "status": "queued|running|completed|failed|timed_out|cancelled",
+              "started_at": "date-time",
+              "completed_at": "date-time|null",
+              "timeout_ms": "number",
+              "duration_ms": "number|null",
+              "streaming": {
+                "enabled": "boolean",
+                "last_event_at": "date-time|null",
+                "event_count": "number",
+                "completion_reason": "completed|failed|timed_out|cancelled|null"
+              },
+              "verification_result": {
+                "success": "boolean",
+                "notes": "string"
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": "Triage run created.",
+              "body": {
+                "id": "string",
+                "ticket_id": "string",
+                "run_type": "verification|triage",
+                "status": "queued|running|completed|failed|timed_out|cancelled",
+                "started_at": "date-time",
+                "completed_at": "date-time|null",
+                "timeout_ms": "number",
+                "duration_ms": "number|null",
+                "streaming": {
+                  "enabled": "boolean",
+                  "last_event_at": "date-time|null",
+                  "event_count": "number",
+                  "completion_reason": "completed|failed|timed_out|cancelled|null"
+                },
+                "verification_result": {
+                  "success": "boolean|null",
+                  "notes": "string|null"
+                },
+                "created_at": "date-time",
+                "updated_at": "date-time"
+              }
+            },
+            "400": {
+              "description": "Invalid ticketId or invalid request body.",
+              "body": {
+                "error": {
+                  "code": "VALIDATION_ERROR",
+                  "message": "Request failed validation."
+                }
+              }
+            },
+            "404": {
+              "description": "Ticket not found.",
+              "body": {
+                "error": {
+                  "code": "TICKET_NOT_FOUND",
+                  "message": "No support ticket was found for the provided ticketId."
+                }
+              }
+            },
+            "500": {
+              "description": "Unexpected server error.",
+              "body": {
+                "error": {
+                  "code": "INTERNAL_ERROR",
+                  "message": "Unexpected server error."
+                }
+              }
+            }
+          },
+          "backing": "CRUD insertOne on triage_runs; optional companion CRUD updateOne on support_tickets.latest_triage_run_id if the new run becomes latest"
+        },
+        {
+          "operationId": "updateTriageRun",
+          "method": "PATCH",
+          "path": "/runs/{triageRunId}",
+          "purpose": "Update streaming run state, timeout outcome, or verification result as execution progresses.",
+          "path_parameters": {
+            "triageRunId": {
+              "type": "string",
+              "required": true
+            }
+          },
+          "request_body": {
+            "content_type": "application/json",
+            "required": true,
+            "schema": {
+              "status": "queued|running|completed|failed|timed_out|cancelled",
+              "completed_at": "date-time|null",
+              "timeout_ms": "number",
+              "duration_ms": "number|null",
+              "streaming": {
+                "enabled": "boolean",
+                "last_event_at": "date-time|null",
+                "event_count": "number",
+                "completion_reason": "completed|failed|timed_out|cancelled|null"
+              },
+              "verification_result": {
+                "success": "boolean|null",
+                "notes": "string|null"
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Triage run updated.",
+              "body": {
+                "id": "string",
+                "ticket_id": "string",
+                "run_type": "verification|triage",
+                "status": "queued|running|completed|failed|timed_out|cancelled",
+                "started_at": "date-time",
+                "completed_at": "date-time|null",
+                "timeout_ms": "number",
+                "duration_ms": "number|null",
+                "streaming": {
+                  "enabled": "boolean",
+                  "last_event_at": "date-time|null",
+                  "event_count": "number",
+                  "completion_reason": "completed|failed|timed_out|cancelled|null"
+                },
+                "verification_result": {
+                  "success": "boolean|null",
+                  "notes": "string|null"
+                },
+                "created_at": "date-time",
+                "updated_at": "date-time"
+              }
+            },
+            "400": {
+              "description": "Invalid run id or field values.",
+              "body": {
+                "error": {
+                  "code": "VALIDATION_ERROR",
+                  "message": "Request failed validation."
+                }
+              }
+            },
+            "404": {
+              "description": "Run not found.",
+              "body": {
+                "error": {
+                  "code": "RUN_NOT_FOUND",
+                  "message": "No triage run was found for the provided triageRunId."
+                }
+              }
+            },
+            "500": {
+              "description": "Unexpected server error.",
+              "body": {
+                "error": {
+                  "code": "INTERNAL_ERROR",
+                  "message": "Unexpected server error."
+                }
+              }
+            }
+          },
+          "backing": "CRUD updateOne on triage_runs"
+        }
+      ]
+    },
+    {
+      "name": "triage_stream_events",
+      "endpoints": [
+        {
+          "operationId": "getRunEventStream",
+          "method": "GET",
+          "path": "/runs/{triageRunId}/events",
+          "purpose": "Retrieve the ordered end-to-end streaming events for a specific verification or triage run in sequence to validate workflow progression and timeout behavior.",
+          "path_parameters": {
+            "triageRunId": {
+              "type": "string",
+              "required": true
+            }
+          },
+          "request_body": null,
+          "responses": {
+            "200": {
+              "description": "Ordered event stream for run.",
+              "body": {
+                "triage_run_id": "string",
+                "events": [
+                  {
+                    "id": "string",
+                    "triage_run_id": "string",
+                    "ticket_id": "string",
+                    "sequence": "number",
+                    "event_type": "ticket_received|triage_started|guidance_requested|guidance_generated|verification_checkpoint|run_completed|run_failed|timeout_warning",
+                    "event_time": "date-time",
+                    "payload": "object|null"
+                  }
+                ],
+                "count": "number"
+              }
+            },
+            "400": {
+              "description": "Invalid triageRunId.",
+              "body": {
+                "error": {
+                  "code": "INVALID_RUN_ID",
+                  "message": "triageRunId must be a valid identifier."
+                }
+              }
+            },
+            "404": {
+              "description": "Run events not found.",
+              "body": {
+                "error": {
+                  "code": "RUN_EVENTS_NOT_FOUND",
+                  "message": "No stream events were found for the provided triageRunId."
+                }
+              }
+            },
+            "500": {
+              "description": "Unexpected server error.",
+              "body": {
+                "error": {
+                  "code": "INTERNAL_ERROR",
+                  "message": "Unexpected server error."
+                }
+              }
+            }
+          },
+          "backing": "qp2_get_run_event_stream"
+        },
+        {
+          "operationId": "appendRunEvent",
+          "method": "POST",
+          "path": "/runs/{triageRunId}/events",
+          "purpose": "Append a new streaming event to a triage run's event log.",
+          "path_parameters": {
+            "triageRunId": {
+              "type": "string",
+              "required": true
+            }
+          },
+          "request_body": {
+            "content_type": "application/json",
+            "required": true,
+            "schema": {
+              "ticket_id": "string",
+              "sequence": "number",
+              "event_type": "ticket_received|triage_started|guidance_requested|guidance_generated|verification_checkpoint|run_completed|run_failed|timeout_warning",
+              "event_time": "date-time",
+              "payload": "object"
+            }
+          },
+          "responses": {
+            "201": {
+              "description": "Stream event appended.",
+              "body": {
+                "id": "string",
+                "triage_run_id": "string",
+                "ticket_id": "string",
+                "sequence": "number",
+                "event_type": "ticket_received|triage_started|guidance_requested|guidance_generated|verification_checkpoint|run_completed|run_failed|timeout_warning",
+                "event_time": "date-time",
+                "payload": "object|null",
+                "created_at": "date-time"
+              }
+            },
+            "400": {
+              "description": "Invalid run id or invalid request body.",
+              "body": {
+                "error": {
+                  "code": "VALIDATION_ERROR",
+                  "message": "Request failed validation."
+                }
+              }
+            },
+            "404": {
+              "description": "Run not found.",
+              "body": {
+                "error": {
+                  "code": "RUN_NOT_FOUND",
+                  "message": "No triage run was found for the provided triageRunId."
+                }
+              }
+            },
+            "409": {
+              "description": "Sequence conflict if implementation enforces uniqueness/order safeguards.",
+              "body": {
+                "error": {
+                  "code": "EVENT_SEQUENCE_CONFLICT",
+                  "message": "An event with the same sequence already exists for this run."
+                }
+              }
+            },
+            "500": {
+              "description": "Unexpected server error.",
+              "body": {
+                "error": {
+                  "code": "INTERNAL_ERROR",
+                  "message": "Unexpected server error."
+                }
+              }
+            }
+          },
+          "backing": "CRUD insertOne on triage_stream_events"
+        }
+      ]
+    },
+    {
+      "name": "guidance_suggestions",
+      "endpoints": [
+        {
+          "operationId": "getGuidanceForRun",
+          "method": "GET",
+          "path": "/runs/{triageRunId}/guidance",
+          "purpose": "Review all AI-generated guidance emitted during a particular triage run.",
+          "path_parameters": {
+            "triageRunId": {
+              "type": "string",
+              "required": true
+            }
+          },
+          "request_body": null,
+          "responses": {
+            "200": {
+              "description": "Guidance suggestions for run.",
+              "body": {
+                "triage_run_id": "string",
+                "guidance_suggestions": [
+                  {
+                    "id": "string",
+                    "ticket_id": "string",
+                    "triage_run_id": "string",
+                    "generated_at": "date-time",
+                    "guidance_text": "string",
+                    "guidance_type": "resolution_step|categorization|prioritization|routing|general|null",
+                    "confidence_score": "number|null",
+                    "model_info": {
+                      "provider": "string",
+                      "model_name": "string",
+                      "model_version": "string"
+                    },
+                    "applied": "boolean|null"
+                  }
+                ],
+                "count": "number"
+              }
+            },
+            "400": {
+              "description": "Invalid triageRunId.",
+              "body": {
+                "error": {
+                  "code": "INVALID_RUN_ID",
+                  "message": "triageRunId must be a valid identifier."
+                }
+              }
+            },
+            "404": {
+              "description": "Guidance not found for run.",
+              "body": {
+                "error": {
+                  "code": "GUIDANCE_NOT_FOUND",
+                  "message": "No guidance suggestions were found for the provided triageRunId."
+                }
+              }
+            },
+            "500": {
+              "description": "Unexpected server error.",
+              "body": {
+                "error": {
+                  "code": "INTERNAL_ERROR",
+                  "message": "Unexpected server error."
+                }
+              }
+            }
+          },
+          "backing": "qp4_get_guidance_for_run"
+        },
+        {
+          "operationId": "createGuidanceSuggestion",
+          "method": "POST",
+          "path": "/runs/{triageRunId}/guidance",
+          "purpose": "Store a newly generated AI guidance suggestion for a triage run.",
+          "path_parameters": {
+            "triageRunId": {
+              "type": "string",
+              "required": true
+            }
+          },
+          "request_body": {
+            "content_type": "application/json",
+            "required": true,
+            "schema": {
+              "ticket_id": "string",
+              "generated_at": "date-time",
+              "guidance_text": "string",
+              "guidance_type": "resolution_step|categorization|prioritization|routing|general",
+              "confidence_score": "number",
+              "model_info": {
+                "provider": "string",
+                "model_name": "string",
+                "model_version": "string"
+              },
+              "applied": "boolean"
+            }
+          },
+          "responses": {
+            "201": {
+              "description": "Guidance suggestion created.",
+              "body": {
+                "id": "string",
+                "ticket_id": "string",
+                "triage_run_id": "string",
+                "generated_at": "date-time",
+                "guidance_text": "string",
+                "guidance_type": "resolution_step|categorization|prioritization|routing|general|null",
+                "confidence_score": "number|null",
+                "model_info": {
+                  "provider": "string",
+                  "model_name": "string",
+                  "model_version": "string"
+                },
+                "applied": "boolean|null",
+                "created_at": "date-time"
+              }
+            },
+            "400": {
+              "description": "Invalid run id or invalid request body.",
+              "body": {
+                "error": {
+                  "code": "VALIDATION_ERROR",
+                  "message": "Request failed validation."
+                }
+              }
+            },
+            "404": {
+              "description": "Run not found.",
+              "body": {
+                "error": {
+                  "code": "RUN_NOT_FOUND",
+                  "message": "No triage run was found for the provided triageRunId."
+                }
+              }
+            },
+            "500": {
+              "description": "Unexpected server error.",
+              "body": {
+                "error": {
+                  "code": "INTERNAL_ERROR",
+                  "message": "Unexpected server error."
+                }
+              }
+            }
+          },
+          "backing": "CRUD insertOne on guidance_suggestions"
+        },
+        {
+          "operationId": "updateGuidanceSuggestion",
+          "method": "PATCH",
+          "path": "/guidance/{guidanceId}",
+          "purpose": "Update mutable guidance fields such as whether the suggestion was applied.",
+          "path_parameters": {
+            "guidanceId": {
+              "type": "string",
+              "required": true
+            }
+          },
+          "request_body": {
+            "content_type": "application/json",
+            "required": true,
+            "schema": {
+              "guidance_text": "string",
+              "guidance_type": "resolution_step|categorization|prioritization|routing|general|null",
+              "confidence_score": "number|null",
+              "model_info": {
+                "provider": "string",
+                "model_name": "string",
+                "model_version": "string"
+              },
+              "applied": "boolean|null"
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Guidance suggestion updated.",
+              "body": {
+                "id": "string",
+                "ticket_id": "string",
+                "triage_run_id": "string",
+                "generated_at": "date-time",
+                "guidance_text": "string",
+                "guidance_type": "resolution_step|categorization|prioritization|routing|general|null",
+                "confidence_score": "number|null",
+                "model_info": {
+                  "provider": "string",
+                  "model_name": "string",
+                  "model_version": "string"
+                },
+                "applied": "boolean|null",
+                "created_at": "date-time"
+              }
+            },
+            "400": {
+              "description": "Invalid guidanceId or request body.",
+              "body": {
+                "error": {
+                  "code": "VALIDATION_ERROR",
+                  "message": "Request failed validation."
+                }
+              }
+            },
+            "404": {
+              "description": "Guidance suggestion not found.",
+              "body": {
+                "error": {
+                  "code": "GUIDANCE_NOT_FOUND",
+                  "message": "No guidance suggestion was found for the provided guidanceId."
+                }
+              }
+            },
+            "500": {
+              "description": "Unexpected server error.",
+              "body": {
+                "error": {
+                  "code": "INTERNAL_ERROR",
+                  "message": "Unexpected server error."
+                }
+              }
+            }
+          },
+          "backing": "CRUD updateOne on guidance_suggestions"
+        }
+      ]
+    }
+  ],
+  "non_endpoints": [
+    {
+      "note": "No standalone endpoint was added to query triage_stream_events by ticket_id, because no authoritative query pattern supports that exact access pattern and it is not required as straightforward CRUD for this POV."
+    },
+    {
+      "note": "No delete endpoints were added. While delete is a generic CRUD concept, it is not implied by the POV workflows and could be harmful for append-only run/event verification history."
+    }
+  ]
+}
