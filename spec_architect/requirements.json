@@ -1,0 +1,229 @@
+{
+  "pov_scope": "Assess or validate the fixed streaming progress endpoint through end-to-end testing.",
+  "traceability": {
+    "functional_requirements": [
+      {
+        "requirement_id": "fr-1",
+        "description": "Support end-to-end testing of the fixed streaming progress endpoint.",
+        "data_model": {
+          "collections": [
+            "test_runs",
+            "progress_events"
+          ],
+          "notes": [
+            "`test_runs` stores each end-to-end validation run.",
+            "`progress_events` stores the ordered stream of observed progress messages/events for a run."
+          ]
+        },
+        "query_patterns": [
+          "qp-1",
+          "qp-2",
+          "qp-3",
+          "qp-4",
+          "qp-5",
+          "qp-6",
+          "qp-7",
+          "qp-8",
+          "qp-9"
+        ],
+        "api_endpoints": [
+          {
+            "operationId": "createTestRun",
+            "method": "POST",
+            "path": "/test-runs",
+            "backing": "qp-1"
+          },
+          {
+            "operationId": "listTestRuns",
+            "method": "GET",
+            "path": "/test-runs",
+            "backing": "qp-4"
+          },
+          {
+            "operationId": "getTestRunById",
+            "method": "GET",
+            "path": "/test-runs/{test_run_id}",
+            "backing": "qp-5"
+          },
+          {
+            "operationId": "updateTestRunStatus",
+            "method": "PATCH",
+            "path": "/test-runs/{test_run_id}/status",
+            "backing": "qp-2"
+          },
+          {
+            "operationId": "getTestRunSummaryFromEvents",
+            "method": "GET",
+            "path": "/test-runs/{test_run_id}/summary",
+            "backing": "qp-8"
+          },
+          {
+            "operationId": "getTestRunWithEvents",
+            "method": "GET",
+            "path": "/test-runs/{test_run_id}/full",
+            "backing": "qp-9"
+          },
+          {
+            "operationId": "appendProgressEvent",
+            "method": "POST",
+            "path": "/test-runs/{test_run_id}/events",
+            "backing": "qp-3"
+          },
+          {
+            "operationId": "getOrderedProgressEvents",
+            "method": "GET",
+            "path": "/test-runs/{test_run_id}/events",
+            "backing": "qp-6"
+          },
+          {
+            "operationId": "getTerminalOrAnomalousEvents",
+            "method": "GET",
+            "path": "/test-runs/{test_run_id}/events/anomalies",
+            "backing": "qp-7"
+          }
+        ],
+        "frontend": {
+          "routes": [
+            "/test-runs",
+            "/test-runs/new",
+            "/test-runs/:test_run_id",
+            "/test-runs/:test_run_id/inspection"
+          ],
+          "pages": [
+            {
+              "page_id": "test_run_list_page",
+              "supports": [
+                "View recent validation runs",
+                "Filter runs by endpoint path/environment/status/date range",
+                "Navigate to detail and inspection pages"
+              ],
+              "api_operations": [
+                "listTestRuns"
+              ]
+            },
+            {
+              "page_id": "create_test_run_page",
+              "supports": [
+                "Register a new queued validation run"
+              ],
+              "api_operations": [
+                "createTestRun"
+              ]
+            },
+            {
+              "page_id": "test_run_detail_page",
+              "supports": [
+                "Inspect one validation run",
+                "View ordered event history",
+                "Manually update lifecycle state",
+                "Manually append observed events"
+              ],
+              "api_operations": [
+                "getTestRunById",
+                "getOrderedProgressEvents",
+                "updateTestRunStatus",
+                "appendProgressEvent",
+                "getTestRunWithEvents"
+              ]
+            },
+            {
+              "page_id": "test_run_inspection_page",
+              "supports": [
+                "Review computed event-derived summary metrics",
+                "Inspect terminal or anomalous events"
+              ],
+              "api_operations": [
+                "getTestRunById",
+                "getTestRunSummaryFromEvents",
+                "getTerminalOrAnomalousEvents"
+              ]
+            }
+          ]
+        },
+        "notes": [
+          "This is the only explicit requirement in the InitialPOVSpec and all designed artifacts map back to it.",
+          "The solution supports documentation, capture, playback, summary, and diagnosis of end-to-end validation runs; it does not define orchestration of the actual external test execution."
+        ]
+      }
+    ],
+    "current_state": [
+      {
+        "statement": "A fixed streaming progress endpoint is being tested end to end.",
+        "implemented_by": {
+          "collections": [
+            "test_runs",
+            "progress_events"
+          ],
+          "query_patterns": [
+            "qp-1",
+            "qp-3",
+            "qp-4",
+            "qp-6",
+            "qp-8",
+            "qp-9"
+          ],
+          "api_operations": [
+            "createTestRun",
+            "appendProgressEvent",
+            "listTestRuns",
+            "getOrderedProgressEvents",
+            "getTestRunSummaryFromEvents",
+            "getTestRunWithEvents"
+          ],
+          "frontend_pages": [
+            "test_run_list_page",
+            "create_test_run_page",
+            "test_run_detail_page",
+            "test_run_inspection_page"
+          ]
+        }
+      }
+    ],
+    "open_questions": [
+      {
+        "question": "What business problem is this work intended to solve?",
+        "status": "unresolved_in_authoritative_artifacts"
+      },
+      {
+        "question": "Who are the target users or personas for the streaming progress capability?",
+        "status": "unresolved_in_authoritative_artifacts"
+      },
+      {
+        "question": "What does 'fixed' refer to\u2014what issue was previously observed with the streaming progress endpoint?",
+        "status": "unresolved_in_authoritative_artifacts"
+      },
+      {
+        "question": "Is the endpoint itself in scope for the POV, or only the testing/validation activity?",
+        "status": "partially_resolved",
+        "notes": "Designed artifacts scope the system to testing/validation activity and recording/inspection, not endpoint implementation or orchestration."
+      },
+      {
+        "question": "What are the desired business outcomes or operational goals for this capability?",
+        "status": "unresolved_in_authoritative_artifacts"
+      },
+      {
+        "question": "What systems or applications consume the streaming progress endpoint?",
+        "status": "unresolved_in_authoritative_artifacts"
+      },
+      {
+        "question": "What metrics define successful end-to-end validation?",
+        "status": "partially_resolved",
+        "notes": "Artifacts support observed final state, pass/fail reasons, terminal event capture, invalid payload count, and out-of-order count, but no business-level success thresholds are specified."
+      },
+      {
+        "question": "Are there any AI/GenAI requirements involved, or is this purely a non-AI technical capability?",
+        "status": "resolved_by_artifacts",
+        "notes": "All authoritative artifacts indicate a non-AI technical capability; no AI/GenAI requirements are defined."
+      }
+    ],
+    "non_goals_implied_by_contracts": [
+      "No delete capability for test runs or progress events.",
+      "No editing of previously appended progress events.",
+      "No generic full-document update for test runs beyond lifecycle/status patching.",
+      "No live SSE/WebSocket subscription UI or backend contract.",
+      "No backend test orchestration/start-execution endpoint.",
+      "No cross-run analytics dashboard beyond list filtering and per-run summary/anomaly inspection.",
+      "No pagination model beyond optional list limit."
+    ]
+  }
+}
