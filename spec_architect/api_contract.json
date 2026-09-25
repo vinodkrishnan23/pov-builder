@@ -1,0 +1,807 @@
+{
+  "version": "1.0.0",
+  "service_name": "pov-intake-api",
+  "base_path": "/api",
+  "content_type": "application/json",
+  "resources": [
+    {
+      "name": "pov_intakes",
+      "endpoints": [
+        {
+          "operation_id": "createPovIntake",
+          "method": "POST",
+          "path": "/pov-intakes",
+          "purpose": "Create a new POV intake record from an InitialPOVSpec and review context.",
+          "backed_by": {
+            "type": "crud",
+            "mongodb_operation": "insertOne",
+            "collection": "pov_intake",
+            "notes": "Straightforward create operation implied by the authoritative data model."
+          },
+          "request": {
+            "body": {
+              "type": "object",
+              "required": [
+                "executive_summary",
+                "raw_initial_pov_spec",
+                "review_result",
+                "status",
+                "open_questions",
+                "assumptions",
+                "success_criteria"
+              ],
+              "properties": {
+                "executive_summary": {
+                  "type": "string"
+                },
+                "raw_initial_pov_spec": {
+                  "type": "object"
+                },
+                "review_result": {
+                  "type": "object"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "incomplete",
+                    "needs_clarification",
+                    "ready_for_redesign"
+                  ]
+                },
+                "open_questions": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "question",
+                      "category",
+                      "status"
+                    ],
+                    "properties": {
+                      "question": {
+                        "type": "string"
+                      },
+                      "category": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "notes": {
+                        "type": "string",
+                        "nullable": true
+                      }
+                    }
+                  }
+                },
+                "assumptions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "success_criteria": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "source_note": {
+                  "type": "string"
+                }
+              }
+            },
+            "notes": "Server sets _id, created_at, and updated_at."
+          },
+          "response": {
+            "status_codes": {
+              "201": {
+                "description": "POV intake created.",
+                "body": {
+                  "type": "object",
+                  "properties": {
+                    "_id": {
+                      "type": "string"
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "executive_summary": {
+                      "type": "string"
+                    },
+                    "raw_initial_pov_spec": {
+                      "type": "object"
+                    },
+                    "review_result": {
+                      "type": "object"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "open_questions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "assumptions": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "success_criteria": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "source_note": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            },
+            "errors": [
+              {
+                "status": 400,
+                "code": "VALIDATION_ERROR",
+                "when": "Required fields are missing, field types are invalid, or status is not an allowed value."
+              }
+            ]
+          }
+        },
+        {
+          "operation_id": "listRecentPovIntakes",
+          "method": "GET",
+          "path": "/pov-intakes",
+          "purpose": "List recent POV intake submissions for operational review.",
+          "backed_by": {
+            "type": "query_pattern",
+            "query_pattern_id": "qp_list_recent_intakes"
+          },
+          "request": {
+            "query_params": [
+              {
+                "name": "limit",
+                "type": "integer",
+                "required": false,
+                "default": 50,
+                "maximum": 50,
+                "notes": "Optional client cap; cannot exceed the authoritative query pattern limit."
+              }
+            ]
+          },
+          "response": {
+            "status_codes": {
+              "200": {
+                "description": "Recent POV intakes returned.",
+                "body": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "_id": {
+                            "type": "string"
+                          },
+                          "executive_summary": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "incomplete",
+                              "needs_clarification",
+                              "ready_for_redesign"
+                            ]
+                          },
+                          "created_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updated_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "source_note": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "errors": []
+          }
+        },
+        {
+          "operation_id": "listPovIntakesByStatus",
+          "method": "GET",
+          "path": "/pov-intakes/by-status/{status}",
+          "purpose": "List POV intake records filtered by workflow status, ordered by most recently updated.",
+          "backed_by": {
+            "type": "query_pattern",
+            "query_pattern_id": "qp_list_intakes_by_status"
+          },
+          "request": {
+            "path_params": [
+              {
+                "name": "status",
+                "type": "string",
+                "enum": [
+                  "incomplete",
+                  "needs_clarification",
+                  "ready_for_redesign"
+                ],
+                "required": true
+              }
+            ],
+            "query_params": [
+              {
+                "name": "limit",
+                "type": "integer",
+                "required": false,
+                "default": 50,
+                "maximum": 50,
+                "notes": "Optional client cap; cannot exceed the authoritative query pattern limit."
+              }
+            ]
+          },
+          "response": {
+            "status_codes": {
+              "200": {
+                "description": "Filtered POV intakes returned.",
+                "body": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "_id": {
+                            "type": "string"
+                          },
+                          "executive_summary": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "incomplete",
+                              "needs_clarification",
+                              "ready_for_redesign"
+                            ]
+                          },
+                          "updated_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "open_questions": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "question": {
+                                  "type": "string"
+                                },
+                                "category": {
+                                  "type": "string"
+                                },
+                                "status": {
+                                  "type": "string"
+                                },
+                                "notes": {
+                                  "type": "string",
+                                  "nullable": true
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "errors": [
+              {
+                "status": 400,
+                "code": "INVALID_STATUS",
+                "when": "The path status is not one of the allowed values."
+              }
+            ]
+          }
+        },
+        {
+          "operation_id": "getPovIntakeDetail",
+          "method": "GET",
+          "path": "/pov-intakes/{pov_intake_id}",
+          "purpose": "Fetch the full intake record for a single POV submission.",
+          "backed_by": {
+            "type": "query_pattern",
+            "query_pattern_id": "qp_get_intake_detail"
+          },
+          "request": {
+            "path_params": [
+              {
+                "name": "pov_intake_id",
+                "type": "string",
+                "required": true,
+                "format": "objectId"
+              }
+            ]
+          },
+          "response": {
+            "status_codes": {
+              "200": {
+                "description": "POV intake detail returned.",
+                "body": {
+                  "type": "object",
+                  "properties": {
+                    "_id": {
+                      "type": "string"
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "executive_summary": {
+                      "type": "string"
+                    },
+                    "raw_initial_pov_spec": {
+                      "type": "object"
+                    },
+                    "review_result": {
+                      "type": "object"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "incomplete",
+                        "needs_clarification",
+                        "ready_for_redesign"
+                      ]
+                    },
+                    "open_questions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "question": {
+                            "type": "string"
+                          },
+                          "category": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "notes": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        }
+                      }
+                    },
+                    "assumptions": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "success_criteria": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "source_note": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            },
+            "errors": [
+              {
+                "status": 400,
+                "code": "INVALID_ID",
+                "when": "The pov_intake_id is not a valid ObjectId."
+              },
+              {
+                "status": 404,
+                "code": "NOT_FOUND",
+                "when": "No POV intake exists for the provided id."
+              }
+            ]
+          }
+        },
+        {
+          "operation_id": "updatePovIntake",
+          "method": "PATCH",
+          "path": "/pov-intakes/{pov_intake_id}",
+          "purpose": "Update mutable fields on an existing POV intake record, such as status, review result, open questions, assumptions, success criteria, executive summary, raw input, or source note.",
+          "backed_by": {
+            "type": "crud",
+            "mongodb_operation": "updateOne",
+            "collection": "pov_intake",
+            "notes": "Straightforward partial update implied by the authoritative data model. Server always updates updated_at."
+          },
+          "request": {
+            "path_params": [
+              {
+                "name": "pov_intake_id",
+                "type": "string",
+                "required": true,
+                "format": "objectId"
+              }
+            ],
+            "body": {
+              "type": "object",
+              "properties": {
+                "executive_summary": {
+                  "type": "string"
+                },
+                "raw_initial_pov_spec": {
+                  "type": "object"
+                },
+                "review_result": {
+                  "type": "object"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "incomplete",
+                    "needs_clarification",
+                    "ready_for_redesign"
+                  ]
+                },
+                "open_questions": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "question",
+                      "category",
+                      "status"
+                    ],
+                    "properties": {
+                      "question": {
+                        "type": "string"
+                      },
+                      "category": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "notes": {
+                        "type": "string",
+                        "nullable": true
+                      }
+                    }
+                  }
+                },
+                "assumptions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "success_criteria": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "source_note": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "additionalProperties": false,
+              "minProperties": 1
+            }
+          },
+          "response": {
+            "status_codes": {
+              "200": {
+                "description": "POV intake updated.",
+                "body": {
+                  "type": "object",
+                  "properties": {
+                    "matched_count": {
+                      "type": "integer"
+                    },
+                    "modified_count": {
+                      "type": "integer"
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            },
+            "errors": [
+              {
+                "status": 400,
+                "code": "INVALID_ID",
+                "when": "The pov_intake_id is not a valid ObjectId."
+              },
+              {
+                "status": 400,
+                "code": "VALIDATION_ERROR",
+                "when": "Body is empty, contains unknown fields, invalid types, or invalid status values."
+              },
+              {
+                "status": 404,
+                "code": "NOT_FOUND",
+                "when": "No POV intake exists for the provided id."
+              }
+            ]
+          }
+        },
+        {
+          "operation_id": "listOpenQuestionsForIntake",
+          "method": "GET",
+          "path": "/pov-intakes/{pov_intake_id}/open-questions",
+          "purpose": "Return only the open questions and current intake status for a specific POV intake.",
+          "backed_by": {
+            "type": "query_pattern",
+            "query_pattern_id": "qp_list_open_questions_for_intake"
+          },
+          "request": {
+            "path_params": [
+              {
+                "name": "pov_intake_id",
+                "type": "string",
+                "required": true,
+                "format": "objectId"
+              }
+            ]
+          },
+          "response": {
+            "status_codes": {
+              "200": {
+                "description": "Open questions returned for the intake.",
+                "body": {
+                  "type": "object",
+                  "properties": {
+                    "_id": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "incomplete",
+                        "needs_clarification",
+                        "ready_for_redesign"
+                      ]
+                    },
+                    "open_questions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "question": {
+                            "type": "string"
+                          },
+                          "category": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "notes": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "errors": [
+              {
+                "status": 400,
+                "code": "INVALID_ID",
+                "when": "The pov_intake_id is not a valid ObjectId."
+              },
+              {
+                "status": 404,
+                "code": "NOT_FOUND",
+                "when": "No POV intake exists for the provided id."
+              }
+            ]
+          }
+        },
+        {
+          "operation_id": "listUnresolvedQuestionsAcrossIntakes",
+          "method": "GET",
+          "path": "/open-questions/unresolved",
+          "purpose": "List unresolved clarification questions across POV intakes that are still incomplete or need clarification.",
+          "backed_by": {
+            "type": "query_pattern",
+            "query_pattern_id": "qp_list_unresolved_questions_across_intakes"
+          },
+          "request": {
+            "query_params": []
+          },
+          "response": {
+            "status_codes": {
+              "200": {
+                "description": "Unresolved questions returned.",
+                "body": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "pov_intake_id": {
+                            "type": "string"
+                          },
+                          "executive_summary": {
+                            "type": "string"
+                          },
+                          "intake_status": {
+                            "type": "string",
+                            "enum": [
+                              "incomplete",
+                              "needs_clarification"
+                            ]
+                          },
+                          "updated_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "question": {
+                            "type": "string"
+                          },
+                          "category": {
+                            "type": "string"
+                          },
+                          "question_status": {
+                            "type": "string"
+                          },
+                          "notes": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "errors": []
+          }
+        },
+        {
+          "operation_id": "getPovIntakeStatusSummary",
+          "method": "GET",
+          "path": "/pov-intakes/summary/status-counts",
+          "purpose": "Provide an operational summary of how many POV intakes exist in each workflow status.",
+          "backed_by": {
+            "type": "query_pattern",
+            "query_pattern_id": "qp_summary_counts_by_status"
+          },
+          "request": {
+            "query_params": []
+          },
+          "response": {
+            "status_codes": {
+              "200": {
+                "description": "Status counts returned.",
+                "body": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "incomplete",
+                              "needs_clarification",
+                              "ready_for_redesign"
+                            ]
+                          },
+                          "count": {
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "errors": []
+          }
+        },
+        {
+          "operation_id": "deletePovIntake",
+          "method": "DELETE",
+          "path": "/pov-intakes/{pov_intake_id}",
+          "purpose": "Delete a POV intake record.",
+          "backed_by": {
+            "type": "crud",
+            "mongodb_operation": "deleteOne",
+            "collection": "pov_intake",
+            "notes": "Straightforward delete operation implied by the authoritative data model."
+          },
+          "request": {
+            "path_params": [
+              {
+                "name": "pov_intake_id",
+                "type": "string",
+                "required": true,
+                "format": "objectId"
+              }
+            ]
+          },
+          "response": {
+            "status_codes": {
+              "204": {
+                "description": "POV intake deleted.",
+                "body": null
+              }
+            },
+            "errors": [
+              {
+                "status": 400,
+                "code": "INVALID_ID",
+                "when": "The pov_intake_id is not a valid ObjectId."
+              },
+              {
+                "status": 404,
+                "code": "NOT_FOUND",
+                "when": "No POV intake exists for the provided id."
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "global_errors": [
+    {
+      "status": 500,
+      "code": "INTERNAL_ERROR",
+      "when": "Unexpected server-side failure."
+    }
+  ],
+  "notes": [
+    "The contract is intentionally limited to POV intake/review workflows because the authoritative InitialPOVSpec, data model, and query patterns provide no basis for domain-specific endpoints beyond intake clarification management.",
+    "No endpoint has been added for search, pagination beyond the query pattern limit, authentication, or fine-grained open-question item mutation because those behaviors are not defined in the authoritative inputs and would require inventing unsupported query patterns or schema changes."
+  ]
+}
