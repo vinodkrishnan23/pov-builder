@@ -1,0 +1,218 @@
+{
+  "collections": [
+    {
+      "name": "test_runs",
+      "description": "Stores each end-to-end validation run for the streaming progress endpoint. This is the minimal primary entity directly implied by FR-1 and the POV scope.",
+      "traceability": {
+        "functional_requirements": [
+          "fr-1"
+        ],
+        "pov_scope": [
+          "Assess or validate the fixed streaming progress endpoint through end-to-end testing."
+        ],
+        "current_state": [
+          "A fixed streaming progress endpoint is being tested end to end."
+        ]
+      },
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "run_name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true,
+          "allowed_values": [
+            "queued",
+            "running",
+            "passed",
+            "failed",
+            "cancelled"
+          ]
+        },
+        {
+          "name": "started_at",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "completed_at",
+          "type": "date",
+          "required": false
+        },
+        {
+          "name": "endpoint_path",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "endpoint_method",
+          "type": "string",
+          "required": true,
+          "allowed_values": [
+            "GET",
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE"
+          ]
+        },
+        {
+          "name": "environment",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "initiated_by",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "summary",
+          "type": "object",
+          "required": false,
+          "fields": [
+            {
+              "name": "total_events",
+              "type": "int",
+              "required": false
+            },
+            {
+              "name": "expected_final_state",
+              "type": "string",
+              "required": false
+            },
+            {
+              "name": "observed_final_state",
+              "type": "string",
+              "required": false
+            },
+            {
+              "name": "pass_reason",
+              "type": "string",
+              "required": false
+            },
+            {
+              "name": "failure_reason",
+              "type": "string",
+              "required": false
+            }
+          ]
+        }
+      ],
+      "embedding_vs_references": {
+        "approach": "Reference from progress_events to test_runs using test_run_id.",
+        "why": "A single test run can produce many streamed progress events. Keeping events in a separate collection avoids unbounded document growth and supports event-by-event retrieval, filtering, and time-series style analysis for end-to-end validation."
+      },
+      "relationships": [
+        {
+          "related_collection": "progress_events",
+          "type": "one-to-many",
+          "via": "progress_events.test_run_id -> test_runs._id"
+        }
+      ]
+    },
+    {
+      "name": "progress_events",
+      "description": "Stores the ordered stream of progress messages/events observed during an end-to-end test run of the streaming progress endpoint.",
+      "traceability": {
+        "functional_requirements": [
+          "fr-1"
+        ],
+        "pov_scope": [
+          "Assess or validate the fixed streaming progress endpoint through end-to-end testing."
+        ],
+        "current_state": [
+          "A fixed streaming progress endpoint is being tested end to end."
+        ]
+      },
+      "fields": [
+        {
+          "name": "_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "test_run_id",
+          "type": "objectId",
+          "required": true
+        },
+        {
+          "name": "sequence_number",
+          "type": "int",
+          "required": true
+        },
+        {
+          "name": "event_timestamp",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "event_type",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "progress_percent",
+          "type": "double",
+          "required": false
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "raw_payload",
+          "type": "document",
+          "required": false
+        },
+        {
+          "name": "is_terminal",
+          "type": "bool",
+          "required": false
+        },
+        {
+          "name": "validation",
+          "type": "object",
+          "required": false,
+          "fields": [
+            {
+              "name": "is_expected_order",
+              "type": "bool",
+              "required": false
+            },
+            {
+              "name": "is_valid_payload",
+              "type": "bool",
+              "required": false
+            },
+            {
+              "name": "notes",
+              "type": "string",
+              "required": false
+            }
+          ]
+        }
+      ],
+      "embedding_vs_references": {
+        "approach": "Reference back to parent test_runs document with test_run_id.",
+        "why": "Events are naturally dependent on a test run, but can be numerous and are consumed independently for ordered playback, diagnostics, and validation. Referencing supports efficient indexing by run and sequence/timestamp."
+      },
+      "relationships": [
+        {
+          "related_collection": "test_runs",
+          "type": "many-to-one",
+          "via": "progress_events.test_run_id -> test_runs._id"
+        }
+      ]
+    }
+  ]
+}
