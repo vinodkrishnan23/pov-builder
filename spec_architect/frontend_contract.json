@@ -1,0 +1,768 @@
+{
+  "app_shell": {
+    "global_state": [
+      "selectedTenantId",
+      "chunkingProfilesCache",
+      "activeBenchmarkDatasetId",
+      "activeBenchmarkRunId"
+    ],
+    "navigation": [
+      {
+        "label": "Tenants",
+        "route": "/tenants"
+      },
+      {
+        "label": "Workspace",
+        "route": "/tenants/:tenantId"
+      },
+      {
+        "label": "Documents",
+        "route": "/tenants/:tenantId/documents"
+      },
+      {
+        "label": "Chunking Profiles",
+        "route": "/chunking-profiles"
+      },
+      {
+        "label": "Retrieval Playground",
+        "route": "/tenants/:tenantId/retrieval"
+      },
+      {
+        "label": "Benchmark Datasets",
+        "route": "/tenants/:tenantId/benchmark-datasets"
+      },
+      {
+        "label": "Agent Memory",
+        "route": "/tenants/:tenantId/agent-memory"
+      }
+    ],
+    "notes": [
+      "Tenant scoping is required for all tenant-scoped resources.",
+      "Frontend must not imply automatic file upload, embedding generation, or benchmark execution because the API does not expose those capabilities."
+    ]
+  },
+  "routes": [
+    {
+      "route": "/tenants",
+      "page_id": "tenant_home"
+    },
+    {
+      "route": "/tenants/:tenantId",
+      "page_id": "tenant_workspace"
+    },
+    {
+      "route": "/tenants/:tenantId/documents",
+      "page_id": "documents_list"
+    },
+    {
+      "route": "/tenants/:tenantId/documents/:documentId",
+      "page_id": "document_detail"
+    },
+    {
+      "route": "/chunking-profiles",
+      "page_id": "chunking_profiles"
+    },
+    {
+      "route": "/tenants/:tenantId/documents/:documentId/chunks",
+      "page_id": "document_chunks_drilldown"
+    },
+    {
+      "route": "/tenants/:tenantId/retrieval",
+      "page_id": "retrieval_playground"
+    },
+    {
+      "route": "/tenants/:tenantId/benchmark-datasets",
+      "page_id": "benchmark_datasets"
+    },
+    {
+      "route": "/tenants/:tenantId/benchmark-datasets/:benchmarkDatasetId",
+      "page_id": "benchmark_dataset_detail"
+    },
+    {
+      "route": "/tenants/:tenantId/benchmark-datasets/:benchmarkDatasetId/runs",
+      "page_id": "benchmark_runs"
+    },
+    {
+      "route": "/tenants/:tenantId/benchmark-runs/:benchmarkRunId",
+      "page_id": "benchmark_run_detail"
+    },
+    {
+      "route": "/tenants/:tenantId/benchmark-datasets/:benchmarkDatasetId/comparisons",
+      "page_id": "benchmark_run_comparison"
+    },
+    {
+      "route": "/tenants/:tenantId/agent-memory",
+      "page_id": "agent_memory_sessions"
+    }
+  ],
+  "pages": [
+    {
+      "page_id": "tenant_home",
+      "title": "Tenant Home",
+      "purpose": "Select or create an isolated tenant/deployment scope for the benchmark session.",
+      "data_requirements": [
+        "Tenant list with basic metadata",
+        "Optional exact-name filtered tenant lookup"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "listTenants",
+          "usage": "initial list and exact-name filter"
+        },
+        {
+          "operation_id": "createTenant",
+          "usage": "create new tenant"
+        }
+      ],
+      "user_actions": [
+        "View tenant list",
+        "Filter by exact tenant name",
+        "Create tenant",
+        "Open tenant workspace"
+      ],
+      "loading_states": [
+        "Initial tenant list skeleton",
+        "Inline submitting state on create form"
+      ],
+      "error_states": [
+        "List load failure/invalid query",
+        "Create validation error",
+        "Tenant name conflict"
+      ],
+      "components": [
+        "TenantList",
+        "TenantFilterBar",
+        "CreateTenantForm",
+        "EmptyState",
+        "ErrorBanner"
+      ]
+    },
+    {
+      "page_id": "tenant_workspace",
+      "title": "Tenant Workspace Dashboard",
+      "purpose": "Provide tenant-scoped overview and entry points into ingestion, retrieval testing, benchmark authoring, and secondary agent memory.",
+      "data_requirements": [
+        "Recent documents",
+        "Document ingestion summary",
+        "Benchmark datasets list"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "listRecentDocuments",
+          "usage": "dashboard recent documents"
+        },
+        {
+          "operation_id": "getDocumentIngestionSummary",
+          "usage": "status counters"
+        },
+        {
+          "operation_id": "listBenchmarkDatasets",
+          "usage": "benchmark dataset summary list"
+        }
+      ],
+      "user_actions": [
+        "Navigate to documents",
+        "Navigate to retrieval playground",
+        "Navigate to benchmark datasets",
+        "Navigate to agent memory",
+        "Open recent document",
+        "Open dataset"
+      ],
+      "loading_states": [
+        "Card-level loading placeholders"
+      ],
+      "error_states": [
+        "Per-widget load failures with retry"
+      ],
+      "components": [
+        "TenantHeader",
+        "KpiCardGroup",
+        "RecentDocumentsTable",
+        "IngestionStatusSummary",
+        "BenchmarkDatasetListPreview",
+        "QuickActionPanel"
+      ]
+    },
+    {
+      "page_id": "documents_list",
+      "title": "Documents",
+      "purpose": "Register documents and monitor ingestion progress for live benchmark uploads.",
+      "data_requirements": [
+        "Recent documents list",
+        "Ingestion summary counts"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "listRecentDocuments",
+          "usage": "table of documents"
+        },
+        {
+          "operation_id": "getDocumentIngestionSummary",
+          "usage": "status summary"
+        },
+        {
+          "operation_id": "createDocument",
+          "usage": "register document metadata/storage reference"
+        }
+      ],
+      "user_actions": [
+        "Register document",
+        "Refresh documents",
+        "Open document detail"
+      ],
+      "loading_states": [
+        "Table loading",
+        "Create form submitting",
+        "Summary cards loading"
+      ],
+      "error_states": [
+        "Tenant not found",
+        "Validation error on create",
+        "No documents yet empty state"
+      ],
+      "components": [
+        "RegisterDocumentForm",
+        "DocumentTable",
+        "IngestionSummaryCards",
+        "RefreshButton",
+        "UnsupportedCapabilityNotice"
+      ],
+      "notes": [
+        "Because no binary upload endpoint exists, this page should collect metadata and storage references only, or clearly integrate with an out-of-band upload process."
+      ]
+    },
+    {
+      "page_id": "document_detail",
+      "title": "Document Detail",
+      "purpose": "Inspect and edit one document's metadata, extracted text, and ingestion state.",
+      "data_requirements": [
+        "Single document metadata and extracted text"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "getDocument",
+          "usage": "load detail"
+        },
+        {
+          "operation_id": "updateDocument",
+          "usage": "patch metadata/status"
+        }
+      ],
+      "user_actions": [
+        "View extracted text",
+        "Edit metadata",
+        "Update ingestion status",
+        "Open chunks drilldown"
+      ],
+      "loading_states": [
+        "Detail skeleton",
+        "Patch saving state"
+      ],
+      "error_states": [
+        "Document not found",
+        "Validation error on patch"
+      ],
+      "components": [
+        "DocumentMetadataPanel",
+        "IngestionStatusBadge",
+        "ExtractedTextViewer",
+        "EditDocumentForm",
+        "StorageReferenceCard"
+      ]
+    },
+    {
+      "page_id": "chunking_profiles",
+      "title": "Chunking Profiles",
+      "purpose": "Create and compare available chunking strategies used in retrieval and benchmark runs.",
+      "data_requirements": [
+        "All chunking profiles"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "listChunkingProfiles",
+          "usage": "load all profiles"
+        },
+        {
+          "operation_id": "createChunkingProfile",
+          "usage": "create profile"
+        }
+      ],
+      "user_actions": [
+        "View profiles",
+        "Create profile"
+      ],
+      "loading_states": [
+        "Profile list loading",
+        "Create form submitting"
+      ],
+      "error_states": [
+        "Query execution failure",
+        "Validation error",
+        "Name conflict"
+      ],
+      "components": [
+        "ChunkingProfileList",
+        "CreateChunkingProfileForm",
+        "StrategyTypeBadge",
+        "JsonParametersViewer"
+      ]
+    },
+    {
+      "page_id": "document_chunks_drilldown",
+      "title": "Document Chunks Drilldown",
+      "purpose": "Inspect ordered chunks for a selected document and chunking profile after retrieval or ingestion.",
+      "data_requirements": [
+        "Document detail header",
+        "Chunking profiles for selector",
+        "Ordered chunks for selected profile"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "getDocument",
+          "usage": "document context header"
+        },
+        {
+          "operation_id": "listChunkingProfiles",
+          "usage": "profile selector"
+        },
+        {
+          "operation_id": "getDocumentChunksForDrilldown",
+          "usage": "ordered chunk list"
+        }
+      ],
+      "user_actions": [
+        "Select chunking profile",
+        "Inspect chunk text and page span"
+      ],
+      "loading_states": [
+        "Document header loading",
+        "Chunk list loading when profile changes"
+      ],
+      "error_states": [
+        "Document/profile not found",
+        "No chunks for selected profile"
+      ],
+      "components": [
+        "DocumentHeader",
+        "ChunkingProfileSelector",
+        "OrderedChunkList",
+        "ChunkCard"
+      ]
+    },
+    {
+      "page_id": "retrieval_playground",
+      "title": "Retrieval Playground",
+      "purpose": "Run ad hoc lexical or vector retrieval for benchmark-style questions and inspect top-k results.",
+      "data_requirements": [
+        "Chunking profiles",
+        "Search results for chosen mode",
+        "Optional document chunk drilldown targets"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "listChunkingProfiles",
+          "usage": "selector options"
+        },
+        {
+          "operation_id": "searchLexicalChunks",
+          "usage": "text retrieval"
+        },
+        {
+          "operation_id": "searchVectorChunks",
+          "usage": "vector retrieval"
+        },
+        {
+          "operation_id": "getDocumentChunksForDrilldown",
+          "usage": "result drilldown"
+        }
+      ],
+      "user_actions": [
+        "Choose retrieval mode",
+        "Select chunking profile",
+        "Enter query text for lexical search",
+        "Provide query embedding for vector search",
+        "Choose top-k limit",
+        "Inspect result source chunks"
+      ],
+      "loading_states": [
+        "Chunking profile load",
+        "Search in progress",
+        "Result drilldown loading"
+      ],
+      "error_states": [
+        "Missing/invalid query payload",
+        "Chunking profile not found",
+        "Search backend error",
+        "Empty results state"
+      ],
+      "components": [
+        "RetrievalModeToggle",
+        "ChunkingProfileSelector",
+        "TextSearchForm",
+        "VectorSearchForm",
+        "TopKSelector",
+        "SearchResultsList",
+        "ResultDrilldownDrawer",
+        "CapabilityNotice"
+      ],
+      "notes": [
+        "Vector search requires externally generated query embeddings; the API does not offer text-to-embedding conversion."
+      ]
+    },
+    {
+      "page_id": "benchmark_datasets",
+      "title": "Benchmark Datasets",
+      "purpose": "Create and browse tenant benchmark datasets that group prompts/questions.",
+      "data_requirements": [
+        "Dataset list"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "listBenchmarkDatasets",
+          "usage": "list datasets"
+        },
+        {
+          "operation_id": "createBenchmarkDataset",
+          "usage": "create dataset"
+        }
+      ],
+      "user_actions": [
+        "Create dataset",
+        "Filter by exact name if desired",
+        "Open dataset"
+      ],
+      "loading_states": [
+        "List loading",
+        "Create submitting"
+      ],
+      "error_states": [
+        "Tenant not found",
+        "Invalid query",
+        "Validation error"
+      ],
+      "components": [
+        "BenchmarkDatasetList",
+        "CreateBenchmarkDatasetForm",
+        "EmptyState",
+        "ErrorBanner"
+      ]
+    },
+    {
+      "page_id": "benchmark_dataset_detail",
+      "title": "Benchmark Dataset Detail",
+      "purpose": "Review one dataset and author benchmark queries with optional ground truth labels.",
+      "data_requirements": [
+        "Dataset with embedded queries",
+        "Recent documents for selecting ground-truth document ids"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "getBenchmarkDatasetWithQueries",
+          "usage": "load dataset and queries"
+        },
+        {
+          "operation_id": "createBenchmarkQuery",
+          "usage": "add query"
+        },
+        {
+          "operation_id": "listRecentDocuments",
+          "usage": "help select document ids for ground truth"
+        }
+      ],
+      "user_actions": [
+        "View all benchmark queries",
+        "Add benchmark query",
+        "Enter optional query embedding",
+        "Add ground truth labels with document_id and/or chunk_id if known",
+        "Navigate to runs"
+      ],
+      "loading_states": [
+        "Dataset loading",
+        "Query creation submitting"
+      ],
+      "error_states": [
+        "Dataset not found",
+        "Validation error on query create"
+      ],
+      "components": [
+        "BenchmarkDatasetHeader",
+        "BenchmarkQueryList",
+        "CreateBenchmarkQueryForm",
+        "GroundTruthEditor",
+        "DocumentReferencePicker"
+      ],
+      "notes": [
+        "The API lacks a chunk lookup/search endpoint by text or id outside run results/drilldown flows, so chunk_id ground-truth entry may need manual id entry unless derived from prior retrieval results."
+      ]
+    },
+    {
+      "page_id": "benchmark_runs",
+      "title": "Benchmark Runs",
+      "purpose": "List and configure benchmark runs for a dataset.",
+      "data_requirements": [
+        "Dataset runs with chunking profile summary",
+        "Chunking profiles for run creation"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "listBenchmarkRuns",
+          "usage": "run list"
+        },
+        {
+          "operation_id": "listChunkingProfiles",
+          "usage": "chunking profile options"
+        },
+        {
+          "operation_id": "createBenchmarkRun",
+          "usage": "create run record"
+        }
+      ],
+      "user_actions": [
+        "View existing runs",
+        "Create benchmark run configuration",
+        "Open run detail",
+        "Open comparisons"
+      ],
+      "loading_states": [
+        "Runs list loading",
+        "Run creation submitting"
+      ],
+      "error_states": [
+        "Dataset not found",
+        "Validation error",
+        "Related entity not found"
+      ],
+      "components": [
+        "BenchmarkRunList",
+        "CreateBenchmarkRunForm",
+        "RunStatusBadge",
+        "ChunkingProfileMultiSelect"
+      ]
+    },
+    {
+      "page_id": "benchmark_run_detail",
+      "title": "Benchmark Run Detail",
+      "purpose": "Monitor a run, update status, record results, and analyze summary/per-query metrics and outliers.",
+      "data_requirements": [
+        "Run summary metrics",
+        "Per-query result details",
+        "Latency outliers"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "updateBenchmarkRun",
+          "usage": "edit status/metadata"
+        },
+        {
+          "operation_id": "getBenchmarkRunSummary",
+          "usage": "aggregate metrics summary"
+        },
+        {
+          "operation_id": "getBenchmarkRunQueryDetails",
+          "usage": "per-query metrics and retrieved hits"
+        },
+        {
+          "operation_id": "getBenchmarkRunLatencyOutliers",
+          "usage": "slow-query analysis"
+        },
+        {
+          "operation_id": "createBenchmarkResult",
+          "usage": "record per-query result"
+        }
+      ],
+      "user_actions": [
+        "Patch run status/timestamps/notes",
+        "Record per-query result",
+        "Review averages and latency statistics",
+        "Inspect per-query retrieved hits",
+        "View latency outliers"
+      ],
+      "loading_states": [
+        "Summary loading",
+        "Results table loading",
+        "Outliers loading",
+        "Result form submitting",
+        "Run patch submitting"
+      ],
+      "error_states": [
+        "Run/results not found",
+        "Validation error on result create or patch",
+        "Duplicate benchmark result",
+        "No results yet empty analysis state"
+      ],
+      "components": [
+        "BenchmarkRunHeader",
+        "RunStatusEditor",
+        "RunSummaryCards",
+        "PerQueryResultsTable",
+        "CreateBenchmarkResultForm",
+        "LatencyOutliersPanel",
+        "RetrievedResultsViewer"
+      ],
+      "notes": [
+        "The frontend can record results but cannot automatically execute benchmark runs from the API alone. Metrics must be supplied in createBenchmarkResult payloads or derived externally before submission."
+      ]
+    },
+    {
+      "page_id": "benchmark_run_comparison",
+      "title": "Benchmark Run Comparison",
+      "purpose": "Show side-by-side comparison of completed runs for a dataset across systems and chunking strategies.",
+      "data_requirements": [
+        "Comparison rows for completed runs"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "compareBenchmarkRuns",
+          "usage": "comparison table"
+        }
+      ],
+      "user_actions": [
+        "Review run comparison",
+        "Sort/filter client-side",
+        "Open underlying run detail"
+      ],
+      "loading_states": [
+        "Comparison table loading"
+      ],
+      "error_states": [
+        "No completed runs found",
+        "Invalid path"
+      ],
+      "components": [
+        "RunComparisonTable",
+        "MetricColumnChooser",
+        "EmptyComparisonState"
+      ]
+    },
+    {
+      "page_id": "agent_memory_sessions",
+      "title": "Agent Memory Sessions",
+      "purpose": "Support secondary exploration of session memory storage, session history, and semantic retrieval.",
+      "data_requirements": [
+        "Recent session history for selected session",
+        "Semantic retrieval results for a query embedding"
+      ],
+      "api_endpoints": [
+        {
+          "operation_id": "createAgentMemoryEntry",
+          "usage": "store memory entry"
+        },
+        {
+          "operation_id": "listRecentAgentMemory",
+          "usage": "load chronological session history"
+        },
+        {
+          "operation_id": "searchAgentMemory",
+          "usage": "semantic memory retrieval"
+        }
+      ],
+      "user_actions": [
+        "Create memory entry",
+        "Load a session history by session id",
+        "Search memory semantically with query embedding"
+      ],
+      "loading_states": [
+        "History loading",
+        "Search loading",
+        "Create submitting"
+      ],
+      "error_states": [
+        "Session not found",
+        "Validation error",
+        "Vector search error"
+      ],
+      "components": [
+        "AgentMemoryEntryForm",
+        "SessionSelector",
+        "SessionHistoryList",
+        "MemorySearchForm",
+        "MemorySearchResults"
+      ],
+      "notes": [
+        "No endpoint exists to list all sessions globally; user must supply or navigate with a known session id. Query embeddings must be supplied externally."
+      ]
+    }
+  ],
+  "shared_components": [
+    {
+      "name": "TenantSwitcher",
+      "purpose": "Switch active tenant across tenant-scoped routes",
+      "used_on": [
+        "tenant_workspace",
+        "documents_list",
+        "document_detail",
+        "document_chunks_drilldown",
+        "retrieval_playground",
+        "benchmark_datasets",
+        "benchmark_dataset_detail",
+        "benchmark_runs",
+        "benchmark_run_detail",
+        "benchmark_run_comparison",
+        "agent_memory_sessions"
+      ]
+    },
+    {
+      "name": "ApiErrorBanner",
+      "purpose": "Render API error codes/messages consistently",
+      "used_on": "all"
+    },
+    {
+      "name": "LoadingSkeleton",
+      "purpose": "Standard loading placeholders",
+      "used_on": "all"
+    },
+    {
+      "name": "EmptyStatePanel",
+      "purpose": "Consistent empty-state handling",
+      "used_on": "all list/detail analysis screens"
+    },
+    {
+      "name": "TopKSelector",
+      "purpose": "Select benchmark/retrieval top-k values 1/5/10/20 or allowed custom limit",
+      "used_on": [
+        "retrieval_playground",
+        "benchmark_runs"
+      ]
+    },
+    {
+      "name": "CapabilityNotice",
+      "purpose": "Explain backend limitations where API lacks automation/upload/generation endpoints",
+      "used_on": [
+        "documents_list",
+        "retrieval_playground",
+        "benchmark_run_detail",
+        "agent_memory_sessions"
+      ]
+    }
+  ],
+  "constraints": [
+    {
+      "type": "api_gap",
+      "description": "No binary file upload endpoint exists. Frontend can only register document metadata/storage references and display them."
+    },
+    {
+      "type": "api_gap",
+      "description": "No embedding generation endpoint exists for documents, benchmark queries, retrieval queries, or agent-memory searches. Frontend must accept externally generated embeddings when vector operations are used."
+    },
+    {
+      "type": "api_gap",
+      "description": "No bulk chunk upload endpoint exists; chunks are created one at a time with createDocumentChunk."
+    },
+    {
+      "type": "api_gap",
+      "description": "No endpoint executes benchmark runs automatically or computes metrics from raw retrieved hits on demand. Frontend can create run records, update status, and submit results/metrics."
+    },
+    {
+      "type": "api_gap",
+      "description": "No cost/storage estimation endpoint exists, so the UI cannot provide backend-derived cost comparison views."
+    },
+    {
+      "type": "api_gap",
+      "description": "No dedicated structured+unstructured workflow endpoint exists, so this should not be represented as an implemented POV screen."
+    },
+    {
+      "type": "api_gap",
+      "description": "No multimodal extraction endpoint exists, so PDF image/table extraction workflows should not be promised."
+    }
+  ]
+}
