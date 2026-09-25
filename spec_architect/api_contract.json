@@ -1,29 +1,23 @@
 {
   "version": "1.0.0",
-  "name": "thoughtspot_pov_api_contract",
-  "description": "API contract for MongoDB POV Builder benchmark-oriented document search, agent memory, and side-by-side evaluation workflows.",
-  "assumptions": [
-    "Tenant context is always supplied in the path and enforced server-side against authenticated access.",
-    "Embedding generation, document parsing, and benchmark execution orchestration happen in the application layer; the API persists and retrieves their outputs using the authoritative data model and query patterns.",
-    "No endpoint is included for binary file upload streaming because the authoritative data model/query patterns only support storing document metadata plus external storage URI, not raw file blobs.",
-    "No endpoint is included to list tenants because no query pattern supports it; tenant creation/get would be straightforward CRUD on the tenants collection and is included only where directly implied by the data model."
-  ],
+  "pov_name": "MongoDB Atlas + Voyage AI POV Builder API Contract",
+  "base_path": "/api/v1",
+  "content_type": "application/json",
+  "authentication": {
+    "note": "Authentication/authorization mechanism is out of scope in the authoritative data model and query patterns. Endpoints assume caller context is already authenticated and tenant-scoped where required."
+  },
   "endpoints": [
     {
       "operation_id": "createTenant",
       "method": "POST",
-      "path": "/v1/tenants",
-      "purpose": "Create a tenant/deployment record so documents, agent memory, and benchmark runs can be isolated per customer or demo environment.",
+      "path": "/tenants",
+      "purpose": "Create a tenant/account scope used to isolate uploaded documents, agent memory, and benchmark runs.",
       "request": {
-        "headers": {
-          "Content-Type": "application/json"
-        },
         "body": {
           "tenant_key": "string, required",
           "display_name": "string, required",
-          "deployment_mode": "enum[saas_isolated|customer_cloud|on_prem_legacy|demo], required",
-          "cloud": "enum[aws|gcp|azure|other], optional",
-          "status": "enum[active|inactive], required"
+          "deployment_model": "string, optional, one of [multi_tenant, isolated_per_tenant]",
+          "cloud": "string, optional, one of [aws, gcp, azure, other]"
         }
       },
       "response": {
@@ -33,96 +27,115 @@
             "id": "objectId",
             "tenant_key": "string",
             "display_name": "string",
-            "deployment_mode": "string",
+            "deployment_model": "string|null",
             "cloud": "string|null",
-            "status": "string",
-            "created_at": "ISO-8601 datetime"
+            "created_at": "date-time"
           }
         }
       },
       "errors": [
         {
           "status": 400,
-          "code": "VALIDATION_ERROR",
-          "message": "Missing required fields or invalid enum value."
+          "code": "INVALID_REQUEST",
+          "cases": [
+            "Missing required fields",
+            "Invalid enum value"
+          ]
         },
         {
           "status": 409,
-          "code": "TENANT_KEY_CONFLICT",
-          "message": "tenant_key already exists if uniqueness is enforced by the application/index."
+          "code": "TENANT_KEY_ALREADY_EXISTS",
+          "cases": [
+            "Duplicate tenant_key due to unique index uk_tenant_key"
+          ]
         }
       ],
-      "backing": "MongoDB insertOne on tenants (straightforward CRUD implied by data model)"
+      "backing": {
+        "type": "CRUD",
+        "collection": "tenants",
+        "operation": "insertOne"
+      }
     },
     {
-      "operation_id": "getTenant",
+      "operation_id": "listTenants",
       "method": "GET",
-      "path": "/v1/tenants/{tenantId}",
-      "purpose": "Fetch a tenant/deployment record for display and scoping.",
+      "path": "/tenants",
+      "purpose": "List tenants available in the POV environment.",
       "request": {
-        "path_params": {
-          "tenantId": "objectId, required"
-        }
+        "query_params": {}
       },
       "response": {
         "status": 200,
         "body": {
-          "tenant": {
-            "id": "objectId",
-            "tenant_key": "string",
-            "display_name": "string",
-            "deployment_mode": "string",
-            "cloud": "string|null",
-            "status": "string",
-            "created_at": "ISO-8601 datetime"
-          }
+          "tenants": [
+            {
+              "id": "objectId",
+              "tenant_key": "string",
+              "display_name": "string",
+              "deployment_model": "string|null",
+              "cloud": "string|null",
+              "created_at": "date-time"
+            }
+          ]
         }
       },
       "errors": [
         {
-          "status": 400,
-          "code": "INVALID_TENANT_ID",
-          "message": "tenantId is not a valid objectId."
-        },
-        {
-          "status": 404,
-          "code": "TENANT_NOT_FOUND",
-          "message": "No tenant found for the given id."
+          "status": 500,
+          "code": "INTERNAL_ERROR",
+          "cases": [
+            "Unexpected read failure"
+          ]
         }
       ],
-      "backing": "MongoDB findOne on tenants by _id (straightforward CRUD implied by data model)"
+      "backing": {
+        "type": "CRUD",
+        "collection": "tenants",
+        "operation": "find"
+      }
     },
     {
-      "operation_id": "createDocumentMetadata",
+      "operation_id": "createDocument",
       "method": "POST",
-      "path": "/v1/tenants/{tenantId}/documents",
-      "purpose": "Register an uploaded or seeded document and its storage/extraction metadata so it can enter extraction and retrieval workflows.",
+      "path": "/tenants/{tenantId}/documents",
+      "purpose": "Create a document record for an uploaded file or conversation-derived memory item so ingestion can proceed and progress can be tracked.",
       "request": {
-        "headers": {
-          "Content-Type": "application/json"
-        },
         "path_params": {
           "tenantId": "objectId, required"
         },
         "body": {
-          "source_type": "enum[live_upload|seeded|baseline_import], required",
-          "title": "string, required",
-          "file_name": "string, optional",
+          "document_type": "string, required, one of [unstructured_document, agent_memory_document]",
+          "source_type": "string, required, one of [pdf, csv, google_sheet, json, text, research_paper, business_document, jira_export, slack_export, conversation, other]",
+          "title": "string, optional",
+          "source_uri": "string, optional",
           "mime_type": "string, optional",
-          "file_size_bytes": "int64, optional",
-          "storage": {
-            "provider": "enum[s3|gcs|azure_blob|local|none], required when storage supplied",
-            "uri": "string, required when storage supplied"
-          },
-          "metadata": {
-            "source_system": "string, optional",
-            "uploaded_by": "string, optional",
-            "tags": [
+          "uploaded_by_user_id": "string, optional",
+          "access_tags": {
+            "tenant_key": "string, optional",
+            "user_ids": [
               "string, optional"
             ],
-            "language": "string, optional",
-            "page_count": "int32, optional"
-          }
+            "groups": [
+              "string, optional"
+            ]
+          },
+          "structured_metadata": {
+            "author": "string, optional",
+            "created_source_at": "date-time, optional",
+            "labels": [
+              "string, optional"
+            ],
+            "business_attributes": "object, optional"
+          },
+          "conversation_metadata": {
+            "session_id": "string, optional",
+            "message_count": "int, optional",
+            "participants": [
+              "string, optional"
+            ]
+          },
+          "raw_text": "string, optional",
+          "ingestion_status": "string, optional; if omitted server defaults to uploaded"
         }
       },
       "response": {
@@ -131,63 +144,152 @@
           "document": {
             "id": "objectId",
             "tenant_id": "objectId",
+            "document_type": "string",
             "source_type": "string",
-            "title": "string",
-            "file_name": "string|null",
+            "title": "string|null",
+            "source_uri": "string|null",
             "mime_type": "string|null",
-            "file_size_bytes": "number|null",
-            "storage": {
-              "provider": "string",
-              "uri": "string"
-            },
-            "metadata": {
-              "source_system": "string|null",
-              "uploaded_by": "string|null",
-              "tags": [
-                "string"
-              ],
-              "language": "string|null",
-              "page_count": "number|null"
-            },
-            "extraction": {
-              "status": "pending"
-            },
-            "created_at": "ISO-8601 datetime"
+            "uploaded_by_user_id": "string|null",
+            "access_tags": "object|null",
+            "structured_metadata": "object|null",
+            "conversation_metadata": "object|null",
+            "raw_text": "string|null",
+            "ingestion_status": "string",
+            "created_at": "date-time",
+            "updated_at": "date-time"
           }
         }
       },
       "errors": [
         {
           "status": 400,
-          "code": "VALIDATION_ERROR",
-          "message": "Missing required fields or invalid enum value."
+          "code": "INVALID_REQUEST",
+          "cases": [
+            "Missing required fields",
+            "Invalid enum values",
+            "Malformed metadata structure"
+          ]
         },
         {
           "status": 404,
           "code": "TENANT_NOT_FOUND",
-          "message": "Tenant does not exist."
+          "cases": [
+            "tenantId does not exist"
+          ]
         }
       ],
-      "backing": "QP1"
+      "backing": {
+        "type": "CRUD",
+        "collection": "documents",
+        "operation": "insertOne"
+      }
     },
     {
-      "operation_id": "updateDocumentExtraction",
-      "method": "PATCH",
-      "path": "/v1/tenants/{tenantId}/documents/{documentId}/extraction",
-      "purpose": "Update extraction progress, extracted text, preview text, and errors for a document after parsing.",
+      "operation_id": "listReadyDocuments",
+      "method": "GET",
+      "path": "/tenants/{tenantId}/documents",
+      "purpose": "List tenant documents that are ready for search or playground use, optionally filtered by source type, document type, uploader, and recency.",
       "request": {
-        "headers": {
-          "Content-Type": "application/json"
+        "path_params": {
+          "tenantId": "objectId, required"
         },
+        "query_params": {
+          "source_types": "comma-separated list of source_type values, optional",
+          "document_types": "comma-separated list of [unstructured_document, agent_memory_document], optional",
+          "uploaded_by_user_id": "string, optional",
+          "from_date": "date-time, optional",
+          "to_date": "date-time, optional",
+          "limit": "int, optional"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "documents": [
+            {
+              "id": "objectId",
+              "title": "string|null",
+              "document_type": "string",
+              "source_type": "string",
+              "uploaded_by_user_id": "string|null",
+              "structured_metadata": "object|null",
+              "conversation_metadata": "object|null",
+              "created_at": "date-time",
+              "updated_at": "date-time"
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_QUERY",
+          "cases": [
+            "Invalid tenantId",
+            "Invalid enum filters",
+            "Invalid date range"
+          ]
+        }
+      ],
+      "backing": {
+        "type": "query_pattern",
+        "id": "QP1",
+        "name": "List tenant documents ready for search/playground"
+      }
+    },
+    {
+      "operation_id": "getDocumentIngestionStatus",
+      "method": "GET",
+      "path": "/tenants/{tenantId}/documents/ingestion-status",
+      "purpose": "Track ingestion progress for one or more newly uploaded documents during on-the-fly demo uploads.",
+      "request": {
+        "path_params": {
+          "tenantId": "objectId, required"
+        },
+        "query_params": {
+          "document_ids": "comma-separated list of objectIds, required"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "documents": [
+            {
+              "id": "objectId",
+              "title": "string|null",
+              "source_type": "string",
+              "ingestion_status": "string",
+              "updated_at": "date-time",
+              "created_at": "date-time"
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_QUERY",
+          "cases": [
+            "Missing document_ids",
+            "Invalid objectId in document_ids"
+          ]
+        }
+      ],
+      "backing": {
+        "type": "query_pattern",
+        "id": "QP2",
+        "name": "Track document ingestion progress for on-the-fly uploads"
+      }
+    },
+    {
+      "operation_id": "getDocument",
+      "method": "GET",
+      "path": "/tenants/{tenantId}/documents/{documentId}",
+      "purpose": "Fetch a single document record and metadata.",
+      "request": {
         "path_params": {
           "tenantId": "objectId, required",
           "documentId": "objectId, required"
-        },
-        "body": {
-          "status": "enum[processing|completed|failed], required",
-          "extracted_text": "string, optional",
-          "content_preview": "string, optional",
-          "error_message": "string, optional"
         }
       },
       "response": {
@@ -196,216 +298,166 @@
           "document": {
             "id": "objectId",
             "tenant_id": "objectId",
-            "extraction": {
-              "status": "string",
-              "extracted_text": "string|null",
-              "content_preview": "string|null",
-              "error_message": "string|null",
-              "processed_at": "ISO-8601 datetime"
-            }
+            "document_type": "string",
+            "source_type": "string",
+            "title": "string|null",
+            "source_uri": "string|null",
+            "mime_type": "string|null",
+            "uploaded_by_user_id": "string|null",
+            "access_tags": "object|null",
+            "structured_metadata": "object|null",
+            "conversation_metadata": "object|null",
+            "raw_text": "string|null",
+            "ingestion_status": "string",
+            "created_at": "date-time",
+            "updated_at": "date-time"
+          }
+        }
+      },
+      "errors": [
+        {
+          "status": 404,
+          "code": "DOCUMENT_NOT_FOUND",
+          "cases": [
+            "No document for tenantId + documentId"
+          ]
+        }
+      ],
+      "backing": {
+        "type": "CRUD",
+        "collection": "documents",
+        "operation": "findOne"
+      }
+    },
+    {
+      "operation_id": "updateDocument",
+      "method": "PATCH",
+      "path": "/tenants/{tenantId}/documents/{documentId}",
+      "purpose": "Update a document record, including ingestion status as the upload pipeline progresses.",
+      "request": {
+        "path_params": {
+          "tenantId": "objectId, required",
+          "documentId": "objectId, required"
+        },
+        "body": {
+          "title": "string, optional",
+          "source_uri": "string, optional",
+          "mime_type": "string, optional",
+          "uploaded_by_user_id": "string, optional",
+          "access_tags": "object, optional",
+          "structured_metadata": "object, optional",
+          "conversation_metadata": "object, optional",
+          "raw_text": "string, optional",
+          "ingestion_status": "string, optional, one of [uploaded, text_extracted, chunked, embedded, ready, failed]"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "document": {
+            "id": "objectId",
+            "updated_at": "date-time",
+            "ingestion_status": "string"
           }
         }
       },
       "errors": [
         {
           "status": 400,
-          "code": "VALIDATION_ERROR",
-          "message": "Invalid extraction payload."
+          "code": "INVALID_REQUEST",
+          "cases": [
+            "Invalid enum",
+            "Invalid patch payload"
+          ]
         },
         {
           "status": 404,
           "code": "DOCUMENT_NOT_FOUND",
-          "message": "Document not found for tenant."
+          "cases": [
+            "No document for tenantId + documentId"
+          ]
         }
       ],
-      "backing": "QP2"
+      "backing": {
+        "type": "CRUD",
+        "collection": "documents",
+        "operation": "updateOne"
+      }
     },
     {
-      "operation_id": "createDocumentChunks",
-      "method": "POST",
-      "path": "/v1/tenants/{tenantId}/documents/{documentId}/chunks:batchCreate",
-      "purpose": "Store chunked text and embeddings for one document under a chosen chunking strategy.",
+      "operation_id": "listDocumentChunks",
+      "method": "GET",
+      "path": "/tenants/{tenantId}/documents/{documentId}/chunks",
+      "purpose": "Browse chunks for a document under a chosen chunking strategy to inspect chunk output and compare chunking approaches.",
       "request": {
-        "headers": {
-          "Content-Type": "application/json"
-        },
         "path_params": {
           "tenantId": "objectId, required",
           "documentId": "objectId, required"
         },
+        "query_params": {
+          "chunking_strategy": "string, required, one of [fixed_length, recursive, semantic, contextual]"
+        }
+      },
+      "response": {
+        "status": 200,
         "body": {
           "chunks": [
             {
-              "chunking_strategy": "enum[fixed_length|recursive|semantic|contextual], required",
-              "chunk_index": "int32, required",
-              "text": "string, required",
-              "token_count": "int32, optional",
-              "page_span": {
-                "start_page": "int32, optional",
-                "end_page": "int32, optional"
-              },
-              "embedding_model": "string, required",
-              "embedding": [
-                "float, required"
-              ],
-              "embedding_dimensions": "int32, required"
-            }
-          ]
-        }
-      },
-      "response": {
-        "status": 201,
-        "body": {
-          "inserted_count": "number",
-          "document_id": "objectId",
-          "tenant_id": "objectId",
-          "chunking_strategy": "string",
-          "chunk_ids": [
-            "objectId"
-          ]
-        }
-      },
-      "errors": [
-        {
-          "status": 400,
-          "code": "VALIDATION_ERROR",
-          "message": "Invalid chunk batch payload."
-        },
-        {
-          "status": 404,
-          "code": "DOCUMENT_NOT_FOUND",
-          "message": "Document not found for tenant."
-        }
-      ],
-      "backing": "QP3"
-    },
-    {
-      "operation_id": "vectorSearchDocumentChunks",
-      "method": "POST",
-      "path": "/v1/tenants/{tenantId}/search/document-vector",
-      "purpose": "Retrieve the most relevant document chunks for a query embedding within one tenant and one chunking strategy.",
-      "request": {
-        "headers": {
-          "Content-Type": "application/json"
-        },
-        "path_params": {
-          "tenantId": "objectId, required"
-        },
-        "body": {
-          "query_embedding": [
-            "float, required"
-          ],
-          "chunking_strategy": "enum[fixed_length|recursive|semantic|contextual], required",
-          "top_k": "int32, required",
-          "num_candidates": "int32, required"
-        }
-      },
-      "response": {
-        "status": 200,
-        "body": {
-          "results": [
-            {
-              "chunk_id": "objectId",
-              "document_id": "objectId",
-              "document_title": "string",
-              "file_name": "string|null",
-              "chunk_index": "int32",
+              "id": "objectId",
+              "chunk_index": "int",
               "text": "string",
-              "page_span": {
-                "start_page": "int32|null",
-                "end_page": "int32|null"
-              },
-              "score": "number"
+              "token_count": "int|null",
+              "start_offset": "int|null",
+              "end_offset": "int|null",
+              "embedding_model": "string",
+              "metadata": {
+                "title": "string|null",
+                "source_type": "string|null"
+              }
             }
-          ],
-          "count": "number"
+          ]
         }
       },
       "errors": [
         {
           "status": 400,
-          "code": "VALIDATION_ERROR",
-          "message": "Invalid search payload."
-        },
-        {
-          "status": 404,
-          "code": "TENANT_NOT_FOUND",
-          "message": "Tenant not found."
+          "code": "INVALID_QUERY",
+          "cases": [
+            "Missing chunking_strategy",
+            "Invalid strategy value"
+          ]
         }
       ],
-      "backing": "QP4"
+      "backing": {
+        "type": "query_pattern",
+        "id": "QP3",
+        "name": "Browse chunks for a document by chunking strategy"
+      }
     },
     {
-      "operation_id": "textSearchDocuments",
-      "method": "GET",
-      "path": "/v1/tenants/{tenantId}/search/document-text",
-      "purpose": "Run keyword/text search over extracted document content and metadata.",
-      "request": {
-        "path_params": {
-          "tenantId": "objectId, required"
-        },
-        "query_params": {
-          "q": "string, required",
-          "top_k": "int32, required"
-        }
-      },
-      "response": {
-        "status": 200,
-        "body": {
-          "results": [
-            {
-              "document_id": "objectId",
-              "title": "string",
-              "file_name": "string|null",
-              "tags": [
-                "string"
-              ],
-              "content_preview": "string|null",
-              "score": "number"
-            }
-          ],
-          "count": "number"
-        }
-      },
-      "errors": [
-        {
-          "status": 400,
-          "code": "VALIDATION_ERROR",
-          "message": "Missing q or invalid top_k."
-        },
-        {
-          "status": 404,
-          "code": "TENANT_NOT_FOUND",
-          "message": "Tenant not found."
-        }
-      ],
-      "backing": "QP5"
-    },
-    {
-      "operation_id": "hybridDocumentSearch",
+      "operation_id": "searchDocumentChunksVector",
       "method": "POST",
-      "path": "/v1/tenants/{tenantId}/search/document-hybrid",
-      "purpose": "Combine vector retrieval with structured metadata filters such as language, tags, and source type.",
+      "path": "/tenants/{tenantId}/search/documents/vector",
+      "purpose": "Run vector search over unstructured document chunks with optional structured filters to answer questions against uploaded documents.",
       "request": {
-        "headers": {
-          "Content-Type": "application/json"
-        },
         "path_params": {
           "tenantId": "objectId, required"
         },
         "body": {
+          "query_text": "string, optional if query_embedding supplied",
           "query_embedding": [
-            "float, required"
+            "float, optional if query_text supplied"
           ],
-          "chunking_strategy": "enum[fixed_length|recursive|semantic|contextual], required",
-          "vector_limit": "int32, required",
-          "top_k": "int32, required",
-          "num_candidates": "int32, required",
-          "filters": {
-            "language": "string, optional",
-            "tag": "string, optional",
-            "source_type": "enum[live_upload|seeded|baseline_import], optional"
-          }
+          "top_k": "int, required",
+          "num_candidates": "int, required",
+          "chunking_strategy": "string, optional",
+          "source_types": [
+            "string, optional"
+          ],
+          "labels": [
+            "string, optional"
+          ],
+          "business_attribute_filters": "object, optional key-value map for structured metadata business attributes"
         }
       },
       "response": {
@@ -415,293 +467,275 @@
             {
               "chunk_id": "objectId",
               "document_id": "objectId",
-              "chunk_text": "string",
-              "document_title": "string",
-              "document_tags": [
-                "string"
-              ],
-              "language": "string|null",
-              "score": "number"
-            }
-          ],
-          "count": "number"
-        }
-      },
-      "errors": [
-        {
-          "status": 400,
-          "code": "VALIDATION_ERROR",
-          "message": "Invalid hybrid search payload."
-        },
-        {
-          "status": 404,
-          "code": "TENANT_NOT_FOUND",
-          "message": "Tenant not found."
-        }
-      ],
-      "backing": "QP6"
-    },
-    {
-      "operation_id": "getDocumentInspection",
-      "method": "GET",
-      "path": "/v1/tenants/{tenantId}/documents/{documentId}",
-      "purpose": "Fetch a document and its chunks for one chunking strategy to inspect retrieval results and chunking behavior.",
-      "request": {
-        "path_params": {
-          "tenantId": "objectId, required",
-          "documentId": "objectId, required"
-        },
-        "query_params": {
-          "chunking_strategy": "enum[fixed_length|recursive|semantic|contextual], required"
-        }
-      },
-      "response": {
-        "status": 200,
-        "body": {
-          "document": {
-            "id": "objectId",
-            "title": "string",
-            "file_name": "string|null",
-            "metadata": {
-              "source_system": "string|null",
-              "uploaded_by": "string|null",
-              "tags": [
-                "string"
-              ],
-              "language": "string|null",
-              "page_count": "number|null"
-            },
-            "content_preview": "string|null",
-            "chunks": [
-              {
-                "chunk_index": "int32",
-                "text": "string",
-                "page_span": {
-                  "start_page": "int32|null",
-                  "end_page": "int32|null"
-                },
-                "token_count": "int32|null",
-                "embedding_model": "string"
-              }
-            ]
-          }
-        }
-      },
-      "errors": [
-        {
-          "status": 400,
-          "code": "VALIDATION_ERROR",
-          "message": "Missing or invalid chunking_strategy."
-        },
-        {
-          "status": 404,
-          "code": "DOCUMENT_NOT_FOUND",
-          "message": "Document not found for tenant."
-        }
-      ],
-      "backing": "QP7"
-    },
-    {
-      "operation_id": "createAgentMemory",
-      "method": "POST",
-      "path": "/v1/tenants/{tenantId}/agent-memory",
-      "purpose": "Store a conversational memory item or derived context record with an embedding.",
-      "request": {
-        "headers": {
-          "Content-Type": "application/json"
-        },
-        "path_params": {
-          "tenantId": "objectId, required"
-        },
-        "body": {
-          "session_id": "string, required",
-          "memory_type": "enum[conversation_turn|summary|fact|tool_output|context_doc], required",
-          "speaker_role": "enum[user|assistant|system|tool], optional",
-          "content": "string, required",
-          "embedding_model": "string, required",
-          "embedding": [
-            "float, required"
-          ],
-          "embedding_dimensions": "int32, required",
-          "source_event_time": "ISO-8601 datetime, optional",
-          "metadata": {
-            "agent_id": "string, optional",
-            "conversation_id": "string, optional",
-            "turn_index": "int32, optional",
-            "tags": [
-              "string, optional"
-            ]
-          }
-        }
-      },
-      "response": {
-        "status": 201,
-        "body": {
-          "memory": {
-            "id": "objectId",
-            "tenant_id": "objectId",
-            "session_id": "string",
-            "memory_type": "string",
-            "speaker_role": "string|null",
-            "content": "string",
-            "embedding_model": "string",
-            "embedding_dimensions": "int32",
-            "source_event_time": "ISO-8601 datetime|null",
-            "metadata": {
-              "agent_id": "string|null",
-              "conversation_id": "string|null",
-              "turn_index": "number|null",
-              "tags": [
-                "string"
-              ]
-            },
-            "created_at": "ISO-8601 datetime"
-          }
-        }
-      },
-      "errors": [
-        {
-          "status": 400,
-          "code": "VALIDATION_ERROR",
-          "message": "Invalid agent memory payload."
-        },
-        {
-          "status": 404,
-          "code": "TENANT_NOT_FOUND",
-          "message": "Tenant not found."
-        }
-      ],
-      "backing": "QP8"
-    },
-    {
-      "operation_id": "vectorSearchAgentMemory",
-      "method": "POST",
-      "path": "/v1/tenants/{tenantId}/agent-memory/search",
-      "purpose": "Retrieve the most relevant memory items for an agent request, optionally limited to one session.",
-      "request": {
-        "headers": {
-          "Content-Type": "application/json"
-        },
-        "path_params": {
-          "tenantId": "objectId, required"
-        },
-        "body": {
-          "query_embedding": [
-            "float, required"
-          ],
-          "session_id": "string, optional",
-          "top_k": "int32, required",
-          "num_candidates": "int32, required"
-        }
-      },
-      "response": {
-        "status": 200,
-        "body": {
-          "results": [
-            {
-              "memory_id": "objectId",
-              "session_id": "string",
-              "memory_type": "string",
-              "speaker_role": "string|null",
-              "content": "string",
-              "source_event_time": "ISO-8601 datetime|null",
+              "text": "string",
+              "chunk_index": "int",
+              "chunking_strategy": "string",
+              "embedding_model": "string",
               "metadata": {
-                "agent_id": "string|null",
-                "conversation_id": "string|null",
-                "turn_index": "number|null",
-                "tags": [
-                  "string"
-                ]
+                "title": "string|null",
+                "source_type": "string|null",
+                "structured_metadata": "object|null"
               },
-              "score": "number"
+              "score": "float"
             }
-          ],
-          "count": "number"
+          ]
         }
       },
       "errors": [
         {
           "status": 400,
-          "code": "VALIDATION_ERROR",
-          "message": "Invalid memory search payload."
-        },
-        {
-          "status": 404,
-          "code": "TENANT_NOT_FOUND",
-          "message": "Tenant not found."
+          "code": "INVALID_REQUEST",
+          "cases": [
+            "Neither query_text nor query_embedding provided",
+            "Invalid strategy/source types",
+            "top_k or num_candidates invalid"
+          ]
         }
       ],
-      "backing": "QP9"
+      "backing": {
+        "type": "query_pattern",
+        "id": "QP4",
+        "name": "Vector search unstructured document chunks with optional structured filters",
+        "notes": "If query_text is provided, an application-layer embedding generation step must occur before executing QP4; that external embedding call is outside the MongoDB query pattern."
+      }
     },
     {
-      "operation_id": "getRecentAgentMemoryTimeline",
-      "method": "GET",
-      "path": "/v1/tenants/{tenantId}/agent-memory/timeline",
-      "purpose": "Fetch the most recent memory timeline for a session to provide recency context.",
-      "request": {
-        "path_params": {
-          "tenantId": "objectId, required"
-        },
-        "query_params": {
-          "session_id": "string, required",
-          "limit": "int32, required"
-        }
-      },
-      "response": {
-        "status": 200,
-        "body": {
-          "results": [
-            {
-              "memory_type": "string",
-              "speaker_role": "string|null",
-              "content": "string",
-              "source_event_time": "ISO-8601 datetime|null",
-              "turn_index": "int32|null"
-            }
-          ],
-          "count": "number"
-        }
-      },
-      "errors": [
-        {
-          "status": 400,
-          "code": "VALIDATION_ERROR",
-          "message": "Missing session_id or invalid limit."
-        }
-      ],
-      "backing": "QP10"
-    },
-    {
-      "operation_id": "createBenchmarkQuery",
+      "operation_id": "searchDocumentChunksHybrid",
       "method": "POST",
-      "path": "/v1/tenants/{tenantId}/benchmark-queries",
-      "purpose": "Capture a benchmark prompt and optional ground truth for document search or agent memory evaluation.",
+      "path": "/tenants/{tenantId}/search/documents/hybrid",
+      "purpose": "Run hybrid lexical plus vector retrieval for side-by-side comparison against pure vector retrieval on the same tenant corpus.",
       "request": {
-        "headers": {
-          "Content-Type": "application/json"
-        },
         "path_params": {
           "tenantId": "objectId, required"
         },
         "body": {
           "query_text": "string, required",
-          "query_type": "enum[document_search|agent_memory], required",
-          "provided_during_session": "boolean, required",
-          "ground_truth": {
-            "relevant_document_ids": [
-              "objectId, optional"
-            ],
-            "relevant_chunk_ids": [
-              "objectId, optional"
-            ],
-            "relevant_memory_ids": [
-              "objectId, optional"
-            ],
-            "notes": "string, optional"
-          },
-          "evaluation_cutoffs": [
-            "int32, required"
+          "query_embedding": [
+            "float, optional if server generates embedding from query_text"
+          ],
+          "top_k": "int, required",
+          "vector_top_k": "int, required",
+          "text_top_k": "int, required",
+          "num_candidates": "int, required",
+          "chunking_strategy": "string, optional"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "chunk_id": "objectId",
+              "document_id": "objectId",
+              "text": "string",
+              "chunk_index": "int",
+              "chunking_strategy": "string",
+              "title": "string|null",
+              "source_type": "string|null",
+              "best_score": "float",
+              "channels": [
+                "text or vector"
+              ]
+            }
           ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_REQUEST",
+          "cases": [
+            "Missing query_text",
+            "Invalid K parameters",
+            "Invalid strategy"
+          ]
+        }
+      ],
+      "backing": {
+        "type": "query_pattern",
+        "id": "QP5",
+        "name": "Hybrid lexical plus vector retrieval for document search",
+        "notes": "If query_embedding is not supplied, the service must generate it before executing the vector portion of QP5."
+      }
+    },
+    {
+      "operation_id": "searchAgentMemory",
+      "method": "POST",
+      "path": "/tenants/{tenantId}/search/agent-memory",
+      "purpose": "Retrieve conversation-derived agent memory using tenant and user/group access boundaries.",
+      "request": {
+        "path_params": {
+          "tenantId": "objectId, required"
+        },
+        "body": {
+          "query_text": "string, optional if query_embedding supplied",
+          "query_embedding": [
+            "float, optional if query_text supplied"
+          ],
+          "user_id": "string, required",
+          "groups": [
+            "string, optional"
+          ],
+          "top_k": "int, required",
+          "num_candidates": "int, required",
+          "chunking_strategy": "string, optional"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "chunk_id": "objectId",
+              "document_id": "objectId",
+              "text": "string",
+              "chunk_index": "int",
+              "metadata": {
+                "title": "string|null",
+                "access_tags": "object|null",
+                "structured_metadata": "object|null"
+              },
+              "score": "float"
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_REQUEST",
+          "cases": [
+            "Missing user_id",
+            "Neither query_text nor query_embedding provided",
+            "Invalid strategy"
+          ]
+        }
+      ],
+      "backing": {
+        "type": "query_pattern",
+        "id": "QP6",
+        "name": "Retrieve agent memory by tenant and user access tags",
+        "notes": "If query_text is provided, embedding generation occurs in the application layer before QP6."
+      }
+    },
+    {
+      "operation_id": "listAgentMemoryDocuments",
+      "method": "GET",
+      "path": "/tenants/{tenantId}/agent-memory/documents",
+      "purpose": "List recent agent memory documents for a tenant, optionally scoped to user or session.",
+      "request": {
+        "path_params": {
+          "tenantId": "objectId, required"
+        },
+        "query_params": {
+          "user_id": "string, optional",
+          "session_id": "string, optional",
+          "limit": "int, optional"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "documents": [
+            {
+              "id": "objectId",
+              "title": "string|null",
+              "source_type": "string",
+              "conversation_metadata": "object|null",
+              "access_tags": "object|null",
+              "created_at": "date-time",
+              "updated_at": "date-time"
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_QUERY",
+          "cases": [
+            "Invalid tenantId",
+            "Invalid limit"
+          ]
+        }
+      ],
+      "backing": {
+        "type": "query_pattern",
+        "id": "QP7",
+        "name": "List recent agent memory documents for a user/session"
+      }
+    },
+    {
+      "operation_id": "hydrateRetrievedChunks",
+      "method": "POST",
+      "path": "/retrieval/chunks/hydrate",
+      "purpose": "Hydrate retrieved chunk hits with parent document metadata and source information for display or agent grounding.",
+      "request": {
+        "body": {
+          "chunk_ids": [
+            "objectId, required"
+          ],
+          "scores_by_chunk_id": "object, optional map of chunkId to score"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "chunk_id": "objectId",
+              "document_id": "objectId",
+              "text": "string",
+              "chunk_index": "int",
+              "chunking_strategy": "string",
+              "score": "float|null",
+              "document": {
+                "title": "string|null",
+                "source_uri": "string|null",
+                "source_type": "string",
+                "mime_type": "string|null",
+                "structured_metadata": "object|null",
+                "created_at": "date-time"
+              }
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_REQUEST",
+          "cases": [
+            "Missing chunk_ids",
+            "Invalid objectId list"
+          ]
+        }
+      ],
+      "backing": {
+        "type": "query_pattern",
+        "id": "QP8",
+        "name": "Fetch parent documents for retrieved chunks"
+      }
+    },
+    {
+      "operation_id": "createBenchmarkQuery",
+      "method": "POST",
+      "path": "/benchmark/queries",
+      "purpose": "Create a reusable benchmark query/prompt for document search, agent memory, or hybrid structured/unstructured evaluation.",
+      "request": {
+        "body": {
+          "tenant_id": "objectId, optional",
+          "name": "string, required",
+          "query_text": "string, required",
+          "query_type": "string, required, one of [document_search, agent_memory, hybrid_structured_unstructured]",
+          "target_document_type": "string, optional, one of [unstructured_document, agent_memory_document]",
+          "filters": {
+            "source_types": [
+              "string, optional"
+            ],
+            "user_id": "string, optional",
+            "chunking_strategy": "string, optional"
+          }
         }
       },
       "response": {
@@ -709,144 +743,103 @@
         "body": {
           "benchmark_query": {
             "id": "objectId",
-            "tenant_id": "objectId",
+            "tenant_id": "objectId|null",
+            "name": "string",
             "query_text": "string",
             "query_type": "string",
-            "provided_during_session": "boolean",
-            "ground_truth": {
-              "relevant_document_ids": [
-                "objectId"
-              ],
-              "relevant_chunk_ids": [
-                "objectId"
-              ],
-              "relevant_memory_ids": [
-                "objectId"
-              ],
-              "notes": "string|null"
-            },
-            "evaluation_cutoffs": [
-              "number"
-            ],
-            "created_at": "ISO-8601 datetime"
+            "target_document_type": "string|null",
+            "filters": "object|null",
+            "created_at": "date-time"
           }
         }
       },
       "errors": [
         {
           "status": 400,
-          "code": "VALIDATION_ERROR",
-          "message": "Invalid benchmark query payload."
-        },
-        {
-          "status": 404,
-          "code": "TENANT_NOT_FOUND",
-          "message": "Tenant not found."
+          "code": "INVALID_REQUEST",
+          "cases": [
+            "Missing required fields",
+            "Invalid enum values"
+          ]
         }
       ],
-      "backing": "QP11"
+      "backing": {
+        "type": "CRUD",
+        "collection": "benchmark_queries",
+        "operation": "insertOne"
+      }
     },
     {
       "operation_id": "listBenchmarkQueries",
       "method": "GET",
-      "path": "/v1/tenants/{tenantId}/benchmark-queries",
-      "purpose": "List benchmark questions for a tenant and workload type.",
+      "path": "/benchmark/queries",
+      "purpose": "Select benchmark queries by scenario and optional filters for an evaluation run.",
       "request": {
-        "path_params": {
-          "tenantId": "objectId, required"
-        },
         "query_params": {
-          "query_type": "enum[document_search|agent_memory], required"
+          "tenant_id": "objectId, optional",
+          "query_type": "string, required",
+          "target_document_type": "string, optional",
+          "source_types": "comma-separated list, optional",
+          "user_id": "string, optional",
+          "chunking_strategy": "string, optional"
         }
       },
       "response": {
         "status": 200,
         "body": {
-          "results": [
+          "queries": [
             {
               "id": "objectId",
+              "tenant_id": "objectId|null",
+              "name": "string",
               "query_text": "string",
-              "provided_during_session": "boolean",
-              "ground_truth": {
-                "relevant_document_ids": [
-                  "objectId"
-                ],
-                "relevant_chunk_ids": [
-                  "objectId"
-                ],
-                "relevant_memory_ids": [
-                  "objectId"
-                ],
-                "notes": "string|null"
-              },
-              "evaluation_cutoffs": [
-                "number"
-              ],
-              "created_at": "ISO-8601 datetime"
+              "query_type": "string",
+              "target_document_type": "string|null",
+              "filters": "object|null",
+              "created_at": "date-time"
             }
-          ],
-          "count": "number"
+          ]
         }
       },
       "errors": [
         {
           "status": 400,
-          "code": "VALIDATION_ERROR",
-          "message": "Missing or invalid query_type."
+          "code": "INVALID_QUERY",
+          "cases": [
+            "Missing query_type",
+            "Invalid enum values"
+          ]
         }
       ],
-      "backing": "QP12"
+      "backing": {
+        "type": "query_pattern",
+        "id": "QP9",
+        "name": "Select benchmark queries by scenario and filters"
+      }
     },
     {
-      "operation_id": "createBenchmarkRun",
+      "operation_id": "createBenchmarkRelevanceJudgment",
       "method": "POST",
-      "path": "/v1/tenants/{tenantId}/benchmark-runs",
-      "purpose": "Create a benchmark run configuration for MongoDB/Voyage or a baseline system under test.",
+      "path": "/benchmark/relevance-judgments",
+      "purpose": "Create a ground-truth relevance judgment linking a benchmark query to a relevant document or chunk.",
       "request": {
-        "headers": {
-          "Content-Type": "application/json"
-        },
-        "path_params": {
-          "tenantId": "objectId, required"
-        },
         "body": {
-          "run_name": "string, required",
-          "workload_type": "enum[document_search|agent_memory|mixed], required",
-          "system_under_test": "enum[mongodb_voyage|elastic|opensearch|qdrant|pinecone|other], required",
-          "baseline_group": "string, optional",
-          "configuration": {
-            "embedding_model": "string, required",
-            "chunking_strategy": "enum[fixed_length|recursive|semantic|contextual], optional",
-            "top_k_values": [
-              "int32, required"
-            ],
-            "reranking_enabled": "boolean, optional"
-          },
-          "query_set_id": "objectId, optional",
+          "query_id": "objectId, required",
+          "document_id": "objectId, optional",
+          "chunk_id": "objectId, optional",
+          "relevance_grade": "int, required",
           "notes": "string, optional"
         }
       },
       "response": {
         "status": 201,
         "body": {
-          "benchmark_run": {
+          "judgment": {
             "id": "objectId",
-            "tenant_id": "objectId",
-            "run_name": "string",
-            "workload_type": "string",
-            "system_under_test": "string",
-            "baseline_group": "string|null",
-            "configuration": {
-              "embedding_model": "string",
-              "chunking_strategy": "string|null",
-              "top_k_values": [
-                "number"
-              ],
-              "reranking_enabled": "boolean|null"
-            },
-            "query_set_id": "objectId|null",
-            "started_at": "ISO-8601 datetime",
-            "status": "running",
+            "query_id": "objectId",
+            "document_id": "objectId|null",
+            "chunk_id": "objectId|null",
+            "relevance_grade": "int",
             "notes": "string|null"
           }
         }
@@ -854,115 +847,190 @@
       "errors": [
         {
           "status": 400,
-          "code": "VALIDATION_ERROR",
-          "message": "Invalid benchmark run payload."
-        },
-        {
-          "status": 404,
-          "code": "TENANT_NOT_FOUND",
-          "message": "Tenant not found."
+          "code": "INVALID_REQUEST",
+          "cases": [
+            "Missing query_id",
+            "Missing both document_id and chunk_id",
+            "Invalid IDs or relevance_grade"
+          ]
         }
       ],
-      "backing": "QP13"
+      "backing": {
+        "type": "CRUD",
+        "collection": "benchmark_relevance_judgments",
+        "operation": "insertOne",
+        "notes": "The data model allows both document_id and chunk_id as optional fields; the API constrains callers to provide at least one."
+      }
     },
     {
-      "operation_id": "createBenchmarkResult",
-      "method": "POST",
-      "path": "/v1/tenants/{tenantId}/benchmark-runs/{runId}/results",
-      "purpose": "Store the ranked outputs and measured metrics for one benchmark query within a run.",
+      "operation_id": "listBenchmarkRelevanceJudgments",
+      "method": "GET",
+      "path": "/benchmark/queries/{queryId}/relevance-judgments",
+      "purpose": "Load ground-truth relevance judgments for one benchmark query so precision and recall can be calculated.",
       "request": {
-        "headers": {
-          "Content-Type": "application/json"
-        },
         "path_params": {
-          "tenantId": "objectId, required",
-          "runId": "objectId, required"
-        },
+          "queryId": "objectId, required"
+        }
+      },
+      "response": {
+        "status": 200,
         "body": {
-          "benchmark_query_id": "objectId, required",
-          "latency_ms": "double, required",
-          "top_k_results": [
+          "judgments": [
             {
-              "rank": "int32, required",
-              "result_type": "enum[document_chunk|agent_memory], required",
-              "result_id": "objectId, required",
-              "document_id": "objectId, optional",
-              "score": "double, required",
-              "snippet": "string, optional"
+              "document_id": "objectId|null",
+              "chunk_id": "objectId|null",
+              "relevance_grade": "int",
+              "notes": "string|null"
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_QUERY",
+          "cases": [
+            "Invalid queryId"
+          ]
+        }
+      ],
+      "backing": {
+        "type": "query_pattern",
+        "id": "QP10",
+        "name": "Load relevance judgments for a benchmark query"
+      }
+    },
+    {
+      "operation_id": "createBenchmarkRun",
+      "method": "POST",
+      "path": "/benchmark/runs",
+      "purpose": "Create a benchmark run record for a side-by-side evaluation across systems, retrieval modes, and chunking strategies.",
+      "request": {
+        "body": {
+          "tenant_id": "objectId, optional",
+          "run_name": "string, required",
+          "corpus_label": "string, optional",
+          "systems_compared": [
+            {
+              "system_name": "string, required",
+              "embedding_model": "string, optional",
+              "retrieval_mode": "string, required, one of [vector, text, hybrid]",
+              "chunking_strategy": "string, optional",
+              "notes": "string, optional"
             }
           ],
-          "metrics": {
-            "precision_at_k": "object with numeric values by cutoff, optional",
-            "recall_at_k": "object with numeric values by cutoff, optional",
-            "mrr": "double, optional",
-            "ndcg": "double, optional"
-          }
+          "query_set": {
+            "query_ids": [
+              "objectId, required"
+            ],
+            "top_k_values": [
+              "int, required"
+            ]
+          },
+          "status": "string, optional; if omitted server defaults to pending"
         }
       },
       "response": {
         "status": 201,
         "body": {
-          "benchmark_result": {
+          "benchmark_run": {
             "id": "objectId",
-            "run_id": "objectId",
-            "tenant_id": "objectId",
-            "benchmark_query_id": "objectId",
-            "latency_ms": "number",
-            "top_k_results": [
-              {
-                "rank": "number",
-                "result_type": "string",
-                "result_id": "objectId",
-                "document_id": "objectId|null",
-                "score": "number",
-                "snippet": "string|null"
-              }
-            ],
-            "metrics": {
-              "precision_at_k": "object|null",
-              "recall_at_k": "object|null",
-              "mrr": "number|null",
-              "ndcg": "number|null"
-            },
-            "created_at": "ISO-8601 datetime"
+            "tenant_id": "objectId|null",
+            "run_name": "string",
+            "corpus_label": "string|null",
+            "systems_compared": "array",
+            "query_set": "object",
+            "aggregate_metrics": [],
+            "started_at": "date-time",
+            "completed_at": "date-time|null",
+            "status": "string"
           }
         }
       },
       "errors": [
         {
           "status": 400,
-          "code": "VALIDATION_ERROR",
-          "message": "Invalid benchmark result payload."
-        },
-        {
-          "status": 404,
-          "code": "BENCHMARK_RUN_NOT_FOUND",
-          "message": "Run not found for tenant."
+          "code": "INVALID_REQUEST",
+          "cases": [
+            "Missing required fields",
+            "Invalid retrieval_mode",
+            "Invalid top_k_values"
+          ]
         }
       ],
-      "backing": "QP14"
+      "backing": {
+        "type": "CRUD",
+        "collection": "benchmark_runs",
+        "operation": "insertOne"
+      }
     },
     {
-      "operation_id": "completeBenchmarkRun",
-      "method": "PATCH",
-      "path": "/v1/tenants/{tenantId}/benchmark-runs/{runId}/complete",
-      "purpose": "Finalize a benchmark run with aggregate precision, recall, and latency summary metrics.",
+      "operation_id": "listBenchmarkRuns",
+      "method": "GET",
+      "path": "/benchmark/runs",
+      "purpose": "List recent benchmark runs with aggregate precision, recall, and latency summaries.",
       "request": {
-        "headers": {
-          "Content-Type": "application/json"
-        },
-        "path_params": {
-          "tenantId": "objectId, required",
-          "runId": "objectId, required"
-        },
+        "query_params": {
+          "tenant_id": "objectId, optional",
+          "status": "string, optional",
+          "limit": "int, optional"
+        }
+      },
+      "response": {
+        "status": 200,
         "body": {
-          "summary_metrics": {
-            "precision_at_k": "object with numeric values by cutoff, required",
-            "recall_at_k": "object with numeric values by cutoff, required",
-            "avg_latency_ms": "double, required",
-            "p95_latency_ms": "double, required",
-            "result_count": "int32, required"
-          }
+          "runs": [
+            {
+              "id": "objectId",
+              "run_name": "string",
+              "corpus_label": "string|null",
+              "systems_compared": "array",
+              "query_set": {
+                "top_k_values": [
+                  "int"
+                ]
+              },
+              "aggregate_metrics": [
+                {
+                  "system_name": "string",
+                  "precision_at_k": "object|null",
+                  "recall_at_k": "object|null",
+                  "avg_latency_ms": "float|null",
+                  "p95_latency_ms": "float|null"
+                }
+              ],
+              "started_at": "date-time",
+              "completed_at": "date-time|null",
+              "status": "string"
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_QUERY",
+          "cases": [
+            "Invalid status",
+            "Invalid tenant_id",
+            "Invalid limit"
+          ]
+        }
+      ],
+      "backing": {
+        "type": "query_pattern",
+        "id": "QP11",
+        "name": "List benchmark runs and aggregate comparison metrics"
+      }
+    },
+    {
+      "operation_id": "getBenchmarkRun",
+      "method": "GET",
+      "path": "/benchmark/runs/{runId}",
+      "purpose": "Fetch a single benchmark run record including aggregate metrics and configuration.",
+      "request": {
+        "path_params": {
+          "runId": "objectId, required"
         }
       },
       "response": {
@@ -970,135 +1038,152 @@
         "body": {
           "benchmark_run": {
             "id": "objectId",
-            "status": "completed",
-            "completed_at": "ISO-8601 datetime",
-            "summary_metrics": {
-              "precision_at_k": "object",
-              "recall_at_k": "object",
-              "avg_latency_ms": "number",
-              "p95_latency_ms": "number",
-              "result_count": "number"
-            }
+            "tenant_id": "objectId|null",
+            "run_name": "string",
+            "corpus_label": "string|null",
+            "systems_compared": "array",
+            "query_set": "object",
+            "aggregate_metrics": "array|null",
+            "started_at": "date-time",
+            "completed_at": "date-time|null",
+            "status": "string"
           }
         }
       },
       "errors": [
         {
-          "status": 400,
-          "code": "VALIDATION_ERROR",
-          "message": "Invalid summary metrics payload."
-        },
-        {
           "status": 404,
-          "code": "BENCHMARK_RUN_NOT_FOUND",
-          "message": "Run not found for tenant."
+          "code": "RUN_NOT_FOUND",
+          "cases": [
+            "No benchmark run found for runId"
+          ]
         }
       ],
-      "backing": "QP15"
+      "backing": {
+        "type": "CRUD",
+        "collection": "benchmark_runs",
+        "operation": "findOne"
+      }
+    },
+    {
+      "operation_id": "listBenchmarkRunResults",
+      "method": "GET",
+      "path": "/benchmark/runs/{runId}/results",
+      "purpose": "Drill into per-query benchmark results including ranked hits, rerank scores, latency, and per-query metrics.",
+      "request": {
+        "path_params": {
+          "runId": "objectId, required"
+        },
+        "query_params": {
+          "query_id": "objectId, optional"
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "run_id": "objectId",
+              "query_id": "objectId",
+              "query_text": "string",
+              "query_type": "string",
+              "system_results": [
+                {
+                  "system_name": "string",
+                  "latency_ms": "float",
+                  "ranked_hits": [
+                    {
+                      "chunk_id": "objectId",
+                      "document_id": "objectId",
+                      "rank": "int",
+                      "score": "float",
+                      "rerank_score": "float|null",
+                      "snippet": "string|null"
+                    }
+                  ],
+                  "metrics": {
+                    "precision_at_k": "object|null",
+                    "recall_at_k": "object|null"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "errors": [
+        {
+          "status": 400,
+          "code": "INVALID_QUERY",
+          "cases": [
+            "Invalid runId or query_id"
+          ]
+        }
+      ],
+      "backing": {
+        "type": "query_pattern",
+        "id": "QP12",
+        "name": "Drill into per-query benchmark run results"
+      }
     },
     {
       "operation_id": "compareBenchmarkRuns",
       "method": "GET",
-      "path": "/v1/tenants/{tenantId}/benchmark-runs/compare",
-      "purpose": "Show side-by-side completed benchmark outcomes across systems and chunking strategies for a workload and comparison group.",
+      "path": "/benchmark/runs/compare",
+      "purpose": "Compare completed benchmark runs across chunking strategies and/or systems to understand impact on precision, recall, and latency.",
       "request": {
-        "path_params": {
-          "tenantId": "objectId, required"
-        },
         "query_params": {
-          "workload_type": "enum[document_search|agent_memory|mixed], required",
-          "baseline_group": "string, required"
+          "tenant_id": "objectId, optional",
+          "chunking_strategies": "comma-separated list, optional",
+          "system_names": "comma-separated list, optional"
         }
       },
       "response": {
         "status": 200,
         "body": {
-          "results": [
+          "comparisons": [
             {
               "run_name": "string",
-              "system_under_test": "string",
+              "corpus_label": "string|null",
+              "started_at": "date-time",
+              "completed_at": "date-time|null",
+              "system_name": "string",
+              "retrieval_mode": "string",
               "chunking_strategy": "string|null",
-              "embedding_model": "string",
-              "top_k_values": [
-                "number"
-              ],
-              "reranking_enabled": "boolean|null",
-              "avg_latency_ms": "number|null",
-              "p95_latency_ms": "number|null",
-              "precision_at_k": "object|null",
-              "recall_at_k": "object|null"
-            }
-          ],
-          "count": "number"
-        }
-      },
-      "errors": [
-        {
-          "status": 400,
-          "code": "VALIDATION_ERROR",
-          "message": "Missing or invalid workload_type/baseline_group."
-        }
-      ],
-      "backing": "QP16"
-    },
-    {
-      "operation_id": "getBenchmarkRunDetails",
-      "method": "GET",
-      "path": "/v1/tenants/{tenantId}/benchmark-runs/{runId}/results",
-      "purpose": "Inspect per-query benchmark behavior, latency outliers, and top-K outputs for one run.",
-      "request": {
-        "path_params": {
-          "tenantId": "objectId, required",
-          "runId": "objectId, required"
-        }
-      },
-      "response": {
-        "status": 200,
-        "body": {
-          "results": [
-            {
-              "benchmark_query_id": "objectId",
-              "query_text": "string",
-              "query_type": "string",
-              "latency_ms": "number",
-              "precision_at_k": "object|null",
-              "recall_at_k": "object|null",
-              "mrr": "number|null",
-              "ndcg": "number|null",
-              "top_k_results": [
+              "aggregate_metrics": [
                 {
-                  "rank": "number",
-                  "result_type": "string",
-                  "result_id": "objectId",
-                  "document_id": "objectId|null",
-                  "score": "number",
-                  "snippet": "string|null"
+                  "system_name": "string",
+                  "precision_at_k": "object|null",
+                  "recall_at_k": "object|null",
+                  "avg_latency_ms": "float|null",
+                  "p95_latency_ms": "float|null"
                 }
               ]
             }
-          ],
-          "count": "number"
+          ]
         }
       },
       "errors": [
         {
           "status": 400,
-          "code": "VALIDATION_ERROR",
-          "message": "Invalid tenantId or runId."
-        },
-        {
-          "status": 404,
-          "code": "BENCHMARK_RUN_NOT_FOUND",
-          "message": "Run not found for tenant."
+          "code": "INVALID_QUERY",
+          "cases": [
+            "Invalid tenant_id",
+            "Invalid strategy filters"
+          ]
         }
       ],
-      "backing": "QP17"
+      "backing": {
+        "type": "query_pattern",
+        "id": "QP13",
+        "name": "Compare benchmark runs across chunking strategies/systems"
+      }
     },
     {
-      "operation_id": "getIngestionReadinessSummary",
+      "operation_id": "getCorpusSummary",
       "method": "GET",
-      "path": "/v1/tenants/{tenantId}/documents/readiness-summary",
-      "purpose": "Summarize how many documents are pending, processing, completed, or failed, grouped by source type, for demo readiness and benchmark preparation.",
+      "path": "/tenants/{tenantId}/corpus/summary",
+      "purpose": "Summarize the ready corpus available for search or benchmarking by document type and source type.",
       "request": {
         "path_params": {
           "tenantId": "objectId, required"
@@ -1107,43 +1192,47 @@
       "response": {
         "status": 200,
         "body": {
-          "results": [
+          "summary": [
             {
+              "document_type": "string",
               "source_type": "string",
-              "extraction_status": "string",
-              "document_count": "number",
-              "total_bytes": "number|null"
+              "document_count": "int",
+              "latest_created_at": "date-time"
             }
-          ],
-          "count": "number"
+          ]
         }
       },
       "errors": [
         {
           "status": 400,
-          "code": "VALIDATION_ERROR",
-          "message": "Invalid tenantId."
+          "code": "INVALID_QUERY",
+          "cases": [
+            "Invalid tenantId"
+          ]
         }
       ],
-      "backing": "QP18"
+      "backing": {
+        "type": "query_pattern",
+        "id": "QP14",
+        "name": "Count ready corpus by tenant, source type, and document type"
+      }
     }
   ],
   "non_endpoints": [
     {
-      "name": "Delete/update document chunks by strategy",
-      "reason": "Not included because no authoritative query pattern covers deletion or replacement semantics for document_chunks; adding it would invent behavior beyond the supplied contract inputs."
+      "area": "benchmark execution orchestration",
+      "status": "not_exposed_as_new_endpoint_here",
+      "reason": "The authoritative query patterns support storing and reading benchmark runs/results, but do not define a query-backed execution workflow that runs retrieval, computes metrics, and writes benchmark_run_results/aggregate_metrics. This contract therefore supports CRUD for creating a run record and query-backed reads for inspecting results, but does not invent a new 'execute benchmark' API."
     },
     {
-      "name": "List documents for a tenant",
-      "reason": "Not included because no authoritative query pattern supports generic document listing. Readiness summary and document inspection are supported instead."
+      "area": "embedding generation / reranking model invocation",
+      "status": "application-layer concern",
+      "reason": "Query patterns QP4/QP5/QP6 require query embeddings, and benchmark results may contain rerank scores, but the data model/query patterns do not define persistence or API contracts for model-provider calls. Endpoints accept query_text and/or query_embedding; server-side embedding/reranking, if implemented, is outside MongoDB query patterns."
     },
     {
-      "name": "Run benchmark execution directly",
-      "reason": "Not included as a single server-side execution endpoint because the authoritative patterns model benchmark run creation, per-query result storage, and completion separately, not an all-in-one orchestrated query pattern."
-    },
-    {
-      "name": "Upload raw files/binary blobs",
-      "reason": "Not included because the data model stores external storage metadata/URI, not file contents, and no query pattern supports binary upload."
+      "area": "binary file upload transport",
+      "status": "simplified_to_document-record creation",
+      "reason": "The authoritative data model stores document metadata and optional source_uri/raw_text, but does not define a file blob store or multipart upload pattern. This contract therefore exposes document creation metadata rather than inventing file-storage APIs."
     }
   ]
 }
