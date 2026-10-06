@@ -1,0 +1,49 @@
+{
+  "app/services/benchmark_runs.py": {
+    "BenchmarkRunsService.__init__": "def __init__(self, repos: Repositories)",
+    "BenchmarkRunsService.create_benchmark_run": "async def create_benchmark_run(self, *, body: CreateBenchmarkRunRequest, tenant_id: str) -> CreateBenchmarkRunResponse",
+    "BenchmarkRunsService.list_benchmark_runs": "async def list_benchmark_runs(self, *, tenant_id: str, status: Literal['draft', 'running', 'completed', 'failed'] | None=None, limit: int | None=None) -> ListBenchmarkRunsResponse",
+    "BenchmarkRunsService.get_benchmark_run_detail": "async def get_benchmark_run_detail(self, *, tenant_id: str, benchmark_run_id: str) -> GetBenchmarkRunDetailResponse",
+    "BenchmarkRunsService.update_benchmark_run": "async def update_benchmark_run(self, *, body: UpdateBenchmarkRunRequest, tenant_id: str, benchmark_run_id: str) -> UpdateBenchmarkRunResponse"
+  },
+  "app/services/chunk_profiles.py": {
+    "ChunkProfilesService.__init__": "def __init__(self, repos: Repositories)",
+    "ChunkProfilesService.list_chunk_profiles": "async def list_chunk_profiles(self, *, tenant_id: str) -> ListChunkProfilesResponse",
+    "ChunkProfilesService.create_chunk_profile": "async def create_chunk_profile(self, *, body: CreateChunkProfileRequest, tenant_id: str) -> CreateChunkProfileResponse"
+  },
+  "app/services/chunks.py": {
+    "ChunksService.__init__": "def __init__(self, repos: Repositories)",
+    "ChunksService.get_document_chunks_by_profile": "async def get_document_chunks_by_profile(self, *, tenant_id: str, document_id: str, chunk_profile_id: str) -> GetDocumentChunksByProfileResponse",
+    "ChunksService.vector_search_documents": "async def vector_search_documents(self, *, body: VectorSearchDocumentsRequest, tenant_id: str) -> VectorSearchDocumentsResponse",
+    "ChunksService.hybrid_search_documents": "async def hybrid_search_documents(self, *, body: HybridSearchDocumentsRequest, tenant_id: str) -> HybridSearchDocumentsResponse",
+    "ChunksService.search_agent_memory": "async def search_agent_memory(self, *, body: SearchAgentMemoryRequest, tenant_id: str) -> SearchAgentMemoryResponse"
+  },
+  "app/services/documents.py": {
+    "DocumentsService.__init__": "def __init__(self, repos: Repositories)",
+    "DocumentsService.create_document": "async def create_document(self, *, body: CreateDocumentRequest, tenant_id: str) -> CreateDocumentResponse",
+    "DocumentsService.list_retrieval_ready_documents": "async def list_retrieval_ready_documents(self, *, tenant_id: str, ready_only: bool=True, document_types: str | None=None, source_systems: str | None=None, created_after: datetime | None=None, limit: int | None=None) -> ListRetrievalReadyDocumentsResponse",
+    "DocumentsService.list_document_ingest_statuses": "async def list_document_ingest_statuses(self, *, tenant_id: str, created_after: datetime | None=None, limit: int | None=None) -> ListDocumentIngestStatusesResponse",
+    "DocumentsService.get_document": "async def get_document(self, *, tenant_id: str, document_id: str) -> GetDocumentResponse",
+    "DocumentsService.update_document": "async def update_document(self, *, body: UpdateDocumentRequest, tenant_id: str, document_id: str) -> UpdateDocumentResponse"
+  },
+  "app/services/queries.py": {
+    "QueriesService.__init__": "def __init__(self, repos: Repositories)",
+    "QueriesService.create_query": "async def create_query(self, *, body: CreateQueryRequest, tenant_id: str) -> CreateQueryResponse",
+    "QueriesService.list_recent_ad_hoc_queries": "async def list_recent_ad_hoc_queries(self, *, tenant_id: str, created_after: datetime | None=None, limit: int | None=None) -> ListRecentAdHocQueriesResponse",
+    "QueriesService.list_benchmark_queries": "async def list_benchmark_queries(self, *, tenant_id: str, benchmark_run_id: str) -> ListBenchmarkQueriesResponse"
+  },
+  "app/services/query_results.py": {
+    "QueryResultsService.__init__": "def __init__(self, repos: Repositories)",
+    "QueryResultsService.create_query_result": "async def create_query_result(self, *, body: CreateQueryResultRequest, tenant_id: str) -> CreateQueryResultResponse",
+    "QueryResultsService.get_benchmark_query_comparison": "async def get_benchmark_query_comparison(self, *, tenant_id: str, benchmark_run_id: str, query_id: str) -> GetBenchmarkQueryComparisonResponse",
+    "QueryResultsService.get_benchmark_summary": "async def get_benchmark_summary(self, *, tenant_id: str, benchmark_run_id: str) -> GetBenchmarkSummaryResponse",
+    "QueryResultsService.get_benchmark_wins": "async def get_benchmark_wins(self, *, tenant_id: str, benchmark_run_id: str) -> GetBenchmarkWinsResponse"
+  },
+  "app/services/tenants.py": {
+    "TenantsService.__init__": "def __init__(self, repos: Repositories)",
+    "TenantsService.create_tenant": "async def create_tenant(self, *, body: CreateTenantRequest) -> CreateTenantResponse",
+    "TenantsService.list_tenants": "async def list_tenants(self, *, status: Literal['active', 'inactive'] | None=None, limit: int | None=None) -> ListTenantsResponse",
+    "TenantsService.get_tenant": "async def get_tenant(self, *, tenant_id: str) -> GetTenantResponse",
+    "TenantsService.update_tenant": "async def update_tenant(self, *, body: UpdateTenantRequest, tenant_id: str) -> UpdateTenantResponse"
+  }
+}
