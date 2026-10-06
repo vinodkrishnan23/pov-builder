@@ -94,9 +94,14 @@ def _service(repo: FakeDocuments, tenants: FakeTenants | None = None) -> Documen
 
 def _document(**changes: object) -> DocumentsDocument:
     data: dict[str, Any] = {
-        "id": DOC, "tenant_id": TENANT, "document_type": "text", "source_system": "upload",
-        "ingest_status": "uploaded", "is_agent_memory": False,
-        "created_at": NOW, "updated_at": NOW,
+        "id": DOC,
+        "tenant_id": TENANT,
+        "document_type": "text",
+        "source_system": "upload",
+        "ingest_status": "uploaded",
+        "is_agent_memory": False,
+        "created_at": NOW,
+        "updated_at": NOW,
     }
     data.update(changes)
     return DocumentsDocument.model_validate(data)
@@ -104,8 +109,10 @@ def _document(**changes: object) -> DocumentsDocument:
 
 def _body(**changes: object) -> CreateDocumentRequest:
     data: dict[str, Any] = {
-        "document_type": "text", "source_system": "upload",
-        "ingest_status": "uploaded", "is_agent_memory": False,
+        "document_type": "text",
+        "source_system": "upload",
+        "ingest_status": "uploaded",
+        "is_agent_memory": False,
     }
     data.update(changes)
     return CreateDocumentRequest.model_validate(data)
@@ -117,9 +124,13 @@ async def test_create_preserves_state_and_maps_metadata() -> None:
     response = await _service(repo, tenants).create_document(
         tenant_id=TENANT,
         body=_body(
-            document_type="agent_memory", ingest_status="failed", is_agent_memory=False,
-            raw_text="supplied", structured_attributes={"label": "demo"},
-            access={"user_ids": [OTHER]}, ingest_errors=[{"message": "failure"}],
+            document_type="agent_memory",
+            ingest_status="failed",
+            is_agent_memory=False,
+            raw_text="supplied",
+            structured_attributes={"label": "demo"},
+            access={"user_ids": [OTHER]},
+            ingest_errors=[{"message": "failure"}],
         ),
     )
     assert tenants.calls == [TENANT]
@@ -183,8 +194,11 @@ async def test_ready_pattern_mapping_bindings_and_post_limit_filters() -> None:
     row["_id"] = StringableId()
     repo.rows = [dict(row, document_type="pdf"), row, row]
     response = await _service(repo).list_retrieval_ready_documents(
-        tenant_id=TENANT, document_types=" text, csv ", source_systems="upload",
-        created_after=NOW, limit=2,
+        tenant_id=TENANT,
+        document_types=" text, csv ",
+        source_systems="upload",
+        created_after=NOW,
+        limit=2,
     )
     assert repo.calls == [("qp1", {"tenant_id": TENANT, "page_size": 2, "start_date": NOW})]
     assert len(response.documents) == 1  # No refill after filtering.
@@ -198,11 +212,16 @@ async def test_ready_pattern_mapping_bindings_and_post_limit_filters() -> None:
 async def test_false_branch_date_and_enum_filters_without_ingest_restriction() -> None:
     repo = FakeDocuments()
     repo.documents = [
-        _document(created_at=NOW - timedelta(days=1)), _document(document_type="pdf"),
-        _document(source_system="s3"), _document(ingest_status="failed"),
+        _document(created_at=NOW - timedelta(days=1)),
+        _document(document_type="pdf"),
+        _document(source_system="s3"),
+        _document(ingest_status="failed"),
     ]
     response = await _service(repo).list_retrieval_ready_documents(
-        tenant_id=TENANT, ready_only=False, document_types="text", source_systems="upload",
+        tenant_id=TENANT,
+        ready_only=False,
+        document_types="text",
+        source_systems="upload",
         created_after=NOW,
     )
     assert repo.calls == [("find", {"tenant_id": TENANT, "limit": MAX_FIND_RESULTS})]
@@ -226,16 +245,21 @@ async def test_empty_lists_and_default_bindings(operation: str) -> None:
         assert repo.calls == [("find", {"tenant_id": TENANT, "limit": MAX_FIND_RESULTS})]
     else:
         assert repo.calls == [
-            ("qp2" if operation == "statuses" else "qp1",
-             {"tenant_id": TENANT, "page_size": MAX_FIND_RESULTS, "start_date": None})
+            (
+                "qp2" if operation == "statuses" else "qp1",
+                {"tenant_id": TENANT, "page_size": MAX_FIND_RESULTS, "start_date": None},
+            )
         ]
 
 
 async def test_status_projection_mapping_and_limit() -> None:
     repo = FakeDocuments()
     row: dict[str, Any] = {
-        "_id": StringableId(), "document_type": "text", "source_system": "upload",
-        "ingest_status": "failed", "updated_at": NOW,
+        "_id": StringableId(),
+        "document_type": "text",
+        "source_system": "upload",
+        "ingest_status": "failed",
+        "updated_at": NOW,
     }
     repo.rows = [row, dict(row, ingest_errors=[{"message": "failure"}]), row]
     response = await _service(repo).list_document_ingest_statuses(
@@ -285,7 +309,8 @@ async def test_update_explicit_fields_nested_replacement_and_reread() -> None:
         _document(title="new", access={"user_ids": [TENANT]}, ingest_status="embedded"),
     ]
     response = await _service(repo).update_document(
-        tenant_id=TENANT, document_id=DOC,
+        tenant_id=TENANT,
+        document_id=DOC,
         body=UpdateDocumentRequest.model_validate(
             {"title": "new", "access": {"user_ids": [TENANT]}, "ingest_status": "embedded"}
         ),
@@ -308,7 +333,8 @@ async def test_update_failure_and_reread_ownership(failure: str) -> None:
     repo = FakeDocuments()
     repo.matched = failure != "unmatched"
     repo.reads = [
-        _document(), _document(tenant_id=OTHER) if failure == "wrong_owner_reread" else None,
+        _document(),
+        _document(tenant_id=OTHER) if failure == "wrong_owner_reread" else None,
     ]
     with pytest.raises(DocumentNotFound):
         await _service(repo).update_document(
@@ -373,7 +399,9 @@ async def test_create_revalidates_unchecked_body(invalid: str) -> None:
 @pytest.mark.parametrize(
     "data",
     [
-        {"ingest_status": "invalid"}, {"ingest_status": None}, {"tenant_id": OTHER},
+        {"ingest_status": "invalid"},
+        {"ingest_status": None},
+        {"tenant_id": OTHER},
         {"access": {"group_ids": ["bad"]}},
     ],
 )
