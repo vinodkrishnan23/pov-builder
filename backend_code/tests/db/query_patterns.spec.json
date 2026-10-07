@@ -1,0 +1,734 @@
+{
+  "QP-1": {
+    "filter": {
+      "tenant_id": "<tenantId>",
+      "ingest_status": "embedded",
+      "document_type": {
+        "$in": [
+          "pdf",
+          "csv",
+          "google_sheet",
+          "text",
+          "slack_thread",
+          "confluence_page",
+          "jira_ticket",
+          "agent_memory",
+          "other"
+        ]
+      },
+      "source_system": {
+        "$in": [
+          "upload",
+          "s3",
+          "slack",
+          "confluence",
+          "jira",
+          "google_sheets",
+          "csv",
+          "pdf",
+          "agent_conversation",
+          "other"
+        ]
+      },
+      "created_at": {
+        "$gte": "<optionalStartDate>"
+      }
+    },
+    "projection": {
+      "title": 1,
+      "file_name": 1,
+      "document_type": 1,
+      "source_system": 1,
+      "source_uri": 1,
+      "structured_attributes": 1,
+      "is_agent_memory": 1,
+      "created_at": 1
+    },
+    "sort": {
+      "created_at": -1
+    },
+    "limit": "<pageSize>"
+  },
+  "QP-2": {
+    "filter": {
+      "tenant_id": "<tenantId>",
+      "ingest_status": {
+        "$in": [
+          "uploaded",
+          "text_extracted",
+          "chunked",
+          "embedded",
+          "failed"
+        ]
+      },
+      "created_at": {
+        "$gte": "<optionalStartDate>"
+      }
+    },
+    "projection": {
+      "title": 1,
+      "file_name": 1,
+      "document_type": 1,
+      "source_system": 1,
+      "ingest_status": 1,
+      "ingest_errors": 1,
+      "updated_at": 1
+    },
+    "sort": {
+      "updated_at": -1
+    },
+    "limit": "<pageSize>"
+  },
+  "QP-3": {
+    "filter": {
+      "is_active": true,
+      "$or": [
+        {
+          "tenant_id": "<tenantId>"
+        },
+        {
+          "tenant_id": null
+        }
+      ],
+      "strategy": {
+        "$in": [
+          "fixed_length",
+          "recursive",
+          "semantic",
+          "contextual"
+        ]
+      }
+    },
+    "projection": {
+      "name": 1,
+      "strategy": 1,
+      "parameters": 1,
+      "tenant_id": 1
+    },
+    "sort": {
+      "strategy": 1,
+      "name": 1
+    },
+    "limit": null
+  },
+  "QP-4": [
+    {
+      "$vectorSearch": {
+        "index": "vector_chunks_embedding",
+        "path": "embedding",
+        "queryVector": "<queryEmbedding>",
+        "numCandidates": "<numCandidates>",
+        "limit": "<topK>",
+        "filter": {
+          "tenant_id": "<tenantId>",
+          "chunk_profile_id": "<chunkProfileId>",
+          "document_id": {
+            "$in": "<optionalDocumentIds>"
+          }
+        }
+      }
+    },
+    {
+      "$project": {
+        "document_id": 1,
+        "chunk_profile_id": 1,
+        "text": 1,
+        "structured_attributes": 1,
+        "score": {
+          "$meta": "vectorSearchScore"
+        }
+      }
+    },
+    {
+      "$lookup": {
+        "from": "documents",
+        "localField": "document_id",
+        "foreignField": "_id",
+        "as": "document"
+      }
+    },
+    {
+      "$unwind": "$document"
+    },
+    {
+      "$match": {
+        "$and": [
+          {
+            "document.tenant_id": "<tenantId>"
+          },
+          {
+            "document.ingest_status": "embedded"
+          },
+          {
+            "$or": [
+              {
+                "document.access.user_ids": "<optionalUserId>"
+              },
+              {
+                "document.access.group_ids": {
+                  "$in": "<optionalGroupIds>"
+                }
+              },
+              {
+                "document.access": {
+                  "$exists": false
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "$project": {
+        "chunk_id": "$_id",
+        "document_id": 1,
+        "score": 1,
+        "text_snippet": {
+          "$substrCP": [
+            "$text",
+            0,
+            500
+          ]
+        },
+        "source_title": "$document.title",
+        "document_type": "$document.document_type",
+        "source_system": "$document.source_system",
+        "structured_attributes": 1
+      }
+    },
+    {
+      "$sort": {
+        "score": -1
+      }
+    },
+    {
+      "$limit": "<topK>"
+    }
+  ],
+  "QP-5": [
+    {
+      "$search": {
+        "index": "search_chunks_text",
+        "compound": {
+          "must": [
+            {
+              "text": {
+                "query": "<queryText>",
+                "path": "text"
+              }
+            }
+          ],
+          "filter": [
+            {
+              "equals": {
+                "path": "tenant_id",
+                "value": "<tenantId>"
+              }
+            },
+            {
+              "equals": {
+                "path": "chunk_profile_id",
+                "value": "<chunkProfileId>"
+              }
+            },
+            "<optionalMetadataFilters>",
+            "<optionalDocumentScopeFilters>"
+          ]
+        }
+      }
+    },
+    {
+      "$project": {
+        "document_id": 1,
+        "text": 1,
+        "structured_attributes": 1,
+        "score": {
+          "$meta": "searchScore"
+        }
+      }
+    },
+    {
+      "$lookup": {
+        "from": "documents",
+        "localField": "document_id",
+        "foreignField": "_id",
+        "as": "document"
+      }
+    },
+    {
+      "$unwind": "$document"
+    },
+    {
+      "$match": {
+        "document.ingest_status": "embedded"
+      }
+    },
+    {
+      "$project": {
+        "chunk_id": "$_id",
+        "document_id": 1,
+        "score": 1,
+        "text_snippet": {
+          "$substrCP": [
+            "$text",
+            0,
+            500
+          ]
+        },
+        "source_title": "$document.title",
+        "document_type": "$document.document_type",
+        "structured_attributes": 1
+      }
+    },
+    {
+      "$sort": {
+        "score": -1
+      }
+    },
+    {
+      "$limit": "<topK>"
+    }
+  ],
+  "QP-6": [
+    {
+      "$vectorSearch": {
+        "index": "vector_chunks_embedding",
+        "path": "embedding",
+        "queryVector": "<queryEmbedding>",
+        "numCandidates": "<numCandidates>",
+        "limit": "<topK>",
+        "filter": {
+          "tenant_id": "<tenantId>",
+          "chunk_profile_id": "<chunkProfileId>",
+          "structured_attributes.memory_type": "<optionalMemoryType>"
+        }
+      }
+    },
+    {
+      "$lookup": {
+        "from": "documents",
+        "localField": "document_id",
+        "foreignField": "_id",
+        "as": "document"
+      }
+    },
+    {
+      "$unwind": "$document"
+    },
+    {
+      "$match": {
+        "document.is_agent_memory": true,
+        "document.tenant_id": "<tenantId>",
+        "$or": [
+          {
+            "document.access.user_ids": "<userId>"
+          },
+          {
+            "document.access.group_ids": {
+              "$in": "<groupIds>"
+            }
+          },
+          {
+            "document.access": {
+              "$exists": false
+            }
+          }
+        ]
+      }
+    },
+    {
+      "$project": {
+        "chunk_id": "$_id",
+        "document_id": "$document._id",
+        "score": {
+          "$meta": "vectorSearchScore"
+        },
+        "text_snippet": {
+          "$substrCP": [
+            "$text",
+            0,
+            500
+          ]
+        },
+        "source_title": "$document.title",
+        "structured_attributes": 1,
+        "created_at": "$document.created_at"
+      }
+    },
+    {
+      "$sort": {
+        "score": -1
+      }
+    },
+    {
+      "$limit": "<topK>"
+    }
+  ],
+  "QP-7": [
+    {
+      "$match": {
+        "document_id": "<documentId>",
+        "chunk_profile_id": "<chunkProfileId>"
+      }
+    },
+    {
+      "$sort": {
+        "chunk_index": 1
+      }
+    },
+    {
+      "$lookup": {
+        "from": "chunk_profiles",
+        "localField": "chunk_profile_id",
+        "foreignField": "_id",
+        "as": "chunk_profile"
+      }
+    },
+    {
+      "$unwind": "$chunk_profile"
+    },
+    {
+      "$project": {
+        "document_id": 1,
+        "chunk_index": 1,
+        "text": 1,
+        "token_count": 1,
+        "char_count": 1,
+        "chunk_profile.name": 1,
+        "chunk_profile.strategy": 1,
+        "chunk_profile.parameters": 1
+      }
+    }
+  ],
+  "QP-8": {
+    "filter": {
+      "tenant_id": "<tenantId>",
+      "status": {
+        "$in": [
+          "draft",
+          "running",
+          "completed",
+          "failed"
+        ]
+      }
+    },
+    "projection": {
+      "name": 1,
+      "status": 1,
+      "comparison_targets": 1,
+      "chunk_profile_ids": 1,
+      "top_k_values": 1,
+      "started_at": 1,
+      "completed_at": 1,
+      "created_at": 1
+    },
+    "sort": {
+      "created_at": -1
+    },
+    "limit": "<pageSize>"
+  },
+  "QP-9": {
+    "filter": {
+      "tenant_id": "<tenantId>",
+      "benchmark_run_id": "<benchmarkRunId>",
+      "query_type": "benchmark"
+    },
+    "projection": {
+      "query_text": 1,
+      "expected_answer_text": 1,
+      "ground_truth_chunk_ids": 1,
+      "ground_truth_document_ids": 1,
+      "document_scope": 1,
+      "created_at": 1
+    },
+    "sort": {
+      "created_at": 1
+    },
+    "limit": null
+  },
+  "QP-10": [
+    {
+      "$match": {
+        "tenant_id": "<tenantId>",
+        "benchmark_run_id": "<benchmarkRunId>",
+        "query_id": "<queryId>",
+        "approach": {
+          "$in": [
+            "mongodb_voyage",
+            "elastic",
+            "opensearch",
+            "qdrant",
+            "rudimentary_baseline",
+            "other"
+          ]
+        }
+      }
+    },
+    {
+      "$lookup": {
+        "from": "chunk_profiles",
+        "localField": "chunk_profile_id",
+        "foreignField": "_id",
+        "as": "chunk_profile"
+      }
+    },
+    {
+      "$unwind": {
+        "path": "$chunk_profile",
+        "preserveNullAndEmptyArrays": true
+      }
+    },
+    {
+      "$project": {
+        "approach": 1,
+        "retrieval_mode": 1,
+        "latency_ms": 1,
+        "top_k_requested": 1,
+        "results": 1,
+        "metrics": 1,
+        "chunk_profile": {
+          "name": "$chunk_profile.name",
+          "strategy": "$chunk_profile.strategy"
+        }
+      }
+    },
+    {
+      "$sort": {
+        "approach": 1,
+        "chunk_profile.strategy": 1
+      }
+    }
+  ],
+  "QP-11": [
+    {
+      "$match": {
+        "tenant_id": "<tenantId>",
+        "benchmark_run_id": "<benchmarkRunId>"
+      }
+    },
+    {
+      "$group": {
+        "_id": {
+          "approach": "$approach",
+          "retrieval_mode": "$retrieval_mode",
+          "chunk_profile_id": "$chunk_profile_id",
+          "top_k_requested": "$top_k_requested"
+        },
+        "avg_latency_ms": {
+          "$avg": "$latency_ms"
+        },
+        "query_count": {
+          "$sum": 1
+        },
+        "avg_mrr": {
+          "$avg": "$metrics.mrr"
+        },
+        "avg_ndcg": {
+          "$avg": "$metrics.ndcg"
+        },
+        "avg_precision_at_1": {
+          "$avg": "$metrics.precision_at_k.1"
+        },
+        "avg_precision_at_5": {
+          "$avg": "$metrics.precision_at_k.5"
+        },
+        "avg_precision_at_10": {
+          "$avg": "$metrics.precision_at_k.10"
+        },
+        "avg_precision_at_20": {
+          "$avg": "$metrics.precision_at_k.20"
+        },
+        "avg_recall_at_1": {
+          "$avg": "$metrics.recall_at_k.1"
+        },
+        "avg_recall_at_5": {
+          "$avg": "$metrics.recall_at_k.5"
+        },
+        "avg_recall_at_10": {
+          "$avg": "$metrics.recall_at_k.10"
+        },
+        "avg_recall_at_20": {
+          "$avg": "$metrics.recall_at_k.20"
+        }
+      }
+    },
+    {
+      "$sort": {
+        "_id.approach": 1,
+        "_id.top_k_requested": 1
+      }
+    }
+  ],
+  "QP-12": [
+    {
+      "$match": {
+        "tenant_id": "<tenantId>",
+        "benchmark_run_id": "<benchmarkRunId>",
+        "approach": {
+          "$in": [
+            "mongodb_voyage",
+            "elastic",
+            "opensearch",
+            "qdrant",
+            "rudimentary_baseline",
+            "other"
+          ]
+        }
+      }
+    },
+    {
+      "$project": {
+        "query_id": 1,
+        "approach": 1,
+        "latency_ms": 1,
+        "mrr": "$metrics.mrr",
+        "ndcg": "$metrics.ndcg",
+        "precision_at_5": "$metrics.precision_at_k.5",
+        "recall_at_5": "$metrics.recall_at_k.5"
+      }
+    },
+    {
+      "$group": {
+        "_id": "$query_id",
+        "by_approach": {
+          "$push": {
+            "approach": "$approach",
+            "latency_ms": "$latency_ms",
+            "mrr": "$mrr",
+            "ndcg": "$ndcg",
+            "precision_at_5": "$precision_at_5",
+            "recall_at_5": "$recall_at_5"
+          }
+        }
+      }
+    },
+    {
+      "$project": {
+        "by_approach": 1,
+        "mongodb_voyage": {
+          "$first": {
+            "$filter": {
+              "input": "$by_approach",
+              "as": "r",
+              "cond": {
+                "$eq": [
+                  "$$r.approach",
+                  "mongodb_voyage"
+                ]
+              }
+            }
+          }
+        },
+        "baseline": {
+          "$first": {
+            "$filter": {
+              "input": "$by_approach",
+              "as": "r",
+              "cond": {
+                "$in": [
+                  "$$r.approach",
+                  [
+                    "elastic",
+                    "opensearch",
+                    "qdrant",
+                    "rudimentary_baseline",
+                    "other"
+                  ]
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "$project": {
+        "mongodb_voyage": 1,
+        "baseline": 1,
+        "is_better_on_mrr": {
+          "$gt": [
+            "$mongodb_voyage.mrr",
+            "$baseline.mrr"
+          ]
+        },
+        "is_better_on_ndcg": {
+          "$gt": [
+            "$mongodb_voyage.ndcg",
+            "$baseline.ndcg"
+          ]
+        },
+        "is_better_on_precision_at_5": {
+          "$gt": [
+            "$mongodb_voyage.precision_at_5",
+            "$baseline.precision_at_5"
+          ]
+        },
+        "is_better_on_recall_at_5": {
+          "$gt": [
+            "$mongodb_voyage.recall_at_5",
+            "$baseline.recall_at_5"
+          ]
+        },
+        "is_lower_latency": {
+          "$lt": [
+            "$mongodb_voyage.latency_ms",
+            "$baseline.latency_ms"
+          ]
+        }
+      }
+    }
+  ],
+  "QP-13": {
+    "filter": {
+      "tenant_id": "<tenantId>",
+      "query_type": "ad_hoc",
+      "created_at": {
+        "$gte": "<optionalStartDate>"
+      }
+    },
+    "projection": {
+      "query_text": 1,
+      "document_scope": 1,
+      "created_by": 1,
+      "created_at": 1
+    },
+    "sort": {
+      "created_at": -1
+    },
+    "limit": "<pageSize>"
+  },
+  "QP-14": [
+    {
+      "$match": {
+        "_id": "<benchmarkRunId>",
+        "tenant_id": "<tenantId>"
+      }
+    },
+    {
+      "$lookup": {
+        "from": "chunk_profiles",
+        "localField": "chunk_profile_ids",
+        "foreignField": "_id",
+        "as": "chunk_profiles"
+      }
+    },
+    {
+      "$project": {
+        "name": 1,
+        "status": 1,
+        "comparison_targets": 1,
+        "top_k_values": 1,
+        "notes": 1,
+        "started_at": 1,
+        "completed_at": 1,
+        "chunk_profiles": {
+          "_id": 1,
+          "name": 1,
+          "strategy": 1,
+          "parameters": 1
+        }
+      }
+    }
+  ]
+}
