@@ -1,0 +1,41 @@
+{
+  "component": "backend",
+  "runtime": "python3.11",
+  "workdir": "backend_code",
+  "entrypoints": {
+    "install": [
+      "uv sync --frozen --no-dev"
+    ],
+    "build": [
+      "uv run --frozen --no-dev python -m compileall -q app"
+    ],
+    "bootstrap": [
+      "uv run --frozen --no-dev python -m app.db.indexes --wait"
+    ],
+    "start": [
+      "uv run --frozen --no-dev uvicorn app.main:app --host 127.0.0.1 --port ${PORT}"
+    ],
+    "healthcheck": {
+      "type": "http",
+      "url": "http://localhost:8080/api/health",
+      "expect": 200
+    }
+  },
+  "env": {
+    "required": [
+      "MONGODB_URI",
+      "MONGODB_DATABASE",
+      "PORT"
+    ],
+    "optional": [
+      "CORS_ORIGINS",
+      "CREATE_INDEXES",
+      "VECTOR_DIMENSIONS",
+      "LOG_LEVEL"
+    ]
+  },
+  "ports": [
+    8080
+  ],
+  "api_prefix": "/api"
+}

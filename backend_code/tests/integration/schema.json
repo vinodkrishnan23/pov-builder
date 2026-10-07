@@ -1,0 +1,531 @@
+{
+  "collections": {
+    "tenants": {
+      "_id": {
+        "type": "objectId",
+        "required": true
+      },
+      "tenant_key": {
+        "type": "string",
+        "required": true
+      },
+      "name": {
+        "type": "string",
+        "required": true
+      },
+      "deployment_model": {
+        "type": "string",
+        "required": false,
+        "enum": [
+          "shared",
+          "isolated"
+        ]
+      },
+      "cloud": {
+        "type": "string",
+        "required": false,
+        "enum": [
+          "aws",
+          "gcp",
+          "azure",
+          "other"
+        ]
+      },
+      "status": {
+        "type": "string",
+        "required": true,
+        "enum": [
+          "active",
+          "inactive"
+        ]
+      },
+      "created_at": {
+        "type": "date",
+        "required": true
+      },
+      "updated_at": {
+        "type": "date",
+        "required": true
+      }
+    },
+    "documents": {
+      "_id": {
+        "type": "objectId",
+        "required": true
+      },
+      "tenant_id": {
+        "type": "objectId",
+        "required": true
+      },
+      "document_type": {
+        "type": "string",
+        "required": true,
+        "enum": [
+          "pdf",
+          "csv",
+          "google_sheet",
+          "text",
+          "slack_thread",
+          "confluence_page",
+          "jira_ticket",
+          "agent_memory",
+          "other"
+        ]
+      },
+      "title": {
+        "type": "string",
+        "required": false
+      },
+      "source_system": {
+        "type": "string",
+        "required": true,
+        "enum": [
+          "upload",
+          "s3",
+          "slack",
+          "confluence",
+          "jira",
+          "google_sheets",
+          "csv",
+          "pdf",
+          "agent_conversation",
+          "other"
+        ]
+      },
+      "source_uri": {
+        "type": "string",
+        "required": false
+      },
+      "mime_type": {
+        "type": "string",
+        "required": false
+      },
+      "file_name": {
+        "type": "string",
+        "required": false
+      },
+      "raw_text": {
+        "type": "string",
+        "required": false
+      },
+      "structured_attributes": {
+        "type": "object",
+        "required": false
+      },
+      "access": {
+        "type": "document",
+        "required": false,
+        "fields": {
+          "user_ids": {
+            "type": "array",
+            "required": false,
+            "item_type": "objectId"
+          },
+          "group_ids": {
+            "type": "array",
+            "required": false,
+            "item_type": "objectId"
+          }
+        }
+      },
+      "ingest_status": {
+        "type": "string",
+        "required": true,
+        "enum": [
+          "uploaded",
+          "text_extracted",
+          "chunked",
+          "embedded",
+          "failed"
+        ]
+      },
+      "ingest_errors": {
+        "type": "array",
+        "required": false,
+        "item_type": "object"
+      },
+      "is_agent_memory": {
+        "type": "bool",
+        "required": true
+      },
+      "created_at": {
+        "type": "date",
+        "required": true
+      },
+      "updated_at": {
+        "type": "date",
+        "required": true
+      }
+    },
+    "chunk_profiles": {
+      "_id": {
+        "type": "objectId",
+        "required": true
+      },
+      "tenant_id": {
+        "type": "objectId",
+        "required": false
+      },
+      "name": {
+        "type": "string",
+        "required": true
+      },
+      "strategy": {
+        "type": "string",
+        "required": true,
+        "enum": [
+          "fixed_length",
+          "recursive",
+          "semantic",
+          "contextual"
+        ]
+      },
+      "parameters": {
+        "type": "object",
+        "required": false
+      },
+      "is_active": {
+        "type": "bool",
+        "required": true
+      },
+      "created_at": {
+        "type": "date",
+        "required": true
+      }
+    },
+    "chunks": {
+      "_id": {
+        "type": "objectId",
+        "required": true
+      },
+      "tenant_id": {
+        "type": "objectId",
+        "required": true
+      },
+      "document_id": {
+        "type": "objectId",
+        "required": true
+      },
+      "chunk_profile_id": {
+        "type": "objectId",
+        "required": true
+      },
+      "chunk_index": {
+        "type": "int",
+        "required": true
+      },
+      "text": {
+        "type": "string",
+        "required": true
+      },
+      "token_count": {
+        "type": "int",
+        "required": false
+      },
+      "char_count": {
+        "type": "int",
+        "required": false
+      },
+      "embedding": {
+        "type": "array",
+        "required": false,
+        "item_type": "float"
+      },
+      "embedding_model": {
+        "type": "string",
+        "required": false
+      },
+      "embedding_dimensions": {
+        "type": "int",
+        "required": false
+      },
+      "structured_attributes": {
+        "type": "object",
+        "required": false
+      },
+      "rerank_text": {
+        "type": "string",
+        "required": false
+      },
+      "created_at": {
+        "type": "date",
+        "required": true
+      }
+    },
+    "queries": {
+      "_id": {
+        "type": "objectId",
+        "required": true
+      },
+      "tenant_id": {
+        "type": "objectId",
+        "required": true
+      },
+      "benchmark_run_id": {
+        "type": "objectId",
+        "required": false
+      },
+      "query_text": {
+        "type": "string",
+        "required": true
+      },
+      "query_type": {
+        "type": "string",
+        "required": true,
+        "enum": [
+          "ad_hoc",
+          "benchmark"
+        ]
+      },
+      "expected_answer_text": {
+        "type": "string",
+        "required": false
+      },
+      "ground_truth_chunk_ids": {
+        "type": "array",
+        "required": false,
+        "item_type": "objectId"
+      },
+      "ground_truth_document_ids": {
+        "type": "array",
+        "required": false,
+        "item_type": "objectId"
+      },
+      "document_scope": {
+        "type": "document",
+        "required": false,
+        "fields": {
+          "document_ids": {
+            "type": "array",
+            "required": false,
+            "item_type": "objectId"
+          },
+          "source_systems": {
+            "type": "array",
+            "required": false,
+            "item_type": "string"
+          },
+          "metadata_filters": {
+            "type": "object",
+            "required": false
+          }
+        }
+      },
+      "created_by": {
+        "type": "string",
+        "required": false
+      },
+      "created_at": {
+        "type": "date",
+        "required": true
+      }
+    },
+    "benchmark_runs": {
+      "_id": {
+        "type": "objectId",
+        "required": true
+      },
+      "tenant_id": {
+        "type": "objectId",
+        "required": true
+      },
+      "name": {
+        "type": "string",
+        "required": true
+      },
+      "status": {
+        "type": "string",
+        "required": true,
+        "enum": [
+          "draft",
+          "running",
+          "completed",
+          "failed"
+        ]
+      },
+      "comparison_targets": {
+        "type": "array",
+        "required": true,
+        "item_type": "object",
+        "fields": {
+          "target_name": {
+            "type": "string",
+            "required": true
+          },
+          "target_type": {
+            "type": "string",
+            "required": true,
+            "enum": [
+              "mongodb_voyage",
+              "elastic",
+              "opensearch",
+              "qdrant",
+              "rudimentary_baseline",
+              "other"
+            ]
+          }
+        }
+      },
+      "chunk_profile_ids": {
+        "type": "array",
+        "required": false,
+        "item_type": "objectId"
+      },
+      "top_k_values": {
+        "type": "array",
+        "required": true,
+        "item_type": "int"
+      },
+      "notes": {
+        "type": "string",
+        "required": false
+      },
+      "started_at": {
+        "type": "date",
+        "required": false
+      },
+      "completed_at": {
+        "type": "date",
+        "required": false
+      },
+      "created_at": {
+        "type": "date",
+        "required": true
+      }
+    },
+    "query_results": {
+      "_id": {
+        "type": "objectId",
+        "required": true
+      },
+      "benchmark_run_id": {
+        "type": "objectId",
+        "required": false
+      },
+      "query_id": {
+        "type": "objectId",
+        "required": true
+      },
+      "tenant_id": {
+        "type": "objectId",
+        "required": true
+      },
+      "approach": {
+        "type": "string",
+        "required": true,
+        "enum": [
+          "mongodb_voyage",
+          "elastic",
+          "opensearch",
+          "qdrant",
+          "rudimentary_baseline",
+          "other"
+        ]
+      },
+      "chunk_profile_id": {
+        "type": "objectId",
+        "required": false
+      },
+      "retrieval_mode": {
+        "type": "string",
+        "required": true,
+        "enum": [
+          "vector",
+          "lexical",
+          "hybrid"
+        ]
+      },
+      "latency_ms": {
+        "type": "double",
+        "required": true
+      },
+      "top_k_requested": {
+        "type": "int",
+        "required": true
+      },
+      "results": {
+        "type": "array",
+        "required": true,
+        "item_type": "object",
+        "fields": {
+          "rank": {
+            "type": "int",
+            "required": true
+          },
+          "chunk_id": {
+            "type": "objectId",
+            "required": false
+          },
+          "document_id": {
+            "type": "objectId",
+            "required": false
+          },
+          "score": {
+            "type": "double",
+            "required": false
+          },
+          "rerank_score": {
+            "type": "double",
+            "required": false
+          },
+          "text_snippet": {
+            "type": "string",
+            "required": false
+          },
+          "source_title": {
+            "type": "string",
+            "required": false
+          },
+          "is_ground_truth_match": {
+            "type": "bool",
+            "required": false
+          }
+        }
+      },
+      "metrics": {
+        "type": "document",
+        "required": false,
+        "fields": {
+          "precision_at_k": {
+            "type": "object",
+            "required": false
+          },
+          "recall_at_k": {
+            "type": "object",
+            "required": false
+          },
+          "mrr": {
+            "type": "double",
+            "required": false
+          },
+          "ndcg": {
+            "type": "double",
+            "required": false
+          }
+        }
+      },
+      "created_at": {
+        "type": "date",
+        "required": true
+      }
+    }
+  },
+  "references": {
+    "documents.tenant_id": "tenants",
+    "chunk_profiles.tenant_id": "tenants",
+    "chunks.tenant_id": "tenants",
+    "chunks.document_id": "documents",
+    "chunks.chunk_profile_id": "chunk_profiles",
+    "queries.tenant_id": "tenants",
+    "queries.benchmark_run_id": "benchmark_runs",
+    "benchmark_runs.tenant_id": "tenants",
+    "benchmark_runs.chunk_profile_ids": "chunk_profiles",
+    "query_results.benchmark_run_id": "benchmark_runs",
+    "query_results.query_id": "queries",
+    "query_results.tenant_id": "tenants",
+    "query_results.chunk_profile_id": "chunk_profiles"
+  },
+  "vector_paths": {
+    "chunks": "embedding"
+  }
+}

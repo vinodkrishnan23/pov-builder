@@ -1,0 +1,21 @@
+target-version = "py311"
+line-length = 100
+
+[lint]
+select = ["E", "F", "W", "I", "B", "UP", "ASYNC", "DTZ", "S", "RUF", "TID", "PLE", "T10", "BLE"]
+ignore = ["E501", "B008", "RUF012"]
+
+[lint.flake8-tidy-imports.banned-api]
+"pymongo".msg = "Only app/db/** may use the MongoDB driver; use the generated repositories."
+"bson".msg = "Only app/db/** may use bson; API-facing ObjectIds are ObjectIdStr."
+"requests".msg = "Outbound HTTP is not allowed in the generated backend."
+"subprocess".msg = "Process execution is not allowed in the generated backend."
+"pickle".msg = "pickle is not allowed."
+"os.environ".msg = "Read configuration through app.settings.Settings only."
+"os.getenv".msg = "Read configuration through app.settings.Settings only."
+"fastapi.HTTPException".msg = "Raise the generated contract errors from app.errors instead."
+
+[lint.per-file-ignores]
+"app/db/**" = ["TID251"]
+"app/settings.py" = ["TID251"]
+"tests/**" = ["S101", "S105", "S106", "TID251", "DTZ"]
