@@ -1,17 +1,22 @@
-"""Business logic for the `chunk_profiles` resource.
-
-Generated stub: method SIGNATURES are frozen (checked by G8). Implement method bodies and
-add private helpers (names starting with "_") only."""
+"""Business logic for the chunk_profiles resource."""
 
 from __future__ import annotations
+
+import re
+from secrets import token_hex
+from typing import Any
 
 from app.api.schemas import (
     CreateChunkProfileRequest,
     CreateChunkProfileResponse,
+    CreateChunkProfileResponseChunkProfile,
     ListChunkProfilesResponse,
+    ListChunkProfilesResponseChunkProfilesItem,
 )
 from app.db.repositories import Repositories
-from app.errors import NotImplementedOperation
+from app.errors import InvalidId, TenantNotFound, ValidationError
+from app.models.documents import ChunkProfilesDocument
+from app.types import OBJECT_ID_PATTERN, utc_now
 
 
 class ChunkProfilesService:
@@ -21,45 +26,46 @@ class ChunkProfilesService:
         self.repos = repos
 
     async def list_chunk_profiles(self, *, tenant_id: str) -> ListChunkProfilesResponse:
-        """listChunkProfiles - GET /api/v1/tenants/{tenantId}/chunk-profiles -> 200
+        """List active tenant/global profiles through QP-3, without a tenant lookup.
 
-        Purpose: Retrieve active chunking strategies available for comparison in the POV.
-
-        Backing: query pattern QP-3 -> repos.<collection>.run_qp_3(...)
-        Errors (raise exactly these from app.errors):
-          - InvalidId (400 INVALID_ID): tenantId is invalid.
-        Note: Backing (as written in the contract): QP-3
-        Binding plan:
-          - placeholder QP-3 <tenantId> <- path.tenantId
-          - response chunk_profiles[]._id <- transform str(pattern._id)
-          - response chunk_profiles[].name <- pattern.name
-          - response chunk_profiles[].strategy <- pattern.strategy
-          - response chunk_profiles[].parameters <- transform pattern.parameters; absent -> null
-          - response chunk_profiles[].tenant_id <- transform str(pattern.tenant_id) when present/non-null; otherwise null
-          - rule: tenantId is not a valid ObjectId string. -> raise INVALID_ID
-          - note: Await repos.chunk_profiles.run_qp_3(tenant_id=tenantId). QP-3 includes active tenant-owned and global profiles; do not add tenant-existence validation or an active-tenant requirement.
-          - note: Return [] when no profiles match. _id is implicitly included; tenant_id missing/null denotes a global profile. Exclude is_active/created_at.
+        Errors: InvalidId for invalid tenant identifier syntax.
         """
-        raise NotImplementedOperation()
+        if re.fullmatch(OBJECT_ID_PATTERN, tenant_id) is None:
+            raise InvalidId(
+                "tenantId must be a 24-character hex string.", details={"tenant_id": tenant_id}
+            )
+        rows = await self.repos.chunk_profiles.run_qp_3(tenant_id=tenant_id)
+        items: list[ListChunkProfilesResponseChunkProfilesItem] = []
+        for row in rows:
+            data: dict[str, Any] = dict(row)
+            data["_id"] = str(row["_id"])
+            owner = row.get("tenant_id")
+            data["tenant_id"] = str(owner) if owner is not None else None
+            data["parameters"] = row.get("parameters")
+            items.append(ListChunkProfilesResponseChunkProfilesItem.model_validate(data))
+        return ListChunkProfilesResponse(chunk_profiles=items)
 
     async def create_chunk_profile(
         self, *, body: CreateChunkProfileRequest, tenant_id: str
     ) -> CreateChunkProfileResponse:
-        """createChunkProfile - POST /api/v1/tenants/{tenantId}/chunk-profiles -> 201
+        """Insert a tenant-specific profile; do not execute chunking.
 
-        Purpose: Create a tenant-specific chunk profile for benchmark or demo comparisons.
-
-        Backing: chunk_profiles.insertOne filter=null
-        Errors (raise exactly these from app.errors):
-          - ValidationError (400 VALIDATION_ERROR): Missing required fields or invalid enum values.
-          - TenantNotFound (404 TENANT_NOT_FOUND): tenantId does not exist.
-        Note: Backing (as written in the contract): CRUD insertOne on chunk_profiles
-        Binding plan:
-          - prerequisite: Await repos.tenants.find_one_by_id(path.tenantId); None -> TENANT_NOT_FOUND.
-          - response chunk_profile <- transform inserted document: _id, tenant_id, name, strategy, parameters, is_active, created_at from doc.same_named_field; absent parameters -> null
-          - rule: Missing required fields, invalid identifier formats or enum values. -> raise VALIDATION_ERROR
-          - rule: Tenant lookup returns None. -> raise TENANT_NOT_FOUND
-          - note: Await repos.chunk_profiles.insert_one using body name/strategy/parameters/is_active, tenant_id=tenantId and generated _id/UTC created_at; return the constructed stored document.
-          - note: This creates a tenant-specific profile only; do not make a global profile or execute chunking.
+        Body fields and enums are validated by the request schema.
+        Errors: ValidationError for invalid identifier syntax, TenantNotFound on lookup miss.
         """
-        raise NotImplementedOperation()
+        if re.fullmatch(OBJECT_ID_PATTERN, tenant_id) is None:
+            raise ValidationError(
+                "tenantId must be a 24-character hex string.", details={"tenant_id": tenant_id}
+            )
+        tenant = await self.repos.tenants.find_one_by_id(tenant_id)
+        if tenant is None:
+            raise TenantNotFound(details={"tenant_id": tenant_id})
+        data = body.model_dump()
+        data.update(id=token_hex(12), tenant_id=tenant_id, created_at=utc_now())
+        document = ChunkProfilesDocument.model_validate(data)
+        await self.repos.chunk_profiles.insert_one(document)
+        return CreateChunkProfileResponse(
+            chunk_profile=CreateChunkProfileResponseChunkProfile.model_validate(
+                document.model_dump()
+            )
+        )
